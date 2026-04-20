@@ -48,21 +48,27 @@ function emptyAuthorStats(): AuthorStats {
   };
 }
 
-function parseGitLog(raw: string): Map<string, AuthorStats> {
+function parseGitLog(raw: string, until?: Date): Map<string, AuthorStats> {
   const authorMap = new Map<string, AuthorStats>();
 
   const lines = raw.split("\n");
   let currentEmail: string | null = null;
   let currentHash: string | null = null;
+  let currentSkip = false;
 
   for (const line of lines) {
     const trimmed = line.trim();
     if (!trimmed) continue;
 
-    // Commit header line: email|hash
+    // Commit header line: email|hash|committerISO
     if (trimmed.includes("|") && !trimmed.includes("\t")) {
       const parts = trimmed.split("|");
-      if (parts.length === 2 && parts[1].length >= 7) {
+      if (parts.length === 3 && parts[1].length >= 7) {
+        const committerDate = new Date(parts[2]);
+        currentSkip = !!(until && committerDate > until);
+
+        if (currentSkip) continue;
+
         currentEmail = parts[0].toLowerCase();
         currentHash = parts[1];
 
@@ -75,7 +81,7 @@ function parseGitLog(raw: string): Map<string, AuthorStats> {
     }
 
     // numstat line: added\tremoved\tfilename
-    if (currentEmail && trimmed.includes("\t")) {
+    if (!currentSkip && currentEmail && trimmed.includes("\t")) {
       const parts = trimmed.split("\t");
       if (parts.length >= 3) {
         const added = parts[0] === "-" ? 0 : parseInt(parts[0], 10) || 0;
@@ -138,25 +144,23 @@ async function analyzeGroupForCheckpoint(
 
       const repoGit = simpleGit(tmpDir);
 
+      const logArgs = [
+        "log",
+        "--use-mailmap",
+        "--format=%aE|%H|%cI",
+        "--numstat",
+        "--no-merges",
+      ];
+
       if (checkpoint.gitRef) {
         await repoGit.checkout(checkpoint.gitRef);
       }
 
-      const logArgs = [
-        "log",
-        "--use-mailmap",
-        "--format=%aE|%H",
-        "--numstat",
-        "--no-merges",
-        "--date=committer",
-      ];
-
-      if (checkpoint.timestamp) {
-        logArgs.push(`--until=${checkpoint.timestamp.toISOString()}`);
-      }
-
       const logOutput = await repoGit.raw(logArgs);
-      const authorMap = parseGitLog(logOutput);
+      const authorMap = parseGitLog(
+        logOutput,
+        checkpoint.timestamp ?? undefined
+      );
 
       // Build email-to-student mapping (primary email + gitEmails aliases)
       const registeredEmails = new Set(
