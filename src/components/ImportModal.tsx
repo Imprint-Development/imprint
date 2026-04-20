@@ -1,23 +1,30 @@
 "use client";
 
 import { importCsv } from "@/lib/actions/import";
-import Typography from "@mui/joy/Typography";
-import Button from "@mui/joy/Button";
-import Box from "@mui/joy/Box";
-import Stack from "@mui/joy/Stack";
-import Checkbox from "@mui/joy/Checkbox";
-import Sheet from "@mui/joy/Sheet";
-import Table from "@mui/joy/Table";
-import Divider from "@mui/joy/Divider";
-import Select from "@mui/joy/Select";
-import Option from "@mui/joy/Option";
-import FormControl from "@mui/joy/FormControl";
-import FormLabel from "@mui/joy/FormLabel";
-import Modal from "@mui/joy/Modal";
-import ModalDialog from "@mui/joy/ModalDialog";
-import ModalClose from "@mui/joy/ModalClose";
-import DialogTitle from "@mui/joy/DialogTitle";
-import DialogContent from "@mui/joy/DialogContent";
+import Typography from "@mui/material/Typography";
+import Button from "@mui/material/Button";
+import Box from "@mui/material/Box";
+import Stack from "@mui/material/Stack";
+import Checkbox from "@mui/material/Checkbox";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import Paper from "@mui/material/Paper";
+import Table from "@mui/material/Table";
+import TableBody from "@mui/material/TableBody";
+import TableCell from "@mui/material/TableCell";
+import TableContainer from "@mui/material/TableContainer";
+import TableHead from "@mui/material/TableHead";
+import TableRow from "@mui/material/TableRow";
+import Divider from "@mui/material/Divider";
+import Select from "@mui/material/Select";
+import MenuItem from "@mui/material/MenuItem";
+import FormControl from "@mui/material/FormControl";
+import FormLabel from "@mui/material/FormLabel";
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogContent from "@mui/material/DialogContent";
+import IconButton from "@mui/material/IconButton";
+import Alert from "@mui/material/Alert";
+import CloseRounded from "@mui/icons-material/CloseRounded";
 import UploadFileRounded from "@mui/icons-material/UploadFileRounded";
 import { useState, useRef } from "react";
 
@@ -131,151 +138,144 @@ export default function ImportModal({
   };
 
   return (
-    <Modal open={open} onClose={handleClose}>
-      <ModalDialog
-        sx={{
-          maxWidth: 700,
-          width: "95vw",
-          maxHeight: "90vh",
-          overflow: "auto",
-        }}
+    <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+      <DialogTitle
+        sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}
       >
-        <ModalClose />
-        <DialogTitle>Import Students from CSV</DialogTitle>
-        <DialogContent>
-          <Typography level="body-sm" sx={{ mb: 2 }}>
-            Upload a CSV file with columns: Nachname, Vorname, ID-Nummer,
-            E-Mail-Adresse, Gruppe, Gruppenwahl. Groups and students will be
-            created automatically.
-          </Typography>
+        Import Students from CSV
+        <IconButton size="small" onClick={handleClose} disabled={importing}>
+          <CloseRounded fontSize="small" />
+        </IconButton>
+      </DialogTitle>
+      <DialogContent dividers>
+        <Typography variant="body2" sx={{ mb: 2 }}>
+          Upload a CSV file with columns: Nachname, Vorname, ID-Nummer,
+          E-Mail-Adresse, Gruppe, Gruppenwahl. Groups and students will be
+          created automatically.
+        </Typography>
 
-          <form ref={formRef} action={handleSubmit}>
-            <Stack spacing={2}>
-              <input type="hidden" name="delimiter" value={delimiter} />
+        <form ref={formRef} action={handleSubmit}>
+          <Stack spacing={2}>
+            <input type="hidden" name="delimiter" value={delimiter} />
 
-              <Stack direction="row" spacing={2} alignItems="flex-end">
-                <Button
-                  component="label"
-                  variant="outlined"
-                  color="neutral"
-                  startDecorator={<UploadFileRounded />}
+            <Stack direction="row" spacing={2} sx={{ alignItems: "flex-end" }}>
+              <Button
+                component="label"
+                variant="outlined"
+                color="inherit"
+                startIcon={<UploadFileRounded />}
+              >
+                {fileName ?? "Choose CSV file"}
+                <input
+                  type="file"
+                  name="file"
+                  accept=".csv,.tsv,.txt"
+                  onChange={handleFileChange}
+                  hidden
+                />
+              </Button>
+
+              <FormControl size="small" sx={{ minWidth: 140 }}>
+                <FormLabel>Delimiter</FormLabel>
+                <Select
+                  value={delimiter}
+                  onChange={(e) => handleDelimiterChange(e.target.value)}
+                  size="small"
                 >
-                  {fileName ?? "Choose CSV file"}
-                  <input
-                    type="file"
-                    name="file"
-                    accept=".csv,.tsv,.txt"
-                    onChange={handleFileChange}
-                    hidden
-                  />
-                </Button>
-
-                <FormControl size="sm" sx={{ minWidth: 140 }}>
-                  <FormLabel>Delimiter</FormLabel>
-                  <Select
-                    value={delimiter}
-                    onChange={(_e, val) => val && handleDelimiterChange(val)}
-                  >
-                    {DELIMITERS.map((d) => (
-                      <Option key={d.value} value={d.value}>
-                        {d.label}
-                      </Option>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Stack>
-
-              <Checkbox
-                label="Only import rows where a group is assigned"
-                name="onlyWithGroup"
-                checked={onlyWithGroup}
-                onChange={(e) => setOnlyWithGroup(e.target.checked)}
-              />
-
-              {preview.length > 0 && (
-                <Sheet variant="soft" sx={{ p: 1.5, borderRadius: "sm" }}>
-                  <Typography level="body-sm">
-                    {displayed.length} student
-                    {displayed.length !== 1 && "s"} in {groupCount} group
-                    {groupCount !== 1 && "s"} will be imported
-                    {onlyWithGroup &&
-                      preview.length !== displayed.length &&
-                      ` (${preview.length - displayed.length} skipped — no group)`}
-                  </Typography>
-                </Sheet>
-              )}
-
-              {displayed.length > 0 && (
-                <Box>
-                  <Divider sx={{ mb: 1 }} />
-                  <Typography level="title-sm" sx={{ mb: 1 }}>
-                    Preview
-                  </Typography>
-                  <Sheet
-                    variant="outlined"
-                    sx={{
-                      overflow: "auto",
-                      maxHeight: 250,
-                      borderRadius: "sm",
-                    }}
-                  >
-                    <Table size="sm" stickyHeader>
-                      <thead>
-                        <tr>
-                          <th>Group</th>
-                          <th>First Name</th>
-                          <th>Last Name</th>
-                          <th>Email</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {displayed.map((row, i) => (
-                          <tr key={i}>
-                            <td>{row.gruppe || "Ungrouped"}</td>
-                            <td>{row.vorname}</td>
-                            <td>{row.nachname}</td>
-                            <td>{row.email}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </Table>
-                  </Sheet>
-                </Box>
-              )}
-
-              <Stack direction="row" spacing={1} justifyContent="flex-end">
-                <Button
-                  variant="plain"
-                  color="neutral"
-                  onClick={handleClose}
-                  disabled={importing}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={!fileName || importing}
-                  loading={importing}
-                >
-                  Import
-                </Button>
-              </Stack>
+                  {DELIMITERS.map((d) => (
+                    <MenuItem key={d.value} value={d.value}>
+                      {d.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
             </Stack>
-          </form>
 
-          {done && (
-            <Sheet
-              variant="soft"
-              color="success"
-              sx={{ p: 2, borderRadius: "sm", mt: 2 }}
-            >
-              <Typography color="success">
-                Import complete. Groups and students have been created.
-              </Typography>
-            </Sheet>
-          )}
-        </DialogContent>
-      </ModalDialog>
-    </Modal>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  name="onlyWithGroup"
+                  checked={onlyWithGroup}
+                  onChange={(e) => setOnlyWithGroup(e.target.checked)}
+                  size="small"
+                />
+              }
+              label="Only import rows where a group is assigned"
+            />
+
+            {preview.length > 0 && (
+              <Paper variant="outlined" sx={{ p: 1.5 }}>
+                <Typography variant="body2">
+                  {displayed.length} student
+                  {displayed.length !== 1 && "s"} in {groupCount} group
+                  {groupCount !== 1 && "s"} will be imported
+                  {onlyWithGroup &&
+                    preview.length !== displayed.length &&
+                    ` (${preview.length - displayed.length} skipped — no group)`}
+                </Typography>
+              </Paper>
+            )}
+
+            {displayed.length > 0 && (
+              <Box>
+                <Divider sx={{ mb: 1 }} />
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                  Preview
+                </Typography>
+                <TableContainer
+                  component={Paper}
+                  variant="outlined"
+                  sx={{ maxHeight: 250 }}
+                >
+                  <Table size="small" stickyHeader>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Group</TableCell>
+                        <TableCell>First Name</TableCell>
+                        <TableCell>Last Name</TableCell>
+                        <TableCell>Email</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {displayed.map((row, i) => (
+                        <TableRow key={i} hover>
+                          <TableCell>{row.gruppe || "Ungrouped"}</TableCell>
+                          <TableCell>{row.vorname}</TableCell>
+                          <TableCell>{row.nachname}</TableCell>
+                          <TableCell>{row.email}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Box>
+            )}
+
+            <Stack direction="row" spacing={1} sx={{ justifyContent: "flex-end" }}>
+              <Button
+                color="inherit"
+                onClick={handleClose}
+                disabled={importing}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="contained"
+                disabled={!fileName || importing}
+              >
+                {importing ? "Importing…" : "Import"}
+              </Button>
+            </Stack>
+          </Stack>
+        </form>
+
+        {done && (
+          <Alert severity="success" sx={{ mt: 2 }}>
+            Import complete. Groups and students have been created.
+          </Alert>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }

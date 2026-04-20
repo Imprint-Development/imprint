@@ -5,13 +5,13 @@ import { db } from "@/lib/db";
 import { courses, courseCollaborators } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
-import Typography from "@mui/joy/Typography";
-import Card from "@mui/joy/Card";
-import CardContent from "@mui/joy/CardContent";
-import Chip from "@mui/joy/Chip";
-import Box from "@mui/joy/Box";
-import Stack from "@mui/joy/Stack";
-import Breadcrumbs from "@mui/joy/Breadcrumbs";
+import Typography from "@mui/material/Typography";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import Chip from "@mui/material/Chip";
+import Box from "@mui/material/Box";
+import Stack from "@mui/material/Stack";
+import Breadcrumbs from "@mui/material/Breadcrumbs";
 import AddRounded from "@mui/icons-material/AddRounded";
 import HomeRounded from "@mui/icons-material/HomeRounded";
 
@@ -29,29 +29,27 @@ export default async function CoursesPage() {
     <Box sx={{ p: 3 }}>
       <Breadcrumbs sx={{ mb: 2 }}>
         <AppLink href="/">
-          <HomeRounded />
+          <HomeRounded fontSize="small" />
         </AppLink>
         <Typography>Courses</Typography>
       </Breadcrumbs>
 
       <Stack
         direction="row"
-        justifyContent="space-between"
-        alignItems="center"
-        sx={{ mb: 3 }}
+        sx={{ justifyContent: "space-between", alignItems: "center", mb: 3 }}
       >
-        <Typography level="h2">Courses</Typography>
-        <ButtonLink href="/courses/new" startDecorator={<AddRounded />}>
+        <Typography variant="h5">Courses</Typography>
+        <ButtonLink href="/courses/new" startIcon={<AddRounded />}>
           Create Course
         </ButtonLink>
       </Stack>
 
       {userCourses.length === 0 ? (
-        <Stack alignItems="center" spacing={2} sx={{ py: 8 }}>
-          <Typography level="body-lg" color="neutral">
+        <Stack sx={{ alignItems: "center", py: 8 }} spacing={2}>
+          <Typography variant="body1" color="text.secondary">
             No courses yet.
           </Typography>
-          <ButtonLink href="/courses/new" startDecorator={<AddRounded />}>
+          <ButtonLink href="/courses/new" startIcon={<AddRounded />}>
             Create your first course
           </ButtonLink>
         </Stack>
@@ -64,20 +62,31 @@ export default async function CoursesPage() {
           }}
         >
           {userCourses.map(({ course }) => (
-            <Card key={course.id} variant="outlined">
-              <CardContent>
-                <Stack spacing={1}>
-                  <Typography level="title-lg">{course.name}</Typography>
-                  <Chip size="sm" variant="soft" color="primary">
-                    {course.semester}
-                  </Chip>
-                  <Typography level="body-sm" color="neutral">
-                    Created {course.createdAt?.toLocaleDateString()}
-                  </Typography>
-                  <AppLink href={`/courses/${course.id}`}>View</AppLink>
-                </Stack>
-              </CardContent>
-            </Card>
+            <AppLink
+              key={course.id}
+              href={`/courses/${course.id}`}
+              sx={{ textDecoration: "none", color: "inherit", display: "block" }}
+            >
+              <Card
+                variant="outlined"
+                sx={{ height: "100%", "&:hover": { boxShadow: 3 }, transition: "box-shadow 0.2s" }}
+              >
+                <CardContent>
+                  <Stack spacing={1}>
+                    <Typography variant="h6">{course.name}</Typography>
+                    <Chip
+                      size="small"
+                      label={course.semester}
+                      color="primary"
+                      variant="outlined"
+                    />
+                    <Typography variant="body2" color="text.secondary">
+                      Created {course.createdAt?.toLocaleDateString()}
+                    </Typography>
+                  </Stack>
+                </CardContent>
+              </Card>
+            </AppLink>
           ))}
         </Box>
       )}

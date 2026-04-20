@@ -18,21 +18,21 @@ import type {
   AnalysisRow,
   RepoWarning,
 } from "@/app/(dashboard)/courses/[courseId]/checkpoints/[checkpointId]/RepoTabs";
-import Typography from "@mui/joy/Typography";
-import Breadcrumbs from "@mui/joy/Breadcrumbs";
-import Box from "@mui/joy/Box";
-import Button from "@mui/joy/Button";
-import Card from "@mui/joy/Card";
-import CardContent from "@mui/joy/CardContent";
-import Chip from "@mui/joy/Chip";
-import Sheet from "@mui/joy/Sheet";
-import Stack from "@mui/joy/Stack";
+import Typography from "@mui/material/Typography";
+import Breadcrumbs from "@mui/material/Breadcrumbs";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import Chip from "@mui/material/Chip";
+import Alert from "@mui/material/Alert";
+import Stack from "@mui/material/Stack";
 
 const statusColor = {
   pending: "warning",
   analyzing: "primary",
   complete: "success",
-  failed: "danger",
+  failed: "error",
 } as const;
 
 export default async function GroupCheckpointAnalysisPage({
@@ -163,30 +163,29 @@ export default async function GroupCheckpointAnalysisPage({
         <Typography>{checkpoint.name}</Typography>
       </Breadcrumbs>
 
-      <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 3 }}>
-        <Typography level="h2">
+      <Stack direction="row" sx={{ alignItems: "center", mb: 3 }} spacing={2}>
+        <Typography variant="h5">
           {group.name} — {checkpoint.name}
         </Typography>
         <Chip
           color={
             statusColor[checkpoint.status as keyof typeof statusColor] ??
-            "neutral"
+            "default"
           }
-        >
-          {checkpoint.status}
-        </Chip>
+          label={checkpoint.status}
+        />
       </Stack>
 
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <Stack spacing={1}>
-            <Typography level="body-sm">
+            <Typography variant="body2">
               <strong>Git Ref:</strong>{" "}
-              <Typography fontFamily="code">
+              <Typography component="span" sx={{ fontFamily: "monospace" }}>
                 {checkpoint.gitRef || "—"}
               </Typography>
             </Typography>
-            <Typography level="body-sm">
+            <Typography variant="body2">
               <strong>Timestamp:</strong>{" "}
               {checkpoint.timestamp?.toLocaleString() ?? "—"}
             </Typography>
@@ -195,23 +194,16 @@ export default async function GroupCheckpointAnalysisPage({
       </Card>
 
       {checkpoint.status !== "complete" && (
-        <Sheet variant="soft" color="neutral" sx={{ p: 3, borderRadius: "sm" }}>
-          <Typography>
-            Analysis is not complete yet.{" "}
-            <AppLink href={`/courses/${courseId}/checkpoints/${checkpointId}`}>
-              Manage checkpoint
-            </AppLink>
-          </Typography>
-        </Sheet>
+        <Alert severity="info" sx={{ mb: 3 }}>
+          Analysis is not complete yet.{" "}
+          <AppLink href={`/courses/${courseId}/checkpoints/${checkpointId}`}>
+            Manage checkpoint
+          </AppLink>
+        </Alert>
       )}
 
       {checkpoint.status === "complete" && analysisRows.length === 0 && (
-        <Sheet
-          variant="soft"
-          sx={{ p: 4, borderRadius: "sm", textAlign: "center" }}
-        >
-          <Typography>No analysis data found for this group.</Typography>
-        </Sheet>
+        <Alert severity="info">No analysis data found for this group.</Alert>
       )}
 
       {checkpoint.status === "complete" && analysisRows.length > 0 && (
@@ -221,7 +213,7 @@ export default async function GroupCheckpointAnalysisPage({
       {checkpoint.status === "complete" && (
         <Box sx={{ mt: 3, display: "flex", justifyContent: "flex-end" }}>
           <form action={rerunWithIds}>
-            <Button type="submit" variant="outlined" color="warning" size="sm">
+            <Button type="submit" variant="outlined" color="warning" size="small">
               Re-run Analysis for This Group
             </Button>
           </form>

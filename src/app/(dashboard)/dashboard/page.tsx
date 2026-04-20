@@ -1,8 +1,8 @@
 import { auth } from "@/lib/auth";
-import Typography from "@mui/joy/Typography";
-import Card from "@mui/joy/Card";
-import CardContent from "@mui/joy/CardContent";
-import Box from "@mui/joy/Box";
+import Typography from "@mui/material/Typography";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import Box from "@mui/material/Box";
 
 const stats = [
   { label: "Total Courses", value: "—" },
@@ -15,10 +15,10 @@ export default async function DashboardPage() {
 
   return (
     <>
-      <Typography level="h2" sx={{ mb: 0.5 }}>
+      <Typography variant="h5" sx={{ mb: 0.5 }}>
         Welcome back, {session?.user?.name ?? "User"}
       </Typography>
-      <Typography level="body-sm" sx={{ mb: 4, color: "text.tertiary" }}>
+      <Typography variant="body2" sx={{ mb: 4, color: "text.secondary" }}>
         Here&apos;s an overview of your workspace.
       </Typography>
 
@@ -35,10 +35,10 @@ export default async function DashboardPage() {
         {stats.map((stat) => (
           <Card key={stat.label} variant="outlined">
             <CardContent>
-              <Typography level="body-sm" sx={{ color: "text.tertiary" }}>
+              <Typography variant="body2" sx={{ color: "text.secondary" }}>
                 {stat.label}
               </Typography>
-              <Typography level="h2" sx={{ mt: 1 }}>
+              <Typography variant="h5" sx={{ mt: 1 }}>
                 {stat.value}
               </Typography>
             </CardContent>

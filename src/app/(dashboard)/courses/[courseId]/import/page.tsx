@@ -5,9 +5,9 @@ import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import AppLink from "@/components/AppLink";
 import ImportClient from "./ImportClient";
-import Box from "@mui/joy/Box";
-import Breadcrumbs from "@mui/joy/Breadcrumbs";
-import Typography from "@mui/joy/Typography";
+import Box from "@mui/material/Box";
+import Breadcrumbs from "@mui/material/Breadcrumbs";
+import Typography from "@mui/material/Typography";
 
 export default async function ImportPage({
   params,
@@ -36,7 +36,7 @@ export default async function ImportPage({
         <Typography>Import</Typography>
       </Breadcrumbs>
 
-      <Typography level="h2" sx={{ mb: 3 }}>
+      <Typography variant="h5" sx={{ mb: 3 }}>
         Import Students — {course.name}
       </Typography>
 

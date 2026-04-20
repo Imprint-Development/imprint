@@ -1,6 +1,6 @@
 "use client";
 
-import Button from "@mui/joy/Button";
+import Button from "@mui/material/Button";
 import UploadFileRounded from "@mui/icons-material/UploadFileRounded";
 import ImportModal from "@/components/ImportModal";
 import { useState } from "react";
@@ -11,10 +11,10 @@ export default function ImportCsvButton({ courseId }: { courseId: string }) {
   return (
     <>
       <Button
-        size="sm"
+        size="small"
         variant="outlined"
-        color="neutral"
-        startDecorator={<UploadFileRounded />}
+        color="inherit"
+        startIcon={<UploadFileRounded />}
         onClick={() => setOpen(true)}
       >
         Import CSV

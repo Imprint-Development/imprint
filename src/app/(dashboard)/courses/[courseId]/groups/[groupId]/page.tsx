@@ -1,5 +1,6 @@
 import AppLink from "@/components/AppLink";
 import ConfirmDeleteButton from "@/components/ConfirmDeleteButton";
+import TabNav from "@/components/TabNav";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import {
@@ -8,6 +9,7 @@ import {
   studentGroups,
   students,
   repositories,
+  checkpoints,
 } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { redirect } from "next/navigation";
@@ -21,28 +23,48 @@ import {
   addStudentGitEmail,
   removeStudentGitEmail,
 } from "@/lib/actions/groups";
-import Typography from "@mui/joy/Typography";
-import Button from "@mui/joy/Button";
-import Card from "@mui/joy/Card";
-import CardContent from "@mui/joy/CardContent";
-import Box from "@mui/joy/Box";
-import Stack from "@mui/joy/Stack";
-import Breadcrumbs from "@mui/joy/Breadcrumbs";
-import Link from "@mui/joy/Link";
-import Table from "@mui/joy/Table";
-import Input from "@mui/joy/Input";
-import IconButton from "@mui/joy/IconButton";
-import Divider from "@mui/joy/Divider";
-import Chip from "@mui/joy/Chip";
+import { CHECKPOINT_STATUS_COLOR } from "@/lib/constants";
+import Typography from "@mui/material/Typography";
+import Button from "@mui/material/Button";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import Box from "@mui/material/Box";
+import Stack from "@mui/material/Stack";
+import Breadcrumbs from "@mui/material/Breadcrumbs";
+import MuiLink from "@mui/material/Link";
+import Table from "@mui/material/Table";
+import TableBody from "@mui/material/TableBody";
+import TableCell from "@mui/material/TableCell";
+import TableContainer from "@mui/material/TableContainer";
+import TableHead from "@mui/material/TableHead";
+import TableRow from "@mui/material/TableRow";
+import TextField from "@mui/material/TextField";
+import IconButton from "@mui/material/IconButton";
+import Divider from "@mui/material/Divider";
+import Chip from "@mui/material/Chip";
+import Paper from "@mui/material/Paper";
+import FormControl from "@mui/material/FormControl";
+import FormLabel from "@mui/material/FormLabel";
 import HomeRounded from "@mui/icons-material/HomeRounded";
 import DeleteRounded from "@mui/icons-material/DeleteRounded";
 
+const TABS = [
+  { label: "Members", value: "members" },
+  { label: "Repositories", value: "repositories" },
+  { label: "Checkpoints", value: "checkpoints" },
+  { label: "Settings", value: "settings" },
+];
+
 export default async function GroupDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ courseId: string; groupId: string }>;
+  searchParams: Promise<{ tab?: string }>;
 }) {
   const { courseId, groupId } = await params;
+  const { tab = "members" } = await searchParams;
+
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
@@ -66,9 +88,7 @@ export default async function GroupDetailPage({
   const [group] = await db
     .select()
     .from(studentGroups)
-    .where(
-      and(eq(studentGroups.id, groupId), eq(studentGroups.courseId, courseId))
-    );
+    .where(and(eq(studentGroups.id, groupId), eq(studentGroups.courseId, courseId)));
   if (!group) redirect(`/courses/${courseId}`);
 
   const studentList = await db
@@ -81,6 +101,12 @@ export default async function GroupDetailPage({
     .from(repositories)
     .where(eq(repositories.groupId, groupId));
 
+  const courseCheckpoints = await db
+    .select()
+    .from(checkpoints)
+    .where(eq(checkpoints.courseId, courseId))
+    .orderBy(checkpoints.createdAt);
+
   const addStudentWithIds = addStudent.bind(null, groupId, courseId);
   const addRepoWithIds = addRepository.bind(null, groupId, courseId);
   const deleteGroupWithIds = deleteGroup.bind(null, groupId, courseId);
@@ -90,157 +116,109 @@ export default async function GroupDetailPage({
     <Box sx={{ p: 3 }}>
       <Breadcrumbs sx={{ mb: 2 }}>
         <AppLink href="/">
-          <HomeRounded />
+          <HomeRounded fontSize="small" />
         </AppLink>
         <AppLink href="/courses">Courses</AppLink>
         <AppLink href={`/courses/${courseId}`}>{course.name}</AppLink>
         <Typography>{group.name}</Typography>
       </Breadcrumbs>
-      <Typography level="h2" sx={{ mb: 3 }}>
+
+      <Typography variant="h5" sx={{ mb: 3 }}>
         {group.name}
       </Typography>
-      {/* Rename */}
-      <Card variant="outlined" sx={{ mb: 3 }}>
-        <CardContent>
-          <Typography level="title-lg" sx={{ mb: 2 }}>
-            Rename Group
-          </Typography>
-          <form action={renameGroupWithIds}>
-            <Stack direction="row" spacing={1}>
-              <Input
-                name="name"
-                defaultValue={group.name}
-                required
-                sx={{ flex: 1 }}
-              />
-              <Button type="submit" size="sm">
-                Rename
-              </Button>
-            </Stack>
-          </form>
-        </CardContent>
-      </Card>
-      {/* Students */}{" "}
-      <Card variant="outlined" sx={{ mb: 3 }}>
-        <CardContent>
-          <Typography level="title-lg" sx={{ mb: 2 }}>
+
+      <TabNav tabs={TABS} defaultTab="members" />
+
+      {/* Members tab */}
+      {tab === "members" && (
+        <Box>
+          <Typography variant="h6" sx={{ mb: 2 }}>
             Students
           </Typography>
           {studentList.length > 0 && (
-            <Table sx={{ mb: 2 }}>
-              <thead>
-                <tr>
-                  <th>Display Name</th>
-                  <th>Email</th>
-                  <th>Git Email Aliases</th>
-                  <th style={{ width: 60 }} />
-                </tr>
-              </thead>
-              <tbody>
-                {studentList.map((student) => (
-                  <tr key={student.id}>
-                    <td>{student.displayName}</td>
-                    <td>{student.email}</td>
-                    <td>
-                      <Stack spacing={0.5}>
-                        <Stack direction="row" flexWrap="wrap" gap={0.5}>
-                          {student.gitEmails.map((alias) => (
-                            <form
-                              key={alias}
-                              action={removeStudentGitEmail.bind(
-                                null,
-                                student.id,
-                                courseId,
-                                alias
-                              )}
-                            >
-                              <Chip
-                                size="sm"
-                                variant="soft"
-                                color="neutral"
-                                endDecorator={
-                                  <IconButton
-                                    type="submit"
-                                    size="sm"
-                                    variant="plain"
-                                    color="neutral"
-                                    sx={{ borderRadius: "50%" }}
-                                  >
-                                    ×
-                                  </IconButton>
-                                }
+            <TableContainer component={Paper} variant="outlined" sx={{ mb: 2 }}>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Display Name</TableCell>
+                    <TableCell>Email</TableCell>
+                    <TableCell>Git Email Aliases</TableCell>
+                    <TableCell sx={{ width: 60 }} />
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {studentList.map((student) => (
+                    <TableRow key={student.id}>
+                      <TableCell>{student.displayName}</TableCell>
+                      <TableCell>{student.email}</TableCell>
+                      <TableCell>
+                        <Stack spacing={0.5}>
+                          <Stack direction="row" sx={{ flexWrap: "wrap", gap: 0.5 }}>
+                            {student.gitEmails.map((alias) => (
+                              <form
+                                key={alias}
+                                action={removeStudentGitEmail.bind(null, student.id, courseId, alias)}
                               >
-                                {alias}
-                              </Chip>
-                            </form>
-                          ))}
-                        </Stack>
-                        <form
-                          action={addStudentGitEmail.bind(
-                            null,
-                            student.id,
-                            courseId
-                          )}
-                        >
-                          <Stack direction="row" spacing={0.5}>
-                            <Input
-                              name="gitEmail"
-                              placeholder="Add git email"
-                              size="sm"
-                              type="email"
-                              sx={{ flex: 1, minWidth: 180 }}
-                            />
-                            <Button type="submit" size="sm" variant="outlined">
-                              Add
-                            </Button>
+                                <Chip
+                                  size="small"
+                                  label={alias}
+                                  onDelete={undefined}
+                                  deleteIcon={
+                                    <IconButton type="submit" size="small" sx={{ borderRadius: "50%", p: 0 }}>
+                                      ×
+                                    </IconButton>
+                                  }
+                                  variant="outlined"
+                                />
+                              </form>
+                            ))}
                           </Stack>
+                          <form action={addStudentGitEmail.bind(null, student.id, courseId)}>
+                            <Stack direction="row" spacing={0.5}>
+                              <TextField
+                                name="gitEmail"
+                                placeholder="Add git email"
+                                size="small"
+                                type="email"
+                                sx={{ flex: 1, minWidth: 180 }}
+                              />
+                              <Button type="submit" size="small" variant="outlined">
+                                Add
+                              </Button>
+                            </Stack>
+                          </form>
+                        </Stack>
+                      </TableCell>
+                      <TableCell>
+                        <form action={removeStudent.bind(null, student.id, courseId)}>
+                          <IconButton type="submit" size="small" color="error">
+                            <DeleteRounded />
+                          </IconButton>
                         </form>
-                      </Stack>
-                    </td>
-                    <td>
-                      <form
-                        action={removeStudent.bind(null, student.id, courseId)}
-                      >
-                        <IconButton
-                          type="submit"
-                          size="sm"
-                          color="danger"
-                          variant="plain"
-                        >
-                          <DeleteRounded />
-                        </IconButton>
-                      </form>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
           )}
           <Divider sx={{ my: 2 }} />
           <form action={addStudentWithIds}>
             <Stack direction="row" spacing={1}>
-              <Input
-                name="displayName"
-                placeholder="Display name"
-                sx={{ flex: 1 }}
-              />
-              <Input
-                name="email"
-                placeholder="Email"
-                type="email"
-                sx={{ flex: 1 }}
-              />
-              <Button type="submit" size="sm">
-                Add
+              <TextField name="displayName" placeholder="Display name" size="small" sx={{ flex: 1 }} />
+              <TextField name="email" placeholder="Email" type="email" size="small" sx={{ flex: 1 }} />
+              <Button type="submit" size="small" variant="contained">
+                Add Student
               </Button>
             </Stack>
           </form>
-        </CardContent>
-      </Card>
-      {/* Repositories */}
-      <Card variant="outlined" sx={{ mb: 3 }}>
-        <CardContent>
-          <Typography level="title-lg" sx={{ mb: 2 }}>
+        </Box>
+      )}
+
+      {/* Repositories tab */}
+      {tab === "repositories" && (
+        <Box>
+          <Typography variant="h6" sx={{ mb: 2 }}>
             Repositories
           </Typography>
           {repoList.length > 0 && (
@@ -249,23 +227,13 @@ export default async function GroupDetailPage({
                 <Stack
                   key={repo.id}
                   direction="row"
-                  alignItems="center"
-                  justifyContent="space-between"
+                  sx={{ alignItems: "center", justifyContent: "space-between" }}
                 >
-                  <Link
-                    href={repo.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
+                  <MuiLink href={repo.url} target="_blank" rel="noopener noreferrer">
                     {repo.url}
-                  </Link>
+                  </MuiLink>
                   <form action={removeRepository.bind(null, repo.id, courseId)}>
-                    <IconButton
-                      type="submit"
-                      size="sm"
-                      color="danger"
-                      variant="plain"
-                    >
+                    <IconButton type="submit" size="small" color="error">
                       <DeleteRounded />
                     </IconButton>
                   </form>
@@ -276,53 +244,113 @@ export default async function GroupDetailPage({
           <Divider sx={{ my: 2 }} />
           <form action={addRepoWithIds}>
             <Stack direction="row" spacing={1}>
-              <Input
+              <TextField
                 name="url"
                 placeholder="Repository URL"
                 type="url"
-                sx={{ flex: 1 }}
+                size="small"
+                sx={{ flex: 1, maxWidth: 500 }}
               />
-              <Button type="submit" size="sm">
-                Add
+              <Button type="submit" size="small" variant="contained">
+                Add Repository
               </Button>
             </Stack>
           </form>
-        </CardContent>
-      </Card>
-      {/* Checkpoints */}
-      <Card variant="outlined" sx={{ mb: 3 }}>
-        <CardContent>
-          <Stack
-            direction="row"
-            justifyContent="space-between"
-            alignItems="center"
-          >
-            <Typography level="title-lg">Checkpoints</Typography>
-            <AppLink
-              href={`/courses/${courseId}/groups/${groupId}/checkpoints`}
-            >
-              View Analysis
-            </AppLink>
-          </Stack>
-        </CardContent>
-      </Card>
-      {/* Danger Zone */}
-      <Card variant="outlined" color="danger">
-        <CardContent>
-          <Typography level="title-lg" color="danger" sx={{ mb: 1 }}>
-            Danger Zone
+        </Box>
+      )}
+
+      {/* Checkpoints tab */}
+      {tab === "checkpoints" && (
+        <Box>
+          <Typography variant="h6" sx={{ mb: 2 }}>
+            Checkpoint Analyses
           </Typography>
-          <Typography level="body-sm" sx={{ mb: 2 }}>
-            Deleting this group will remove all students and repositories.
-          </Typography>
-          <ConfirmDeleteButton
-            title="Delete Group"
-            description={`Are you sure you want to delete "${group.name}"? This will permanently remove all ${studentList.length} student${studentList.length !== 1 ? "s" : ""} and ${repoList.length} repositor${repoList.length !== 1 ? "ies" : "y"} in this group. This action cannot be undone.`}
-            action={deleteGroupWithIds}
-            buttonLabel="Delete Group"
-          />
-        </CardContent>
-      </Card>
+          {courseCheckpoints.length === 0 ? (
+            <Typography variant="body2" color="text.secondary">
+              No checkpoints yet.
+            </Typography>
+          ) : (
+            <TableContainer component={Paper} variant="outlined">
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Checkpoint</TableCell>
+                    <TableCell>Status</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {courseCheckpoints.map((cp) => (
+                    <TableRow key={cp.id} hover sx={{ position: "relative" }}>
+                      <TableCell>
+                        <AppLink
+                          href={`/courses/${courseId}/groups/${groupId}/checkpoints/${cp.id}`}
+                          sx={{
+                            "&::after": {
+                              content: '""',
+                              position: "absolute",
+                              inset: 0,
+                            },
+                          }}
+                        >
+                          {cp.name}
+                        </AppLink>
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          size="small"
+                          color={CHECKPOINT_STATUS_COLOR[cp.status as keyof typeof CHECKPOINT_STATUS_COLOR] ?? "default"}
+                          label={cp.status}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </Box>
+      )}
+
+      {/* Settings tab */}
+      {tab === "settings" && (
+        <Box sx={{ maxWidth: 600 }}>
+          <Card variant="outlined" sx={{ mb: 3 }}>
+            <CardContent>
+              <Typography variant="h6" sx={{ mb: 2 }}>
+                Rename Group
+              </Typography>
+              <form action={renameGroupWithIds}>
+                <Stack direction="row" spacing={1}>
+                  <FormControl required sx={{ flex: 1 }}>
+                    <FormLabel>Group Name</FormLabel>
+                    <TextField name="name" defaultValue={group.name} size="small" fullWidth />
+                  </FormControl>
+                  <Button type="submit" size="small" variant="contained" sx={{ mt: "auto" }}>
+                    Rename
+                  </Button>
+                </Stack>
+              </form>
+            </CardContent>
+          </Card>
+
+          <Card variant="outlined" sx={{ borderColor: "error.main" }}>
+            <CardContent>
+              <Typography variant="h6" color="error" sx={{ mb: 1 }}>
+                Danger Zone
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 2 }}>
+                Deleting this group will remove all students and repositories.
+              </Typography>
+              <ConfirmDeleteButton
+                title="Delete Group"
+                description={`Are you sure you want to delete "${group.name}"? This will permanently remove all ${studentList.length} student${studentList.length !== 1 ? "s" : ""} and ${repoList.length} repositor${repoList.length !== 1 ? "ies" : "y"} in this group. This action cannot be undone.`}
+                action={deleteGroupWithIds}
+                buttonLabel="Delete Group"
+              />
+            </CardContent>
+          </Card>
+        </Box>
+      )}
     </Box>
   );
 }

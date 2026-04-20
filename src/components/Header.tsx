@@ -1,10 +1,9 @@
 "use client";
 
-import Box from "@mui/joy/Box";
-import Sheet from "@mui/joy/Sheet";
-import IconButton from "@mui/joy/IconButton";
-import Typography from "@mui/joy/Typography";
-import GlobalStyles from "@mui/joy/GlobalStyles";
+import AppBar from "@mui/material/AppBar";
+import Toolbar from "@mui/material/Toolbar";
+import IconButton from "@mui/material/IconButton";
+import Typography from "@mui/material/Typography";
 import MenuRounded from "@mui/icons-material/MenuRounded";
 
 interface HeaderProps {
@@ -13,34 +12,30 @@ interface HeaderProps {
 
 export default function Header({ onMenuClick }: HeaderProps) {
   return (
-    <Sheet
+    <AppBar
+      position="fixed"
+      color="inherit"
+      elevation={0}
       sx={{
         display: { xs: "flex", md: "none" },
-        alignItems: "center",
-        gap: 1,
-        position: "fixed",
-        top: 0,
-        width: "100vw",
-        height: "var(--Header-height)",
-        zIndex: 9995,
-        p: 2,
         borderBottom: "1px solid",
         borderColor: "divider",
-        bgcolor: "background.surface",
+        zIndex: (theme) => theme.zIndex.drawer + 1,
       }}
     >
-      <GlobalStyles styles={{ ":root": { "--Header-height": "52px" } }} />
-      <IconButton
-        onClick={onMenuClick}
-        variant="outlined"
-        color="neutral"
-        size="sm"
-      >
-        <MenuRounded />
-      </IconButton>
-      <Typography level="title-md" sx={{ fontWeight: 700 }}>
-        Imprint
-      </Typography>
-    </Sheet>
+      <Toolbar variant="dense">
+        <IconButton
+          edge="start"
+          onClick={onMenuClick}
+          size="small"
+          sx={{ mr: 1 }}
+        >
+          <MenuRounded />
+        </IconButton>
+        <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+          Imprint
+        </Typography>
+      </Toolbar>
+    </AppBar>
   );
 }

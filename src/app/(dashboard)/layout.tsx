@@ -1,7 +1,5 @@
 import { auth, signOut } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { CssVarsProvider } from "@mui/joy/styles";
-import CssBaseline from "@mui/joy/CssBaseline";
 import DashboardShell from "@/components/DashboardShell";
 
 export default async function DashboardLayout({
@@ -23,11 +21,8 @@ export default async function DashboardLayout({
   }
 
   return (
-    <CssVarsProvider>
-      <CssBaseline />
-      <DashboardShell user={user} signOutAction={signOutAction}>
-        {children}
-      </DashboardShell>
-    </CssVarsProvider>
+    <DashboardShell user={user} signOutAction={signOutAction}>
+      {children}
+    </DashboardShell>
   );
 }

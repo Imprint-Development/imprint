@@ -1,16 +1,22 @@
 "use client";
 
 import { useState } from "react";
-import Box from "@mui/joy/Box";
-import Sheet from "@mui/joy/Sheet";
-import Tabs from "@mui/joy/Tabs";
-import TabList from "@mui/joy/TabList";
-import Tab from "@mui/joy/Tab";
-import TabPanel from "@mui/joy/TabPanel";
-import Typography from "@mui/joy/Typography";
-import Divider from "@mui/joy/Divider";
-import Table from "@mui/joy/Table";
+import Box from "@mui/material/Box";
+import Paper from "@mui/material/Paper";
+import Tabs from "@mui/material/Tabs";
+import Tab from "@mui/material/Tab";
+import Typography from "@mui/material/Typography";
+import Divider from "@mui/material/Divider";
+import Table from "@mui/material/Table";
+import TableBody from "@mui/material/TableBody";
+import TableCell from "@mui/material/TableCell";
+import TableContainer from "@mui/material/TableContainer";
+import TableHead from "@mui/material/TableHead";
+import TableRow from "@mui/material/TableRow";
+import Alert from "@mui/material/Alert";
+import AlertTitle from "@mui/material/AlertTitle";
 import { AnalysisCharts } from "./AnalysisCharts";
+
 export interface AnalysisRow {
   studentName: string;
   repoId: string;
@@ -75,58 +81,49 @@ function SummaryPanel({
   return (
     <>
       {warnings.map((w) => (
-        <Sheet
-          key={w.repoId}
-          variant="soft"
-          color="warning"
-          sx={{ p: 2, borderRadius: "sm", mb: 2 }}
-        >
-          <Typography level="title-sm" sx={{ mb: 0.5 }}>
-            Unidentified authors in {shortRepoLabel(w.repoUrl)}
-          </Typography>
-          <Typography level="body-sm">
-            The following git emails are not registered as students:{" "}
-            {w.unidentifiedAuthors.join(", ")}
-          </Typography>
-        </Sheet>
+        <Alert key={w.repoId} severity="warning" sx={{ mb: 2 }}>
+          <AlertTitle>Unidentified authors in {shortRepoLabel(w.repoUrl)}</AlertTitle>
+          The following git emails are not registered as students:{" "}
+          {w.unidentifiedAuthors.join(", ")}
+        </Alert>
       ))}
 
       <AnalysisCharts data={rows} />
 
-      <Sheet variant="outlined" sx={{ borderRadius: "sm", mt: 3 }}>
-        <Typography level="title-lg" sx={{ p: 2 }}>
+      <TableContainer component={Paper} variant="outlined" sx={{ mt: 3 }}>
+        <Typography variant="h6" sx={{ p: 2 }}>
           Summary
         </Typography>
         <Divider />
-        <Table>
-          <thead>
-            <tr>
-              <th>Student</th>
-              <th style={{ textAlign: "right" }}>Commits</th>
-              <th style={{ textAlign: "right" }}>Code +/-</th>
-              <th style={{ textAlign: "right" }}>Test +/-</th>
-            </tr>
-          </thead>
-          <tbody>
+        <Table size="small">
+          <TableHead>
+            <TableRow>
+              <TableCell>Student</TableCell>
+              <TableCell align="right">Commits</TableCell>
+              <TableCell align="right">Code +/-</TableCell>
+              <TableCell align="right">Test +/-</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
             {rows.map((a, i) => (
-              <tr key={i}>
-                <td>{a.studentName}</td>
-                <td style={{ textAlign: "right" }}>
+              <TableRow key={i}>
+                <TableCell>{a.studentName}</TableCell>
+                <TableCell align="right">
                   {a.codeMetrics.commits ?? 0}
-                </td>
-                <td style={{ textAlign: "right" }}>
+                </TableCell>
+                <TableCell align="right">
                   +{a.codeMetrics.linesAdded ?? 0} / -
                   {a.codeMetrics.linesRemoved ?? 0}
-                </td>
-                <td style={{ textAlign: "right" }}>
+                </TableCell>
+                <TableCell align="right">
                   +{a.testMetrics.linesAdded ?? 0} / -
                   {a.testMetrics.linesRemoved ?? 0}
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
+          </TableBody>
         </Table>
-      </Sheet>
+      </TableContainer>
     </>
   );
 }
@@ -149,27 +146,22 @@ export function RepoTabs({ rows, warnings }: Props) {
   return (
     <Box>
       <Tabs value={tab} onChange={(_, v) => setTab(v as number)}>
-        <TabList>
-          <Tab>All Repos</Tab>
-          {repos.map((repo) => (
-            <Tab key={repo.id}>{shortRepoLabel(repo.url)}</Tab>
-          ))}
-        </TabList>
+        <Tab label="All Repos" />
+        {repos.map((repo) => (
+          <Tab key={repo.id} label={shortRepoLabel(repo.url)} />
+        ))}
+      </Tabs>
 
-        <TabPanel value={0}>
-          <SummaryPanel rows={allRows} warnings={warnings} />
-        </TabPanel>
-
+      <Box sx={{ pt: 2 }}>
+        {tab === 0 && <SummaryPanel rows={allRows} warnings={warnings} />}
         {repos.map((repo, i) => {
           const repoRows = rows.filter((r) => r.repoId === repo.id);
           const repoWarnings = warnings.filter((w) => w.repoId === repo.id);
-          return (
-            <TabPanel key={repo.id} value={i + 1}>
-              <SummaryPanel rows={repoRows} warnings={repoWarnings} />
-            </TabPanel>
-          );
+          return tab === i + 1 ? (
+            <SummaryPanel key={repo.id} rows={repoRows} warnings={repoWarnings} />
+          ) : null;
         })}
-      </Tabs>
+      </Box>
     </Box>
   );
 }

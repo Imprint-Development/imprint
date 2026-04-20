@@ -1,24 +1,25 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
+import NextLink from "next/link";
 import { usePathname } from "next/navigation";
-import Box from "@mui/joy/Box";
-import Drawer from "@mui/joy/Drawer";
-import Sheet from "@mui/joy/Sheet";
-import List from "@mui/joy/List";
-import ListItem from "@mui/joy/ListItem";
-import ListItemButton from "@mui/joy/ListItemButton";
-import ListItemContent from "@mui/joy/ListItemContent";
-import ListItemDecorator from "@mui/joy/ListItemDecorator";
-import Typography from "@mui/joy/Typography";
-import Divider from "@mui/joy/Divider";
-import IconButton from "@mui/joy/IconButton";
-import GlobalStyles from "@mui/joy/GlobalStyles";
+import Box from "@mui/material/Box";
+import Drawer from "@mui/material/Drawer";
+import List from "@mui/material/List";
+import ListItem from "@mui/material/ListItem";
+import ListItemButton from "@mui/material/ListItemButton";
+import ListItemIcon from "@mui/material/ListItemIcon";
+import ListItemText from "@mui/material/ListItemText";
+import Typography from "@mui/material/Typography";
+import Divider from "@mui/material/Divider";
+import IconButton from "@mui/material/IconButton";
+import Tooltip from "@mui/material/Tooltip";
 import HomeRounded from "@mui/icons-material/HomeRounded";
 import SchoolRounded from "@mui/icons-material/SchoolRounded";
 import GradingRounded from "@mui/icons-material/GradingRounded";
 import LogoutRounded from "@mui/icons-material/LogoutRounded";
+
+const SIDEBAR_WIDTH = 240;
 
 const navItems = [
   { label: "Dashboard", href: "/dashboard", icon: <HomeRounded /> },
@@ -40,52 +41,45 @@ function SidebarContent({
   const pathname = usePathname();
 
   return (
-    <Sheet
+    <Box
       sx={{
         display: "flex",
         flexDirection: "column",
         height: "100%",
-        bgcolor: "background.surface",
+        bgcolor: "background.paper",
         borderRight: "1px solid",
         borderColor: "divider",
+        width: SIDEBAR_WIDTH,
       }}
     >
-      <GlobalStyles
-        styles={{
-          ":root": {
-            "--Sidebar-width": "240px",
-          },
-        }}
-      />
-      <Box sx={{ p: 2, display: "flex", alignItems: "center", gap: 1 }}>
-        <Typography level="title-lg" sx={{ fontWeight: 700 }}>
+      <Box sx={{ p: 2, display: "flex", alignItems: "center" }}>
+        <Typography variant="h6" sx={{ fontWeight: 700 }}>
           Imprint
         </Typography>
       </Box>
       <Divider />
-      <List
-        sx={{
-          flex: 1,
-          "--ListItem-radius": "8px",
-          "--List-padding": "8px",
-          "--List-gap": "4px",
-        }}
-      >
+      <List sx={{ flex: 1, pt: 1 }}>
         {navItems.map((item) => {
           const active =
             pathname === item.href || pathname.startsWith(item.href + "/");
           return (
-            <ListItem key={item.href}>
+            <ListItem key={item.href} disablePadding sx={{ px: 1, pb: 0.5 }}>
               <ListItemButton
-                component={Link}
+                component={NextLink}
                 href={item.href}
                 selected={active}
-                sx={{
-                  fontWeight: active ? 600 : undefined,
-                }}
+                sx={{ borderRadius: 2 }}
               >
-                <ListItemDecorator>{item.icon}</ListItemDecorator>
-                <ListItemContent>{item.label}</ListItemContent>
+                <ListItemIcon sx={{ minWidth: 36 }}>{item.icon}</ListItemIcon>
+                <ListItemText
+                  primary={item.label}
+                  slotProps={{
+                    primary: {
+                      variant: "body2",
+                      sx: { fontWeight: active ? 600 : undefined },
+                    },
+                  }}
+                />
               </ListItemButton>
             </ListItem>
           );
@@ -94,20 +88,22 @@ function SidebarContent({
       <Divider />
       <Box sx={{ display: "flex", alignItems: "center", gap: 1, p: 2 }}>
         <Box sx={{ minWidth: 0, flex: 1 }}>
-          <Typography level="title-sm" noWrap>
+          <Typography variant="subtitle2" noWrap>
             {user.name}
           </Typography>
-          <Typography level="body-xs" noWrap>
+          <Typography variant="caption" noWrap color="text.secondary">
             {user.email}
           </Typography>
         </Box>
-        <form action={signOutAction}>
-          <IconButton type="submit" size="sm" variant="plain" color="neutral">
-            <LogoutRounded />
-          </IconButton>
-        </form>
+        <Tooltip title="Sign out">
+          <form action={signOutAction}>
+            <IconButton type="submit" size="small">
+              <LogoutRounded fontSize="small" />
+            </IconButton>
+          </form>
+        </Tooltip>
       </Box>
-    </Sheet>
+    </Box>
   );
 }
 
@@ -123,7 +119,7 @@ export default function Sidebar({
       <Box
         sx={{
           display: { xs: "none", md: "flex" },
-          width: "var(--Sidebar-width, 240px)",
+          width: SIDEBAR_WIDTH,
           flexShrink: 0,
         }}
       >
@@ -135,11 +131,7 @@ export default function Sidebar({
         open={open ?? false}
         onClose={onClose}
         sx={{ display: { xs: "block", md: "none" } }}
-        slotProps={{
-          content: {
-            sx: { width: "var(--Sidebar-width, 240px)", p: 0 },
-          },
-        }}
+        slotProps={{ paper: { sx: { width: SIDEBAR_WIDTH } } }}
       >
         <SidebarContent user={user} signOutAction={signOutAction} />
       </Drawer>

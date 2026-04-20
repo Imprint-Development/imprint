@@ -1,20 +1,27 @@
 "use client";
 
 import { importCsv } from "@/lib/actions/import";
-import Typography from "@mui/joy/Typography";
-import Card from "@mui/joy/Card";
-import CardContent from "@mui/joy/CardContent";
-import Button from "@mui/joy/Button";
-import Box from "@mui/joy/Box";
-import Stack from "@mui/joy/Stack";
-import Checkbox from "@mui/joy/Checkbox";
-import Sheet from "@mui/joy/Sheet";
-import Table from "@mui/joy/Table";
-import Divider from "@mui/joy/Divider";
-import Select from "@mui/joy/Select";
-import Option from "@mui/joy/Option";
-import FormControl from "@mui/joy/FormControl";
-import FormLabel from "@mui/joy/FormLabel";
+import Typography from "@mui/material/Typography";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import Button from "@mui/material/Button";
+import Box from "@mui/material/Box";
+import Stack from "@mui/material/Stack";
+import Checkbox from "@mui/material/Checkbox";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import Paper from "@mui/material/Paper";
+import Table from "@mui/material/Table";
+import TableBody from "@mui/material/TableBody";
+import TableCell from "@mui/material/TableCell";
+import TableContainer from "@mui/material/TableContainer";
+import TableHead from "@mui/material/TableHead";
+import TableRow from "@mui/material/TableRow";
+import Divider from "@mui/material/Divider";
+import Select from "@mui/material/Select";
+import MenuItem from "@mui/material/MenuItem";
+import FormControl from "@mui/material/FormControl";
+import FormLabel from "@mui/material/FormLabel";
+import Alert from "@mui/material/Alert";
 import UploadFileRounded from "@mui/icons-material/UploadFileRounded";
 import { useState, useRef } from "react";
 
@@ -118,10 +125,10 @@ export default function ImportClient({
     <Box>
       <Card variant="outlined">
         <CardContent>
-          <Typography level="title-lg" sx={{ mb: 2 }}>
+          <Typography variant="h6" sx={{ mb: 2 }}>
             Import Students from CSV
           </Typography>
-          <Typography level="body-sm" sx={{ mb: 2 }}>
+          <Typography variant="body2" sx={{ mb: 2 }}>
             Upload a CSV file with columns: Nachname, Vorname, ID-Nummer,
             E-Mail-Adresse, Gruppe, Gruppenwahl. Groups and students will be
             created automatically.
@@ -131,12 +138,12 @@ export default function ImportClient({
             <Stack spacing={2}>
               <input type="hidden" name="delimiter" value={delimiter} />
 
-              <Stack direction="row" spacing={2} alignItems="flex-end">
+              <Stack direction="row" spacing={2} sx={{ alignItems: "flex-end" }}>
                 <Button
                   component="label"
                   variant="outlined"
-                  color="neutral"
-                  startDecorator={<UploadFileRounded />}
+                  color="inherit"
+                  startIcon={<UploadFileRounded />}
                 >
                   {fileName ?? "Choose CSV file"}
                   <input
@@ -148,61 +155,60 @@ export default function ImportClient({
                   />
                 </Button>
 
-                <FormControl size="sm" sx={{ minWidth: 140 }}>
+                <FormControl size="small" sx={{ minWidth: 140 }}>
                   <FormLabel>Delimiter</FormLabel>
                   <Select
                     value={delimiter}
-                    onChange={(_e, val) => val && handleDelimiterChange(val)}
+                    onChange={(e) => handleDelimiterChange(e.target.value)}
+                    size="small"
                   >
                     {DELIMITERS.map((d) => (
-                      <Option key={d.value} value={d.value}>
+                      <MenuItem key={d.value} value={d.value}>
                         {d.label}
-                      </Option>
+                      </MenuItem>
                     ))}
                   </Select>
                 </FormControl>
               </Stack>
 
-              <Checkbox
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    name="onlyWithGroup"
+                    checked={onlyWithGroup}
+                    onChange={(e) => setOnlyWithGroup(e.target.checked)}
+                    defaultChecked
+                  />
+                }
                 label="Only import rows where a group is assigned"
-                name="onlyWithGroup"
-                checked={onlyWithGroup}
-                onChange={(e) => setOnlyWithGroup(e.target.checked)}
-                defaultChecked
               />
 
               {preview.length > 0 && (
-                <Sheet variant="soft" sx={{ p: 1.5, borderRadius: "sm" }}>
-                  <Typography level="body-sm">
+                <Paper variant="outlined" sx={{ p: 1.5, bgcolor: "action.hover" }}>
+                  <Typography variant="body2">
                     {displayed.length} student{displayed.length !== 1 && "s"} in{" "}
                     {groupCount} group{groupCount !== 1 && "s"} will be imported
                     {onlyWithGroup &&
                       preview.length !== displayed.length &&
                       ` (${preview.length - displayed.length} skipped — no group)`}
                   </Typography>
-                </Sheet>
+                </Paper>
               )}
 
               <Button
                 type="submit"
+                variant="contained"
                 disabled={!fileName || importing}
-                loading={importing}
               >
-                Import
+                {importing ? "Importing…" : "Import"}
               </Button>
             </Stack>
           </form>
 
           {done && (
-            <Sheet
-              variant="soft"
-              color="success"
-              sx={{ p: 2, borderRadius: "sm", mt: 2 }}
-            >
-              <Typography color="success">
-                Import complete. Groups and students have been created.
-              </Typography>
-            </Sheet>
+            <Alert severity="success" sx={{ mt: 2 }}>
+              Import complete. Groups and students have been created.
+            </Alert>
           )}
         </CardContent>
       </Card>
@@ -210,32 +216,32 @@ export default function ImportClient({
       {displayed.length > 0 && (
         <Card variant="outlined" sx={{ mt: 3 }}>
           <CardContent>
-            <Typography level="title-lg" sx={{ mb: 1 }}>
+            <Typography variant="h6" sx={{ mb: 1 }}>
               Preview
             </Typography>
             <Divider sx={{ mb: 1 }} />
-            <Sheet sx={{ overflow: "auto", maxHeight: 400 }}>
-              <Table size="sm" stickyHeader>
-                <thead>
-                  <tr>
-                    <th>Group</th>
-                    <th>First Name</th>
-                    <th>Last Name</th>
-                    <th>Email</th>
-                  </tr>
-                </thead>
-                <tbody>
+            <TableContainer sx={{ maxHeight: 400 }}>
+              <Table size="small" stickyHeader>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Group</TableCell>
+                    <TableCell>First Name</TableCell>
+                    <TableCell>Last Name</TableCell>
+                    <TableCell>Email</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
                   {displayed.map((row, i) => (
-                    <tr key={i}>
-                      <td>{row.gruppe || "Ungrouped"}</td>
-                      <td>{row.vorname}</td>
-                      <td>{row.nachname}</td>
-                      <td>{row.email}</td>
-                    </tr>
+                    <TableRow key={i}>
+                      <TableCell>{row.gruppe || "Ungrouped"}</TableCell>
+                      <TableCell>{row.vorname}</TableCell>
+                      <TableCell>{row.nachname}</TableCell>
+                      <TableCell>{row.email}</TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
+                </TableBody>
               </Table>
-            </Sheet>
+            </TableContainer>
           </CardContent>
         </Card>
       )}

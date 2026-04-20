@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import Box from "@mui/joy/Box";
+import Box from "@mui/material/Box";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 

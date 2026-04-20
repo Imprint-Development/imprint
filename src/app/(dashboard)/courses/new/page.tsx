@@ -2,17 +2,16 @@ import AppLink from "@/components/AppLink";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { createCourse } from "@/lib/actions/courses";
-import Typography from "@mui/joy/Typography";
-import Button from "@mui/joy/Button";
-import Card from "@mui/joy/Card";
-import CardContent from "@mui/joy/CardContent";
-import Box from "@mui/joy/Box";
-import Stack from "@mui/joy/Stack";
-import FormControl from "@mui/joy/FormControl";
-import FormLabel from "@mui/joy/FormLabel";
-import Input from "@mui/joy/Input";
-import Breadcrumbs from "@mui/joy/Breadcrumbs";
-import Link from "@mui/joy/Link";
+import Typography from "@mui/material/Typography";
+import Button from "@mui/material/Button";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import Box from "@mui/material/Box";
+import Stack from "@mui/material/Stack";
+import FormControl from "@mui/material/FormControl";
+import FormLabel from "@mui/material/FormLabel";
+import TextField from "@mui/material/TextField";
+import Breadcrumbs from "@mui/material/Breadcrumbs";
 import HomeRounded from "@mui/icons-material/HomeRounded";
 
 export default async function NewCoursePage() {
@@ -23,13 +22,13 @@ export default async function NewCoursePage() {
     <Box sx={{ p: 3, maxWidth: 600 }}>
       <Breadcrumbs sx={{ mb: 2 }}>
         <AppLink href="/">
-          <HomeRounded />
+          <HomeRounded fontSize="small" />
         </AppLink>
         <AppLink href="/courses">Courses</AppLink>
         <Typography>New</Typography>
       </Breadcrumbs>
 
-      <Typography level="h2" sx={{ mb: 3 }}>
+      <Typography variant="h5" sx={{ mb: 3 }}>
         Create Course
       </Typography>
 
@@ -39,13 +38,25 @@ export default async function NewCoursePage() {
             <Stack spacing={2}>
               <FormControl required>
                 <FormLabel>Course Name</FormLabel>
-                <Input name="name" placeholder="e.g. Software Engineering" />
+                <TextField
+                  name="name"
+                  placeholder="e.g. Software Engineering"
+                  size="small"
+                  fullWidth
+                />
               </FormControl>
               <FormControl required>
                 <FormLabel>Semester</FormLabel>
-                <Input name="semester" placeholder="e.g. WS2025" />
+                <TextField
+                  name="semester"
+                  placeholder="e.g. WS2025"
+                  size="small"
+                  fullWidth
+                />
               </FormControl>
-              <Button type="submit">Create Course</Button>
+              <Button type="submit" variant="contained">
+                Create Course
+              </Button>
             </Stack>
           </form>
         </CardContent>

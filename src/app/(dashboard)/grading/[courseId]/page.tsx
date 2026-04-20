@@ -11,15 +11,20 @@ import { auth } from "@/lib/auth";
 import { eq, and } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { saveGrade } from "@/lib/actions/grading";
-import Typography from "@mui/joy/Typography";
-import Breadcrumbs from "@mui/joy/Breadcrumbs";
-import Link from "@mui/joy/Link";
-import Button from "@mui/joy/Button";
-import Input from "@mui/joy/Input";
-import IconButton from "@mui/joy/IconButton";
-import Table from "@mui/joy/Table";
-import Sheet from "@mui/joy/Sheet";
-import Box from "@mui/joy/Box";
+import Typography from "@mui/material/Typography";
+import Breadcrumbs from "@mui/material/Breadcrumbs";
+import Button from "@mui/material/Button";
+import TextField from "@mui/material/TextField";
+import IconButton from "@mui/material/IconButton";
+import Table from "@mui/material/Table";
+import TableBody from "@mui/material/TableBody";
+import TableCell from "@mui/material/TableCell";
+import TableContainer from "@mui/material/TableContainer";
+import TableHead from "@mui/material/TableHead";
+import TableRow from "@mui/material/TableRow";
+import Paper from "@mui/material/Paper";
+import Alert from "@mui/material/Alert";
+import Box from "@mui/material/Box";
 import Save from "@mui/icons-material/Save";
 import FileDownload from "@mui/icons-material/FileDownload";
 
@@ -101,11 +106,11 @@ export default async function CourseGradingPage({
           mb: 3,
         }}
       >
-        <Typography level="h2">{course.name} — Grading</Typography>
+        <Typography variant="h5">{course.name} — Grading</Typography>
         <Button
           component="a"
           href={`/api/grading/${courseId}/export`}
-          startDecorator={<FileDownload />}
+          startIcon={<FileDownload />}
           variant="outlined"
         >
           Export CSV
@@ -113,38 +118,33 @@ export default async function CourseGradingPage({
       </Box>
 
       {courseCheckpoints.length === 0 || groups.length === 0 ? (
-        <Sheet
-          variant="soft"
-          sx={{ p: 4, borderRadius: "sm", textAlign: "center" }}
-        >
-          <Typography>
-            Add checkpoints and groups to this course before grading.
-          </Typography>
-        </Sheet>
+        <Alert severity="info">
+          Add checkpoints and groups to this course before grading.
+        </Alert>
       ) : (
-        <Sheet variant="outlined" sx={{ borderRadius: "sm", overflow: "auto" }}>
-          <Table size="sm">
-            <thead>
-              <tr>
-                <th>Group</th>
+        <TableContainer component={Paper} variant="outlined" sx={{ overflow: "auto" }}>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Group</TableCell>
                 {courseCheckpoints.map((cp) => (
-                  <th key={cp.id}>{cp.name}</th>
+                  <TableCell key={cp.id}>{cp.name}</TableCell>
                 ))}
-                <th>Total</th>
-              </tr>
-            </thead>
-            <tbody>
+                <TableCell>Total</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
               {groups.map((group) => (
-                <tr key={group.id}>
-                  <td>
-                    <Typography level="body-sm" fontWeight="lg">
+                <TableRow key={group.id}>
+                  <TableCell>
+                    <Typography variant="body2" sx={{ fontWeight: 700 }}>
                       {group.name}
                     </Typography>
-                  </td>
+                  </TableCell>
                   {courseCheckpoints.map((cp) => {
                     const existing = gradeMap.get(`${cp.id}:${group.id}`);
                     return (
-                      <td key={cp.id}>
+                      <TableCell key={cp.id}>
                         <form action={saveGrade}>
                           <input
                             type="hidden"
@@ -163,58 +163,58 @@ export default async function CourseGradingPage({
                               gap: 0.5,
                             }}
                           >
-                            <Input
-                              size="sm"
+                            <TextField
+                              size="small"
                               type="number"
                               name="points"
-                              slotProps={{ input: { step: 0.5, min: 0 } }}
+                              slotProps={{ htmlInput: { step: 0.5, min: 0 } }}
                               defaultValue={existing?.points ?? ""}
                               placeholder="Pts"
                               required
                               sx={{ width: 64 }}
                             />
-                            <Typography level="body-xs">/</Typography>
-                            <Input
-                              size="sm"
+                            <Typography variant="caption">/</Typography>
+                            <TextField
+                               size="small"
                               type="number"
                               name="maxPoints"
-                              slotProps={{ input: { step: 0.5, min: 0 } }}
+                              slotProps={{ htmlInput: { step: 0.5, min: 0 } }}
                               defaultValue={existing?.maxPoints ?? ""}
                               placeholder="Max"
                               required
                               sx={{ width: 64 }}
                             />
-                            <IconButton type="submit" size="sm" variant="plain">
+                            <IconButton type="submit" size="small">
                               <Save fontSize="small" />
                             </IconButton>
                           </Box>
                         </form>
-                      </td>
+                      </TableCell>
                     );
                   })}
-                  <td>
+                  <TableCell>
                     {(() => {
                       const t = groupTotals.get(group.id);
                       if (!t || t.maxPoints === 0) return "—";
                       const pct = ((t.points / t.maxPoints) * 100).toFixed(1);
                       return (
-                        <Typography level="body-sm">
+                        <Typography variant="body2">
                           {t.points}/{t.maxPoints}{" "}
-                          <Typography level="body-xs">({pct}%)</Typography>
+                          <Typography component="span" variant="caption">({pct}%)</Typography>
                         </Typography>
                       );
                     })()}
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
+            </TableBody>
             <tfoot>
               <tr>
-                <td>
-                  <Typography level="body-sm" fontWeight="lg">
+                <TableCell>
+                  <Typography variant="body2" sx={{ fontWeight: 700 }}>
                     Totals
                   </Typography>
-                </td>
+                </TableCell>
                 {courseCheckpoints.map((cp) => {
                   let pts = 0;
                   let max = 0;
@@ -226,14 +226,14 @@ export default async function CourseGradingPage({
                     }
                   }
                   return (
-                    <td key={cp.id}>
-                      <Typography level="body-sm">
+                    <TableCell key={cp.id}>
+                      <Typography variant="body2">
                         {pts}/{max}
                       </Typography>
-                    </td>
+                    </TableCell>
                   );
                 })}
-                <td>
+                <TableCell>
                   {(() => {
                     let pts = 0;
                     let max = 0;
@@ -243,16 +243,16 @@ export default async function CourseGradingPage({
                     }
                     if (max === 0) return "—";
                     return (
-                      <Typography level="body-sm" fontWeight="lg">
+                      <Typography variant="body2" sx={{ fontWeight: 700 }}>
                         {pts}/{max} ({((pts / max) * 100).toFixed(1)}%)
                       </Typography>
                     );
                   })()}
-                </td>
+                </TableCell>
               </tr>
             </tfoot>
           </Table>
-        </Sheet>
+        </TableContainer>
       )}
     </Box>
   );

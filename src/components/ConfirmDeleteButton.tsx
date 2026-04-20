@@ -1,12 +1,11 @@
 "use client";
 
-import Button from "@mui/joy/Button";
-import Modal from "@mui/joy/Modal";
-import ModalDialog from "@mui/joy/ModalDialog";
-import DialogTitle from "@mui/joy/DialogTitle";
-import DialogContent from "@mui/joy/DialogContent";
-import DialogActions from "@mui/joy/DialogActions";
-import Typography from "@mui/joy/Typography";
+import Button from "@mui/material/Button";
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogContent from "@mui/material/DialogContent";
+import DialogActions from "@mui/material/DialogActions";
+import Typography from "@mui/material/Typography";
 import WarningRounded from "@mui/icons-material/WarningRounded";
 import { useState } from "react";
 
@@ -27,34 +26,28 @@ export default function ConfirmDeleteButton({
 
   return (
     <>
-      <Button color="danger" variant="solid" onClick={() => setOpen(true)}>
+      <Button color="error" variant="contained" onClick={() => setOpen(true)}>
         {buttonLabel}
       </Button>
-      <Modal open={open} onClose={() => setOpen(false)}>
-        <ModalDialog variant="outlined" role="alertdialog">
-          <DialogTitle>
-            <WarningRounded />
-            {title}
-          </DialogTitle>
-          <DialogContent>
-            <Typography level="body-sm">{description}</Typography>
-          </DialogContent>
-          <DialogActions>
-            <form action={action}>
-              <Button type="submit" variant="solid" color="danger">
-                {buttonLabel}
-              </Button>
-            </form>
-            <Button
-              variant="plain"
-              color="neutral"
-              onClick={() => setOpen(false)}
-            >
-              Cancel
+      <Dialog open={open} onClose={() => setOpen(false)}>
+        <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <WarningRounded color="error" />
+          {title}
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2">{description}</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button variant="text" onClick={() => setOpen(false)}>
+            Cancel
+          </Button>
+          <form action={action}>
+            <Button type="submit" variant="contained" color="error">
+              {buttonLabel}
             </Button>
-          </DialogActions>
-        </ModalDialog>
-      </Modal>
+          </form>
+        </DialogActions>
+      </Dialog>
     </>
   );
 }

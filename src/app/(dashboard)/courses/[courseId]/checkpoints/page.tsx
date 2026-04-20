@@ -5,19 +5,25 @@ import { checkpoints, courses } from "@/lib/db/schema";
 import { auth } from "@/lib/auth";
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
-import Typography from "@mui/joy/Typography";
-import Breadcrumbs from "@mui/joy/Breadcrumbs";
-import Chip from "@mui/joy/Chip";
-import Sheet from "@mui/joy/Sheet";
-import Table from "@mui/joy/Table";
-import Box from "@mui/joy/Box";
+import Typography from "@mui/material/Typography";
+import Breadcrumbs from "@mui/material/Breadcrumbs";
+import Chip from "@mui/material/Chip";
+import Alert from "@mui/material/Alert";
+import Table from "@mui/material/Table";
+import TableBody from "@mui/material/TableBody";
+import TableCell from "@mui/material/TableCell";
+import TableContainer from "@mui/material/TableContainer";
+import TableHead from "@mui/material/TableHead";
+import TableRow from "@mui/material/TableRow";
+import Paper from "@mui/material/Paper";
+import Box from "@mui/material/Box";
 import Add from "@mui/icons-material/Add";
 
 const statusColor = {
   pending: "warning",
   analyzing: "primary",
   complete: "success",
-  failed: "danger",
+  failed: "error",
 } as const;
 
 export default async function CheckpointsPage({
@@ -61,71 +67,65 @@ export default async function CheckpointsPage({
           mb: 3,
         }}
       >
-        <Typography level="h2">Checkpoints</Typography>
+        <Typography variant="h5">Checkpoints</Typography>
         <ButtonLink
           href={`/courses/${courseId}/checkpoints/new`}
-          startDecorator={<Add />}
+          startIcon={<Add />}
         >
           Create Checkpoint
         </ButtonLink>
       </Box>
 
       {courseCheckpoints.length === 0 ? (
-        <Sheet
-          variant="soft"
-          sx={{ p: 4, borderRadius: "sm", textAlign: "center" }}
-        >
-          <Typography>
-            No checkpoints yet. Create one to get started.
-          </Typography>
-        </Sheet>
+        <Alert severity="info">
+          No checkpoints yet. Create one to get started.
+        </Alert>
       ) : (
-        <Sheet variant="outlined" sx={{ borderRadius: "sm" }}>
-          <Table>
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Git Ref</th>
-                <th>Status</th>
-                <th>Created</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
+        <TableContainer component={Paper} variant="outlined">
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Name</TableCell>
+                <TableCell>Git Ref</TableCell>
+                <TableCell>Status</TableCell>
+                <TableCell>Created</TableCell>
+                <TableCell>Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
               {courseCheckpoints.map((cp) => (
-                <tr key={cp.id}>
-                  <td>{cp.name}</td>
-                  <td>
-                    <Typography level="body-sm" fontFamily="code">
+                <TableRow key={cp.id}>
+                  <TableCell>{cp.name}</TableCell>
+                  <TableCell>
+                    <Typography variant="body2" sx={{ fontFamily: "monospace" }}>
                       {cp.gitRef ?? "—"}
                     </Typography>
-                  </td>
-                  <td>
+                  </TableCell>
+                  <TableCell>
                     <Chip
-                      size="sm"
+                      size="small"
                       color={
                         statusColor[cp.status as keyof typeof statusColor] ??
-                        "neutral"
+                        "default"
                       }
-                    >
-                      {cp.status}
-                    </Chip>
-                  </td>
-                  <td>
+                      label={cp.status}
+                    />
+                  </TableCell>
+                  <TableCell>
                     {cp.createdAt
                       ? new Date(cp.createdAt).toLocaleDateString()
                       : "—"}
-                  </td>
-                  <td>
+                  </TableCell>
+                  <TableCell>
                     <AppLink href={`/courses/${courseId}/checkpoints/${cp.id}`}>
                       View
                     </AppLink>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
+            </TableBody>
           </Table>
-        </Sheet>
+        </TableContainer>
       )}
     </Box>
   );
