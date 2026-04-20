@@ -229,6 +229,23 @@ export default async function GroupDetailPage({
           </form>
         </CardContent>
       </Card>
+      {/* Checkpoints */}
+      <Card variant="outlined" sx={{ mb: 3 }}>
+        <CardContent>
+          <Stack
+            direction="row"
+            justifyContent="space-between"
+            alignItems="center"
+          >
+            <Typography level="title-lg">Checkpoints</Typography>
+            <AppLink
+              href={`/courses/${courseId}/groups/${groupId}/checkpoints`}
+            >
+              View Analysis
+            </AppLink>
+          </Stack>
+        </CardContent>
+      </Card>
       {/* Danger Zone */}
       <Card variant="outlined" color="danger">
         <CardContent>

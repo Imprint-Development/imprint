@@ -1,13 +1,6 @@
 import AppLink from "@/components/AppLink";
 import { db } from "@/lib/db";
-import {
-  checkpoints,
-  checkpointAnalyses,
-  checkpointRepoMeta,
-  students,
-  repositories,
-  courses,
-} from "@/lib/db/schema";
+import { checkpoints, courses, studentGroups, students } from "@/lib/db/schema";
 import { auth } from "@/lib/auth";
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
@@ -16,7 +9,6 @@ import {
   deleteCheckpoint,
   discardAnalysis,
 } from "@/lib/actions/checkpoints";
-import { RepoTabs } from "./RepoTabs";
 import Typography from "@mui/joy/Typography";
 import Breadcrumbs from "@mui/joy/Breadcrumbs";
 import Button from "@mui/joy/Button";
@@ -27,6 +19,7 @@ import Sheet from "@mui/joy/Sheet";
 import Box from "@mui/joy/Box";
 import Stack from "@mui/joy/Stack";
 import Divider from "@mui/joy/Divider";
+import Table from "@mui/joy/Table";
 
 const statusColor = {
   pending: "warning",
@@ -34,20 +27,6 @@ const statusColor = {
   complete: "success",
   failed: "danger",
 } as const;
-
-export interface AnalysisRow {
-  studentName: string;
-  repoId: string;
-  repoUrl: string;
-  codeMetrics: Record<string, number>;
-  testMetrics: Record<string, number>;
-}
-
-export interface RepoWarning {
-  repoId: string;
-  repoUrl: string;
-  unidentifiedAuthors: string[];
-}
 
 export default async function CheckpointDetailPage({
   params,
@@ -74,6 +53,21 @@ export default async function CheckpointDetailPage({
 
   if (!checkpoint) redirect(`/courses/${courseId}/checkpoints`);
 
+  const groups = await db
+    .select()
+    .from(studentGroups)
+    .where(eq(studentGroups.courseId, courseId));
+
+  const groupsWithCounts = await Promise.all(
+    groups.map(async (group) => {
+      const studentList = await db
+        .select()
+        .from(students)
+        .where(eq(students.groupId, group.id));
+      return { ...group, studentCount: studentList.length };
+    })
+  );
+
   const triggerAnalysisWithIds = triggerAnalysis.bind(
     null,
     checkpointId,
@@ -89,56 +83,6 @@ export default async function CheckpointDetailPage({
     checkpointId,
     courseId
   );
-
-  let analysisRows: AnalysisRow[] = [];
-  let repoWarnings: RepoWarning[] = [];
-
-  if (checkpoint.status === "complete") {
-    const analyses = await db
-      .select({
-        codeMetrics: checkpointAnalyses.codeMetrics,
-        testMetrics: checkpointAnalyses.testMetrics,
-        studentName: students.displayName,
-        repoId: repositories.id,
-        repoUrl: repositories.url,
-      })
-      .from(checkpointAnalyses)
-      .innerJoin(students, eq(students.id, checkpointAnalyses.studentId))
-      .innerJoin(
-        repositories,
-        eq(repositories.id, checkpointAnalyses.repositoryId)
-      )
-      .where(eq(checkpointAnalyses.checkpointId, checkpointId));
-
-    analysisRows = analyses.map((a) => ({
-      studentName: a.studentName,
-      repoId: a.repoId,
-      repoUrl: a.repoUrl,
-      codeMetrics: (a.codeMetrics as Record<string, number>) ?? {},
-      testMetrics: (a.testMetrics as Record<string, number>) ?? {},
-    }));
-
-    const metaRows = await db
-      .select({
-        repoId: repositories.id,
-        repoUrl: repositories.url,
-        unidentifiedAuthors: checkpointRepoMeta.unidentifiedAuthors,
-      })
-      .from(checkpointRepoMeta)
-      .innerJoin(
-        repositories,
-        eq(repositories.id, checkpointRepoMeta.repositoryId)
-      )
-      .where(eq(checkpointRepoMeta.checkpointId, checkpointId));
-
-    repoWarnings = metaRows
-      .filter((m) => (m.unidentifiedAuthors as string[]).length > 0)
-      .map((m) => ({
-        repoId: m.repoId,
-        repoUrl: m.repoUrl,
-        unidentifiedAuthors: m.unidentifiedAuthors as string[],
-      }));
-  }
 
   return (
     <Box sx={{ p: 3 }}>
@@ -225,7 +169,7 @@ export default async function CheckpointDetailPage({
         </Stack>
       )}
 
-      {checkpoint.status === "complete" && analysisRows.length > 0 && (
+      {checkpoint.status === "complete" && (
         <>
           <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
             <form action={discardAnalysisWithIds}>
@@ -234,24 +178,45 @@ export default async function CheckpointDetailPage({
               </Button>
             </form>
           </Box>
-          <RepoTabs rows={analysisRows} warnings={repoWarnings} />
-        </>
-      )}
 
-      {checkpoint.status === "complete" && analysisRows.length === 0 && (
-        <Sheet
-          variant="soft"
-          sx={{ p: 4, borderRadius: "sm", textAlign: "center" }}
-        >
-          <Typography sx={{ mb: 2 }}>
-            Analysis complete but no data found.
-          </Typography>
-          <form action={discardAnalysisWithIds}>
-            <Button type="submit" color="warning" variant="soft" size="sm">
-              Discard Analysis
-            </Button>
-          </form>
-        </Sheet>
+          <Sheet variant="outlined" sx={{ borderRadius: "sm", mb: 3 }}>
+            <Typography level="title-lg" sx={{ p: 2 }}>
+              Group Analysis
+            </Typography>
+            <Divider />
+            <Table>
+              <thead>
+                <tr>
+                  <th>Group</th>
+                  <th>Students</th>
+                  <th>Analysis</th>
+                </tr>
+              </thead>
+              <tbody>
+                {groupsWithCounts.map((group) => (
+                  <tr key={group.id}>
+                    <td>
+                      <AppLink href={`/courses/${courseId}/groups/${group.id}`}>
+                        {group.name}
+                      </AppLink>
+                    </td>
+                    <td>
+                      {group.studentCount} student
+                      {group.studentCount !== 1 ? "s" : ""}
+                    </td>
+                    <td>
+                      <AppLink
+                        href={`/courses/${courseId}/groups/${group.id}/checkpoints/${checkpointId}`}
+                      >
+                        View Analysis
+                      </AppLink>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          </Sheet>
+        </>
       )}
 
       <Divider sx={{ my: 4 }} />

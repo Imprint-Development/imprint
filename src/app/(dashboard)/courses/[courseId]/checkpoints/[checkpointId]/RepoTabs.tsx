@@ -11,7 +11,19 @@ import Typography from "@mui/joy/Typography";
 import Divider from "@mui/joy/Divider";
 import Table from "@mui/joy/Table";
 import { AnalysisCharts } from "./AnalysisCharts";
-import type { AnalysisRow, RepoWarning } from "./page";
+export interface AnalysisRow {
+  studentName: string;
+  repoId: string;
+  repoUrl: string;
+  codeMetrics: Record<string, number>;
+  testMetrics: Record<string, number>;
+}
+
+export interface RepoWarning {
+  repoId: string;
+  repoUrl: string;
+  unidentifiedAuthors: string[];
+}
 
 interface Props {
   rows: AnalysisRow[];
