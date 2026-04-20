@@ -147,3 +147,17 @@ export const grades = pgTable(
   },
   (table) => [unique().on(table.checkpointId, table.groupId)]
 );
+
+export const checkpointRepoMeta = pgTable("checkpoint_repo_meta", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  checkpointId: uuid("checkpoint_id")
+    .references(() => checkpoints.id, { onDelete: "cascade" })
+    .notNull(),
+  repositoryId: uuid("repository_id")
+    .references(() => repositories.id, { onDelete: "cascade" })
+    .notNull(),
+  unidentifiedAuthors: jsonb("unidentified_authors")
+    .$type<string[]>()
+    .notNull()
+    .default([]),
+});

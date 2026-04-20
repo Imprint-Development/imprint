@@ -1,7 +1,9 @@
+import picomatch from "picomatch";
 import simpleGit from "simple-git";
 import { db } from "@/lib/db";
 import {
   checkpointAnalyses,
+  checkpointRepoMeta,
   students,
   repositories,
   studentGroups,
@@ -24,45 +26,16 @@ function emptyStats(): FileStats {
   return { commits: 0, linesAdded: 0, linesRemoved: 0, filesChanged: 0 };
 }
 
-function categorizeFile(filePath: string): "test" | "doc" | "cicd" | "code" {
-  const lower = filePath.toLowerCase();
-
-  if (
-    lower.includes("test") ||
-    lower.includes("spec") ||
-    lower.includes("__tests__")
-  ) {
-    return "test";
-  }
-
-  if (
-    lower.endsWith(".md") ||
-    lower.endsWith(".txt") ||
-    lower.endsWith(".rst") ||
-    lower.startsWith("docs/")
-  ) {
-    return "doc";
-  }
-
-  if (
-    lower.startsWith(".github/") ||
-    lower === "jenkinsfile" ||
-    lower === "dockerfile" ||
-    lower.startsWith("docker-compose") ||
-    (lower.endsWith(".yml") && !lower.includes("/")) ||
-    (lower.endsWith(".yaml") && !lower.includes("/"))
-  ) {
-    return "cicd";
-  }
-
-  return "code";
-}
+const isTestFile = picomatch([
+  "**/*.test.*",
+  "**/*.spec.*",
+  "**/__tests__/**",
+  "**/test/**",
+]);
 
 interface AuthorStats {
   code: FileStats;
   test: FileStats;
-  doc: FileStats;
-  cicd: FileStats;
   commitHashes: Set<string>;
 }
 
@@ -70,8 +43,6 @@ function emptyAuthorStats(): AuthorStats {
   return {
     code: emptyStats(),
     test: emptyStats(),
-    doc: emptyStats(),
-    cicd: emptyStats(),
     commitHashes: new Set(),
   };
 }
@@ -79,7 +50,6 @@ function emptyAuthorStats(): AuthorStats {
 function parseGitLog(raw: string): Map<string, AuthorStats> {
   const authorMap = new Map<string, AuthorStats>();
 
-  // Split into commits. Each commit starts with email|hash line.
   const lines = raw.split("\n");
   let currentEmail: string | null = null;
   let currentHash: string | null = null;
@@ -88,7 +58,7 @@ function parseGitLog(raw: string): Map<string, AuthorStats> {
     const trimmed = line.trim();
     if (!trimmed) continue;
 
-    // Check if this is a commit header line (email|hash)
+    // Commit header line: email|hash
     if (trimmed.includes("|") && !trimmed.includes("\t")) {
       const parts = trimmed.split("|");
       if (parts.length === 2 && parts[1].length >= 7) {
@@ -98,8 +68,7 @@ function parseGitLog(raw: string): Map<string, AuthorStats> {
         if (!authorMap.has(currentEmail)) {
           authorMap.set(currentEmail, emptyAuthorStats());
         }
-        const stats = authorMap.get(currentEmail)!;
-        stats.commitHashes.add(currentHash);
+        authorMap.get(currentEmail)!.commitHashes.add(currentHash);
         continue;
       }
     }
@@ -112,28 +81,24 @@ function parseGitLog(raw: string): Map<string, AuthorStats> {
         const removed = parts[1] === "-" ? 0 : parseInt(parts[1], 10) || 0;
         const fileName = parts.slice(2).join("\t");
 
-        const category = categorizeFile(fileName);
         const stats = authorMap.get(currentEmail)!;
-        const catStats = stats[category];
-        catStats.linesAdded += added;
-        catStats.linesRemoved += removed;
-        catStats.filesChanged += 1;
+        const bucket = isTestFile(fileName) ? stats.test : stats.code;
+        bucket.linesAdded += added;
+        bucket.linesRemoved += removed;
+        bucket.filesChanged += 1;
       }
     }
   }
 
-  // Set commits count from unique hashes
+  // Set commit count from unique hashes (stored on code bucket)
   for (const stats of authorMap.values()) {
-    const totalCommits = stats.commitHashes.size;
-    // Distribute commit count to code (represents overall commits)
-    stats.code.commits = totalCommits;
+    stats.code.commits = stats.commitHashes.size;
   }
 
   return authorMap;
 }
 
 export async function analyzeCheckpoint(checkpointId: string) {
-  // Fetch checkpoint
   const [checkpoint] = await db
     .select()
     .from(checkpoints)
@@ -141,7 +106,6 @@ export async function analyzeCheckpoint(checkpointId: string) {
 
   if (!checkpoint) throw new Error("Checkpoint not found");
 
-  // Fetch all student groups for this course with students and repositories
   const groups = await db
     .select()
     .from(studentGroups)
@@ -176,26 +140,41 @@ export async function analyzeCheckpoint(checkpointId: string) {
           await repoGit.checkout(checkpoint.gitRef);
         }
 
-        // Build git log command args
-        const logArgs = ["log", "--format=%ae|%H", "--numstat", "--no-merges"];
+        const logArgs = [
+          "log",
+          "--use-mailmap",
+          "--format=%aE|%H",
+          "--numstat",
+          "--no-merges",
+        ];
 
         if (checkpoint.timestamp) {
           logArgs.push(`--until=${checkpoint.timestamp.toISOString()}`);
         }
 
         const logOutput = await repoGit.raw(logArgs);
-
-        const authorStats = parseGitLog(logOutput);
+        const authorMap = parseGitLog(logOutput);
 
         // Build email-to-student mapping
-        const emailToStudent = new Map<string, (typeof groupStudents)[0]>();
-        for (const student of groupStudents) {
-          emailToStudent.set(student.email.toLowerCase(), student);
-        }
+        const registeredEmails = new Set(
+          groupStudents.map((s) => s.email.toLowerCase())
+        );
+
+        // Unidentified authors: in git log but not a registered student
+        const unidentifiedAuthors = [...authorMap.keys()].filter(
+          (email) => !registeredEmails.has(email)
+        );
+
+        // Write per-repo metadata
+        await db.insert(checkpointRepoMeta).values({
+          checkpointId,
+          repositoryId: repo.id,
+          unidentifiedAuthors,
+        });
 
         // Insert analysis for each student
         for (const student of groupStudents) {
-          const stats = authorStats.get(student.email.toLowerCase());
+          const stats = authorMap.get(student.email.toLowerCase());
 
           const codeMetrics = stats
             ? {
@@ -215,34 +194,16 @@ export async function analyzeCheckpoint(checkpointId: string) {
               }
             : emptyStats();
 
-          const docMetrics = stats
-            ? {
-                commits: 0,
-                linesAdded: stats.doc.linesAdded,
-                linesRemoved: stats.doc.linesRemoved,
-                filesChanged: stats.doc.filesChanged,
-              }
-            : emptyStats();
-
-          const cicdMetrics = stats
-            ? {
-                commits: 0,
-                linesAdded: stats.cicd.linesAdded,
-                linesRemoved: stats.cicd.linesRemoved,
-                filesChanged: stats.cicd.filesChanged,
-              }
-            : emptyStats();
-
           await db.insert(checkpointAnalyses).values({
             checkpointId,
             studentId: student.id,
             repositoryId: repo.id,
             codeMetrics,
             testMetrics,
-            docMetrics,
-            cicdMetrics,
-            reviewMetrics: { count: 0 },
-            boardMetrics: {},
+            docMetrics: null,
+            cicdMetrics: null,
+            reviewMetrics: null,
+            boardMetrics: null,
           });
         }
       } finally {

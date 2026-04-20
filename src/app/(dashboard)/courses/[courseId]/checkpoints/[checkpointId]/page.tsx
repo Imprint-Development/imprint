@@ -3,7 +3,9 @@ import { db } from "@/lib/db";
 import {
   checkpoints,
   checkpointAnalyses,
+  checkpointRepoMeta,
   students,
+  repositories,
   courses,
 } from "@/lib/db/schema";
 import { auth } from "@/lib/auth";
@@ -14,7 +16,7 @@ import {
   deleteCheckpoint,
   discardAnalysis,
 } from "@/lib/actions/checkpoints";
-import { AnalysisCharts } from "./AnalysisCharts";
+import { RepoTabs } from "./RepoTabs";
 import Typography from "@mui/joy/Typography";
 import Breadcrumbs from "@mui/joy/Breadcrumbs";
 import Button from "@mui/joy/Button";
@@ -24,7 +26,6 @@ import Chip from "@mui/joy/Chip";
 import Sheet from "@mui/joy/Sheet";
 import Box from "@mui/joy/Box";
 import Stack from "@mui/joy/Stack";
-import Table from "@mui/joy/Table";
 import Divider from "@mui/joy/Divider";
 
 const statusColor = {
@@ -33,6 +34,20 @@ const statusColor = {
   complete: "success",
   failed: "danger",
 } as const;
+
+export interface AnalysisRow {
+  studentName: string;
+  repoId: string;
+  repoUrl: string;
+  codeMetrics: Record<string, number>;
+  testMetrics: Record<string, number>;
+}
+
+export interface RepoWarning {
+  repoId: string;
+  repoUrl: string;
+  unidentifiedAuthors: string[];
+}
 
 export default async function CheckpointDetailPage({
   params,
@@ -75,34 +90,54 @@ export default async function CheckpointDetailPage({
     courseId
   );
 
-  let analysisData: {
-    studentName: string;
-    codeMetrics: Record<string, number>;
-    testMetrics: Record<string, number>;
-    docMetrics: Record<string, number>;
-    cicdMetrics: Record<string, number>;
-  }[] = [];
+  let analysisRows: AnalysisRow[] = [];
+  let repoWarnings: RepoWarning[] = [];
 
   if (checkpoint.status === "complete") {
     const analyses = await db
       .select({
         codeMetrics: checkpointAnalyses.codeMetrics,
         testMetrics: checkpointAnalyses.testMetrics,
-        docMetrics: checkpointAnalyses.docMetrics,
-        cicdMetrics: checkpointAnalyses.cicdMetrics,
         studentName: students.displayName,
+        repoId: repositories.id,
+        repoUrl: repositories.url,
       })
       .from(checkpointAnalyses)
       .innerJoin(students, eq(students.id, checkpointAnalyses.studentId))
+      .innerJoin(
+        repositories,
+        eq(repositories.id, checkpointAnalyses.repositoryId)
+      )
       .where(eq(checkpointAnalyses.checkpointId, checkpointId));
 
-    analysisData = analyses.map((a) => ({
+    analysisRows = analyses.map((a) => ({
       studentName: a.studentName,
+      repoId: a.repoId,
+      repoUrl: a.repoUrl,
       codeMetrics: (a.codeMetrics as Record<string, number>) ?? {},
       testMetrics: (a.testMetrics as Record<string, number>) ?? {},
-      docMetrics: (a.docMetrics as Record<string, number>) ?? {},
-      cicdMetrics: (a.cicdMetrics as Record<string, number>) ?? {},
     }));
+
+    const metaRows = await db
+      .select({
+        repoId: repositories.id,
+        repoUrl: repositories.url,
+        unidentifiedAuthors: checkpointRepoMeta.unidentifiedAuthors,
+      })
+      .from(checkpointRepoMeta)
+      .innerJoin(
+        repositories,
+        eq(repositories.id, checkpointRepoMeta.repositoryId)
+      )
+      .where(eq(checkpointRepoMeta.checkpointId, checkpointId));
+
+    repoWarnings = metaRows
+      .filter((m) => (m.unidentifiedAuthors as string[]).length > 0)
+      .map((m) => ({
+        repoId: m.repoId,
+        repoUrl: m.repoUrl,
+        unidentifiedAuthors: m.unidentifiedAuthors as string[],
+      }));
   }
 
   return (
@@ -190,7 +225,7 @@ export default async function CheckpointDetailPage({
         </Stack>
       )}
 
-      {checkpoint.status === "complete" && analysisData.length > 0 && (
+      {checkpoint.status === "complete" && analysisRows.length > 0 && (
         <>
           <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
             <form action={discardAnalysisWithIds}>
@@ -199,56 +234,11 @@ export default async function CheckpointDetailPage({
               </Button>
             </form>
           </Box>
-          <AnalysisCharts data={analysisData} />
-
-          <Sheet variant="outlined" sx={{ borderRadius: "sm", mt: 3 }}>
-            <Typography level="title-lg" sx={{ p: 2 }}>
-              Summary
-            </Typography>
-            <Divider />
-            <Table>
-              <thead>
-                <tr>
-                  <th>Student</th>
-                  <th style={{ textAlign: "right" }}>Commits</th>
-                  <th style={{ textAlign: "right" }}>Code +/-</th>
-                  <th style={{ textAlign: "right" }}>Test +/-</th>
-                  <th style={{ textAlign: "right" }}>Docs +/-</th>
-                  <th style={{ textAlign: "right" }}>CI/CD +/-</th>
-                </tr>
-              </thead>
-              <tbody>
-                {analysisData.map((a, i) => (
-                  <tr key={i}>
-                    <td>{a.studentName}</td>
-                    <td style={{ textAlign: "right" }}>
-                      {a.codeMetrics.commits ?? 0}
-                    </td>
-                    <td style={{ textAlign: "right" }}>
-                      +{a.codeMetrics.linesAdded ?? 0} / -
-                      {a.codeMetrics.linesRemoved ?? 0}
-                    </td>
-                    <td style={{ textAlign: "right" }}>
-                      +{a.testMetrics.linesAdded ?? 0} / -
-                      {a.testMetrics.linesRemoved ?? 0}
-                    </td>
-                    <td style={{ textAlign: "right" }}>
-                      +{a.docMetrics.linesAdded ?? 0} / -
-                      {a.docMetrics.linesRemoved ?? 0}
-                    </td>
-                    <td style={{ textAlign: "right" }}>
-                      +{a.cicdMetrics.linesAdded ?? 0} / -
-                      {a.cicdMetrics.linesRemoved ?? 0}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
-          </Sheet>
+          <RepoTabs rows={analysisRows} warnings={repoWarnings} />
         </>
       )}
 
-      {checkpoint.status === "complete" && analysisData.length === 0 && (
+      {checkpoint.status === "complete" && analysisRows.length === 0 && (
         <Sheet
           variant="soft"
           sx={{ p: 4, borderRadius: "sm", textAlign: "center" }}

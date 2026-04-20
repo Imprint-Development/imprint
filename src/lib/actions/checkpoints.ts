@@ -1,7 +1,11 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { checkpoints, checkpointAnalyses } from "@/lib/db/schema";
+import {
+  checkpoints,
+  checkpointAnalyses,
+  checkpointRepoMeta,
+} from "@/lib/db/schema";
 import { auth } from "@/lib/auth";
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
@@ -67,6 +71,10 @@ export async function discardAnalysis(checkpointId: string, courseId: string) {
   await db
     .delete(checkpointAnalyses)
     .where(eq(checkpointAnalyses.checkpointId, checkpointId));
+
+  await db
+    .delete(checkpointRepoMeta)
+    .where(eq(checkpointRepoMeta.checkpointId, checkpointId));
 
   await db
     .update(checkpoints)
