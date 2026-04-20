@@ -8,7 +8,7 @@ import {
   courseCollaborators,
 } from "@/lib/db/schema";
 import { auth } from "@/lib/auth";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
@@ -111,6 +111,43 @@ export async function removeRepository(repositoryId: string, courseId: string) {
   await verifyCollaborator(courseId);
 
   await db.delete(repositories).where(eq(repositories.id, repositoryId));
+
+  revalidatePath(`/courses/${courseId}`);
+}
+
+export async function addStudentGitEmail(
+  studentId: string,
+  courseId: string,
+  formData: FormData
+) {
+  await verifyCollaborator(courseId);
+
+  const email = (formData.get("gitEmail") as string).trim().toLowerCase();
+  if (!email) return;
+
+  await db
+    .update(students)
+    .set({
+      gitEmails: sql`array_append(${students.gitEmails}, ${email})`,
+    })
+    .where(eq(students.id, studentId));
+
+  revalidatePath(`/courses/${courseId}`);
+}
+
+export async function removeStudentGitEmail(
+  studentId: string,
+  courseId: string,
+  gitEmail: string
+) {
+  await verifyCollaborator(courseId);
+
+  await db
+    .update(students)
+    .set({
+      gitEmails: sql`array_remove(${students.gitEmails}, ${gitEmail})`,
+    })
+    .where(eq(students.id, studentId));
 
   revalidatePath(`/courses/${courseId}`);
 }

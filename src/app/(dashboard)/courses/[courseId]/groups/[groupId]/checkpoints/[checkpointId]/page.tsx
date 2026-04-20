@@ -12,6 +12,7 @@ import {
 import { auth } from "@/lib/auth";
 import { eq, and, inArray } from "drizzle-orm";
 import { redirect } from "next/navigation";
+import { rerunGroupAnalysis } from "@/lib/actions/checkpoints";
 import { RepoTabs } from "@/app/(dashboard)/courses/[courseId]/checkpoints/[checkpointId]/RepoTabs";
 import type {
   AnalysisRow,
@@ -20,6 +21,7 @@ import type {
 import Typography from "@mui/joy/Typography";
 import Breadcrumbs from "@mui/joy/Breadcrumbs";
 import Box from "@mui/joy/Box";
+import Button from "@mui/joy/Button";
 import Card from "@mui/joy/Card";
 import CardContent from "@mui/joy/CardContent";
 import Chip from "@mui/joy/Chip";
@@ -139,6 +141,13 @@ export default async function GroupCheckpointAnalysisPage({
       }));
   }
 
+  const rerunWithIds = rerunGroupAnalysis.bind(
+    null,
+    checkpointId,
+    groupId,
+    courseId
+  );
+
   return (
     <Box sx={{ p: 3 }}>
       <Breadcrumbs sx={{ mb: 2 }}>
@@ -207,6 +216,16 @@ export default async function GroupCheckpointAnalysisPage({
 
       {checkpoint.status === "complete" && analysisRows.length > 0 && (
         <RepoTabs rows={analysisRows} warnings={repoWarnings} />
+      )}
+
+      {checkpoint.status === "complete" && (
+        <Box sx={{ mt: 3, display: "flex", justifyContent: "flex-end" }}>
+          <form action={rerunWithIds}>
+            <Button type="submit" variant="outlined" color="warning" size="sm">
+              Re-run Analysis for This Group
+            </Button>
+          </form>
+        </Box>
       )}
     </Box>
   );

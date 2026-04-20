@@ -8,6 +8,7 @@ import {
   real,
   unique,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -50,6 +51,10 @@ export const courses = pgTable("courses", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
   semester: text("semester").notNull(),
+  ignoredGitEmails: text("ignored_git_emails")
+    .array()
+    .notNull()
+    .default(sql`ARRAY[]::text[]`),
   createdBy: uuid("created_by")
     .references(() => users.id)
     .notNull(),
@@ -84,6 +89,10 @@ export const students = pgTable("students", {
   id: uuid("id").primaryKey().defaultRandom(),
   email: text("email").notNull(),
   displayName: text("display_name").notNull(),
+  gitEmails: text("git_emails")
+    .array()
+    .notNull()
+    .default(sql`ARRAY[]::text[]`),
   groupId: uuid("group_id")
     .references(() => studentGroups.id, { onDelete: "cascade" })
     .notNull(),

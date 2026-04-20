@@ -8,8 +8,9 @@ import {
   repositories,
   studentGroups,
   checkpoints,
+  courses,
 } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, inArray, and } from "drizzle-orm";
 import path from "path";
 import os from "os";
 import fs from "fs/promises";
@@ -98,6 +99,132 @@ function parseGitLog(raw: string): Map<string, AuthorStats> {
   return authorMap;
 }
 
+interface GroupRecord {
+  id: string;
+}
+
+interface CheckpointRecord {
+  id: string;
+  gitRef: string | null;
+  timestamp: Date | null;
+}
+
+async function analyzeGroupForCheckpoint(
+  checkpoint: CheckpointRecord,
+  group: GroupRecord,
+  ignoredEmails: Set<string>
+) {
+  const groupStudents = await db
+    .select()
+    .from(students)
+    .where(eq(students.groupId, group.id));
+
+  const groupRepos = await db
+    .select()
+    .from(repositories)
+    .where(eq(repositories.groupId, group.id));
+
+  for (const repo of groupRepos) {
+    const tmpDir = path.join(
+      os.tmpdir(),
+      `imprint-analysis-${crypto.randomBytes(8).toString("hex")}`
+    );
+
+    try {
+      await fs.mkdir(tmpDir, { recursive: true });
+
+      const git = simpleGit();
+      await git.clone(repo.url, tmpDir);
+
+      const repoGit = simpleGit(tmpDir);
+
+      if (checkpoint.gitRef) {
+        await repoGit.checkout(checkpoint.gitRef);
+      }
+
+      const logArgs = [
+        "log",
+        "--use-mailmap",
+        "--format=%aE|%H",
+        "--numstat",
+        "--no-merges",
+        "--date=committer",
+      ];
+
+      if (checkpoint.timestamp) {
+        logArgs.push(`--until=${checkpoint.timestamp.toISOString()}`);
+      }
+
+      const logOutput = await repoGit.raw(logArgs);
+      const authorMap = parseGitLog(logOutput);
+
+      // Build email-to-student mapping (primary email + gitEmails aliases)
+      const registeredEmails = new Set(
+        groupStudents.flatMap((s) => [
+          s.email.toLowerCase(),
+          ...s.gitEmails.map((e) => e.toLowerCase()),
+        ])
+      );
+
+      // Unidentified authors: in git log, not a registered student, not ignored
+      const unidentifiedAuthors = [...authorMap.keys()].filter(
+        (email) => !registeredEmails.has(email) && !ignoredEmails.has(email)
+      );
+
+      // Write per-repo metadata
+      await db.insert(checkpointRepoMeta).values({
+        checkpointId: checkpoint.id,
+        repositoryId: repo.id,
+        unidentifiedAuthors,
+      });
+
+      // Insert analysis for each student
+      for (const student of groupStudents) {
+        // Try primary email first, then any gitEmails aliases
+        const allEmails = [
+          student.email.toLowerCase(),
+          ...student.gitEmails.map((e) => e.toLowerCase()),
+        ];
+        const stats = allEmails
+          .map((e) => authorMap.get(e))
+          .find((s) => s !== undefined);
+
+        const codeMetrics = stats
+          ? {
+              commits: stats.code.commits,
+              linesAdded: stats.code.linesAdded,
+              linesRemoved: stats.code.linesRemoved,
+              filesChanged: stats.code.filesChanged,
+            }
+          : emptyStats();
+
+        const testMetrics = stats
+          ? {
+              commits: 0,
+              linesAdded: stats.test.linesAdded,
+              linesRemoved: stats.test.linesRemoved,
+              filesChanged: stats.test.filesChanged,
+            }
+          : emptyStats();
+
+        await db.insert(checkpointAnalyses).values({
+          checkpointId: checkpoint.id,
+          studentId: student.id,
+          repositoryId: repo.id,
+          codeMetrics,
+          testMetrics,
+          docMetrics: null,
+          cicdMetrics: null,
+          reviewMetrics: null,
+          boardMetrics: null,
+        });
+      }
+    } finally {
+      await fs.rm(tmpDir, { recursive: true, force: true }).catch(() => {});
+    }
+  }
+}
+
 export async function analyzeCheckpoint(checkpointId: string) {
   const [checkpoint] = await db
     .select()
@@ -106,109 +233,79 @@ export async function analyzeCheckpoint(checkpointId: string) {
 
   if (!checkpoint) throw new Error("Checkpoint not found");
 
+  const [course] = await db
+    .select()
+    .from(courses)
+    .where(eq(courses.id, checkpoint.courseId));
+
+  const ignoredEmails = new Set(
+    (course?.ignoredGitEmails ?? []).map((e) => e.toLowerCase())
+  );
+
   const groups = await db
     .select()
     .from(studentGroups)
     .where(eq(studentGroups.courseId, checkpoint.courseId));
 
   for (const group of groups) {
-    const groupStudents = await db
-      .select()
-      .from(students)
-      .where(eq(students.groupId, group.id));
+    await analyzeGroupForCheckpoint(checkpoint, group, ignoredEmails);
+  }
+}
 
-    const groupRepos = await db
-      .select()
-      .from(repositories)
-      .where(eq(repositories.groupId, group.id));
+export async function analyzeCheckpointForGroup(
+  checkpointId: string,
+  groupId: string
+) {
+  const [checkpoint] = await db
+    .select()
+    .from(checkpoints)
+    .where(eq(checkpoints.id, checkpointId));
 
-    for (const repo of groupRepos) {
-      const tmpDir = path.join(
-        os.tmpdir(),
-        `imprint-analysis-${crypto.randomBytes(8).toString("hex")}`
+  if (!checkpoint) throw new Error("Checkpoint not found");
+
+  const [group] = await db
+    .select()
+    .from(studentGroups)
+    .where(eq(studentGroups.id, groupId));
+
+  if (!group) throw new Error("Group not found");
+
+  const [course] = await db
+    .select()
+    .from(courses)
+    .where(eq(courses.id, checkpoint.courseId));
+
+  const ignoredEmails = new Set(
+    (course?.ignoredGitEmails ?? []).map((e) => e.toLowerCase())
+  );
+
+  // Clear existing analysis data for this group's repos
+  const groupRepos = await db
+    .select()
+    .from(repositories)
+    .where(eq(repositories.groupId, groupId));
+
+  if (groupRepos.length > 0) {
+    const repoIds = groupRepos.map((r) => r.id);
+
+    await db
+      .delete(checkpointAnalyses)
+      .where(
+        and(
+          eq(checkpointAnalyses.checkpointId, checkpointId),
+          inArray(checkpointAnalyses.repositoryId, repoIds)
+        )
       );
 
-      try {
-        await fs.mkdir(tmpDir, { recursive: true });
-
-        const git = simpleGit();
-        await git.clone(repo.url, tmpDir);
-
-        const repoGit = simpleGit(tmpDir);
-
-        if (checkpoint.gitRef) {
-          await repoGit.checkout(checkpoint.gitRef);
-        }
-
-        const logArgs = [
-          "log",
-          "--use-mailmap",
-          "--format=%aE|%H",
-          "--numstat",
-          "--no-merges",
-        ];
-
-        if (checkpoint.timestamp) {
-          logArgs.push(`--until=${checkpoint.timestamp.toISOString()}`);
-        }
-
-        const logOutput = await repoGit.raw(logArgs);
-        const authorMap = parseGitLog(logOutput);
-
-        // Build email-to-student mapping
-        const registeredEmails = new Set(
-          groupStudents.map((s) => s.email.toLowerCase())
-        );
-
-        // Unidentified authors: in git log but not a registered student
-        const unidentifiedAuthors = [...authorMap.keys()].filter(
-          (email) => !registeredEmails.has(email)
-        );
-
-        // Write per-repo metadata
-        await db.insert(checkpointRepoMeta).values({
-          checkpointId,
-          repositoryId: repo.id,
-          unidentifiedAuthors,
-        });
-
-        // Insert analysis for each student
-        for (const student of groupStudents) {
-          const stats = authorMap.get(student.email.toLowerCase());
-
-          const codeMetrics = stats
-            ? {
-                commits: stats.code.commits,
-                linesAdded: stats.code.linesAdded,
-                linesRemoved: stats.code.linesRemoved,
-                filesChanged: stats.code.filesChanged,
-              }
-            : emptyStats();
-
-          const testMetrics = stats
-            ? {
-                commits: 0,
-                linesAdded: stats.test.linesAdded,
-                linesRemoved: stats.test.linesRemoved,
-                filesChanged: stats.test.filesChanged,
-              }
-            : emptyStats();
-
-          await db.insert(checkpointAnalyses).values({
-            checkpointId,
-            studentId: student.id,
-            repositoryId: repo.id,
-            codeMetrics,
-            testMetrics,
-            docMetrics: null,
-            cicdMetrics: null,
-            reviewMetrics: null,
-            boardMetrics: null,
-          });
-        }
-      } finally {
-        await fs.rm(tmpDir, { recursive: true, force: true }).catch(() => {});
-      }
-    }
+    await db
+      .delete(checkpointRepoMeta)
+      .where(
+        and(
+          eq(checkpointRepoMeta.checkpointId, checkpointId),
+          inArray(checkpointRepoMeta.repositoryId, repoIds)
+        )
+      );
   }
+
+  await analyzeGroupForCheckpoint(checkpoint, group, ignoredEmails);
 }
