@@ -25,9 +25,7 @@ export default async function NewCoursePage() {
         <AppLink href="/">
           <HomeRounded />
         </AppLink>
-        <AppLink href="/courses">
-          Courses
-        </AppLink>
+        <AppLink href="/courses">Courses</AppLink>
         <Typography>New</Typography>
       </Breadcrumbs>
 

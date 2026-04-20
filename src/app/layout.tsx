@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
+import ThemeRegistry from "./ThemeRegistry";
 
 export const metadata: Metadata = {
   title: "Imprint",
-  description:
-    "Analyze student contributions in Software Engineering courses",
+  description: "Analyze student contributions in Software Engineering courses",
 };
 
 export default function RootLayout({
@@ -13,7 +13,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <ThemeRegistry>{children}</ThemeRegistry>
+      </body>
     </html>
   );
 }

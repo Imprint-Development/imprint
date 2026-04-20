@@ -17,6 +17,7 @@ import {
   addRepository,
   removeRepository,
   deleteGroup,
+  renameGroup,
 } from "@/lib/actions/groups";
 import Typography from "@mui/joy/Typography";
 import Button from "@mui/joy/Button";
@@ -62,7 +63,9 @@ export default async function GroupDetailPage({
   const [group] = await db
     .select()
     .from(studentGroups)
-    .where(and(eq(studentGroups.id, groupId), eq(studentGroups.courseId, courseId)));
+    .where(
+      and(eq(studentGroups.id, groupId), eq(studentGroups.courseId, courseId))
+    );
   if (!group) redirect(`/courses/${courseId}`);
 
   const studentList = await db
@@ -78,6 +81,7 @@ export default async function GroupDetailPage({
   const addStudentWithIds = addStudent.bind(null, groupId, courseId);
   const addRepoWithIds = addRepository.bind(null, groupId, courseId);
   const deleteGroupWithIds = deleteGroup.bind(null, groupId, courseId);
+  const renameGroupWithIds = renameGroup.bind(null, groupId, courseId);
 
   return (
     <Box sx={{ p: 3 }}>
@@ -85,20 +89,35 @@ export default async function GroupDetailPage({
         <AppLink href="/">
           <HomeRounded />
         </AppLink>
-        <AppLink href="/courses">
-          Courses
-        </AppLink>
-        <AppLink href={`/courses/${courseId}`}>
-          {course.name}
-        </AppLink>
+        <AppLink href="/courses">Courses</AppLink>
+        <AppLink href={`/courses/${courseId}`}>{course.name}</AppLink>
         <Typography>{group.name}</Typography>
       </Breadcrumbs>
-
       <Typography level="h2" sx={{ mb: 3 }}>
         {group.name}
       </Typography>
-
-      {/* Students */}
+      {/* Rename */}
+      <Card variant="outlined" sx={{ mb: 3 }}>
+        <CardContent>
+          <Typography level="title-lg" sx={{ mb: 2 }}>
+            Rename Group
+          </Typography>
+          <form action={renameGroupWithIds}>
+            <Stack direction="row" spacing={1}>
+              <Input
+                name="name"
+                defaultValue={group.name}
+                required
+                sx={{ flex: 1 }}
+              />
+              <Button type="submit" size="sm">
+                Rename
+              </Button>
+            </Stack>
+          </form>
+        </CardContent>
+      </Card>
+      {/* Students */}{" "}
       <Card variant="outlined" sx={{ mb: 3 }}>
         <CardContent>
           <Typography level="title-lg" sx={{ mb: 2 }}>
@@ -119,8 +138,15 @@ export default async function GroupDetailPage({
                     <td>{student.displayName}</td>
                     <td>{student.email}</td>
                     <td>
-                      <form action={removeStudent.bind(null, student.id, courseId)}>
-                        <IconButton type="submit" size="sm" color="danger" variant="plain">
+                      <form
+                        action={removeStudent.bind(null, student.id, courseId)}
+                      >
+                        <IconButton
+                          type="submit"
+                          size="sm"
+                          color="danger"
+                          variant="plain"
+                        >
                           <DeleteRounded />
                         </IconButton>
                       </form>
@@ -133,8 +159,17 @@ export default async function GroupDetailPage({
           <Divider sx={{ my: 2 }} />
           <form action={addStudentWithIds}>
             <Stack direction="row" spacing={1}>
-              <Input name="displayName" placeholder="Display name" sx={{ flex: 1 }} />
-              <Input name="email" placeholder="Email" type="email" sx={{ flex: 1 }} />
+              <Input
+                name="displayName"
+                placeholder="Display name"
+                sx={{ flex: 1 }}
+              />
+              <Input
+                name="email"
+                placeholder="Email"
+                type="email"
+                sx={{ flex: 1 }}
+              />
               <Button type="submit" size="sm">
                 Add
               </Button>
@@ -142,7 +177,6 @@ export default async function GroupDetailPage({
           </form>
         </CardContent>
       </Card>
-
       {/* Repositories */}
       <Card variant="outlined" sx={{ mb: 3 }}>
         <CardContent>
@@ -152,12 +186,26 @@ export default async function GroupDetailPage({
           {repoList.length > 0 && (
             <Stack spacing={1} sx={{ mb: 2 }}>
               {repoList.map((repo) => (
-                <Stack key={repo.id} direction="row" alignItems="center" justifyContent="space-between">
-                  <Link href={repo.url} target="_blank" rel="noopener noreferrer">
+                <Stack
+                  key={repo.id}
+                  direction="row"
+                  alignItems="center"
+                  justifyContent="space-between"
+                >
+                  <Link
+                    href={repo.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     {repo.url}
                   </Link>
                   <form action={removeRepository.bind(null, repo.id, courseId)}>
-                    <IconButton type="submit" size="sm" color="danger" variant="plain">
+                    <IconButton
+                      type="submit"
+                      size="sm"
+                      color="danger"
+                      variant="plain"
+                    >
                       <DeleteRounded />
                     </IconButton>
                   </form>
@@ -168,7 +216,12 @@ export default async function GroupDetailPage({
           <Divider sx={{ my: 2 }} />
           <form action={addRepoWithIds}>
             <Stack direction="row" spacing={1}>
-              <Input name="url" placeholder="Repository URL" type="url" sx={{ flex: 1 }} />
+              <Input
+                name="url"
+                placeholder="Repository URL"
+                type="url"
+                sx={{ flex: 1 }}
+              />
               <Button type="submit" size="sm">
                 Add
               </Button>
@@ -176,7 +229,6 @@ export default async function GroupDetailPage({
           </form>
         </CardContent>
       </Card>
-
       {/* Danger Zone */}
       <Card variant="outlined" color="danger">
         <CardContent>

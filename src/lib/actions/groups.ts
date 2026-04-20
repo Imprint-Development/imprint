@@ -41,6 +41,26 @@ export async function createGroup(courseId: string, formData: FormData) {
   redirect(`/courses/${courseId}`);
 }
 
+export async function renameGroup(
+  groupId: string,
+  courseId: string,
+  formData: FormData
+) {
+  await verifyCollaborator(courseId);
+
+  const name = formData.get("name") as string;
+
+  await db
+    .update(studentGroups)
+    .set({ name })
+    .where(
+      and(eq(studentGroups.id, groupId), eq(studentGroups.courseId, courseId))
+    );
+
+  revalidatePath(`/courses/${courseId}/groups/${groupId}`);
+  revalidatePath(`/courses/${courseId}`);
+}
+
 export async function deleteGroup(groupId: string, courseId: string) {
   await verifyCollaborator(courseId);
 
@@ -87,10 +107,7 @@ export async function addRepository(
   revalidatePath(`/courses/${courseId}/groups/${groupId}`);
 }
 
-export async function removeRepository(
-  repositoryId: string,
-  courseId: string
-) {
+export async function removeRepository(repositoryId: string, courseId: string) {
   await verifyCollaborator(courseId);
 
   await db.delete(repositories).where(eq(repositories.id, repositoryId));

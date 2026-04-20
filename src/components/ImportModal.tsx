@@ -59,10 +59,10 @@ function parseCsvPreview(text: string, delimiter: string): PreviewRow[] {
   for (let i = 1; i < lines.length; i++) {
     const cols = lines[i].split(delimiter).map((c) => c.trim());
     rows.push({
-      vorname: col.vorname >= 0 ? cols[col.vorname] ?? "" : "",
-      nachname: col.nachname >= 0 ? cols[col.nachname] ?? "" : "",
-      email: col.email >= 0 ? cols[col.email] ?? "" : "",
-      gruppe: col.gruppe >= 0 ? cols[col.gruppe] ?? "" : "",
+      vorname: col.vorname >= 0 ? (cols[col.vorname] ?? "") : "",
+      nachname: col.nachname >= 0 ? (cols[col.nachname] ?? "") : "",
+      email: col.email >= 0 ? (cols[col.email] ?? "") : "",
+      gruppe: col.gruppe >= 0 ? (cols[col.gruppe] ?? "") : "",
     });
   }
   return rows;

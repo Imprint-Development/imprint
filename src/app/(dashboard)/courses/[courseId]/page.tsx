@@ -89,9 +89,7 @@ export default async function CourseDetailPage({
         <AppLink href="/">
           <HomeRounded />
         </AppLink>
-        <AppLink href="/courses">
-          Courses
-        </AppLink>
+        <AppLink href="/courses">Courses</AppLink>
         <Typography>{course.name}</Typography>
       </Breadcrumbs>
 
@@ -100,7 +98,10 @@ export default async function CourseDetailPage({
         <Chip size="sm" variant="soft" color="primary">
           {course.semester}
         </Chip>
-        <AppLink href={`/courses/${courseId}/edit`} sx={{ textDecoration: 'none' }}>
+        <AppLink
+          href={`/courses/${courseId}/edit`}
+          sx={{ textDecoration: "none" }}
+        >
           <IconButton variant="plain">
             <EditRounded />
           </IconButton>
@@ -110,7 +111,12 @@ export default async function CourseDetailPage({
       {/* Student Groups */}
       <Card variant="outlined" sx={{ mb: 3 }}>
         <CardContent>
-          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+          <Stack
+            direction="row"
+            justifyContent="space-between"
+            alignItems="center"
+            sx={{ mb: 2 }}
+          >
             <Typography level="title-lg">Student Groups</Typography>
             <Stack direction="row" spacing={1}>
               <ImportCsvButton courseId={courseId} />
@@ -140,7 +146,8 @@ export default async function CourseDetailPage({
                     {group.name}
                   </AppLink>
                   <Typography level="body-sm" color="neutral">
-                    {group.studentCount} student{group.studentCount !== 1 ? "s" : ""}
+                    {group.studentCount} student
+                    {group.studentCount !== 1 ? "s" : ""}
                   </Typography>
                 </Stack>
               ))}
@@ -152,7 +159,11 @@ export default async function CourseDetailPage({
       {/* Checkpoints */}
       <Card variant="outlined" sx={{ mb: 3 }}>
         <CardContent>
-          <Stack direction="row" justifyContent="space-between" alignItems="center">
+          <Stack
+            direction="row"
+            justifyContent="space-between"
+            alignItems="center"
+          >
             <Typography level="title-lg">Checkpoints</Typography>
             <ButtonLink
               href={`/courses/${courseId}/checkpoints`}
@@ -189,8 +200,19 @@ export default async function CourseDetailPage({
                     </Chip>
                   </td>
                   <td>
-                    <form action={removeCollaborator.bind(null, collab.id, courseId)}>
-                      <IconButton type="submit" size="sm" color="danger" variant="plain">
+                    <form
+                      action={removeCollaborator.bind(
+                        null,
+                        collab.id,
+                        courseId
+                      )}
+                    >
+                      <IconButton
+                        type="submit"
+                        size="sm"
+                        color="danger"
+                        variant="plain"
+                      >
                         <DeleteRounded />
                       </IconButton>
                     </form>
@@ -202,7 +224,12 @@ export default async function CourseDetailPage({
           <Divider sx={{ my: 2 }} />
           <form action={addCollaboratorWithId}>
             <Stack direction="row" spacing={1}>
-              <Input name="email" placeholder="Email address" type="email" sx={{ flex: 1 }} />
+              <Input
+                name="email"
+                placeholder="Email address"
+                type="email"
+                sx={{ flex: 1 }}
+              />
               <Button type="submit" size="sm">
                 Add
               </Button>

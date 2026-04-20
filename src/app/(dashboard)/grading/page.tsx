@@ -28,9 +28,7 @@ export default async function GradingOverviewPage() {
   return (
     <Box sx={{ p: 3 }}>
       <Breadcrumbs sx={{ mb: 2 }}>
-        <AppLink href="/">
-          Home
-        </AppLink>
+        <AppLink href="/">Home</AppLink>
         <Typography>Grading</Typography>
       </Breadcrumbs>
 

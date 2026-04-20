@@ -53,12 +53,8 @@ export default async function EditCoursePage({
         <AppLink href="/">
           <HomeRounded />
         </AppLink>
-        <AppLink href="/courses">
-          Courses
-        </AppLink>
-        <AppLink href={`/courses/${courseId}`}>
-          {course.name}
-        </AppLink>
+        <AppLink href="/courses">Courses</AppLink>
+        <AppLink href={`/courses/${courseId}`}>{course.name}</AppLink>
         <Typography>Edit</Typography>
       </Breadcrumbs>
 

@@ -24,9 +24,7 @@ function emptyStats(): FileStats {
   return { commits: 0, linesAdded: 0, linesRemoved: 0, filesChanged: 0 };
 }
 
-function categorizeFile(
-  filePath: string
-): "test" | "doc" | "cicd" | "code" {
+function categorizeFile(filePath: string): "test" | "doc" | "cicd" | "code" {
   const lower = filePath.toLowerCase();
 
   if (
@@ -179,12 +177,7 @@ export async function analyzeCheckpoint(checkpointId: string) {
         }
 
         // Build git log command args
-        const logArgs = [
-          "log",
-          "--format=%ae|%H",
-          "--numstat",
-          "--no-merges",
-        ];
+        const logArgs = ["log", "--format=%ae|%H", "--numstat", "--no-merges"];
 
         if (checkpoint.timestamp) {
           logArgs.push(`--until=${checkpoint.timestamp.toISOString()}`);

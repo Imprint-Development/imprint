@@ -9,7 +9,11 @@ import {
 import { auth } from "@/lib/auth";
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
-import { triggerAnalysis, deleteCheckpoint, discardAnalysis } from "@/lib/actions/checkpoints";
+import {
+  triggerAnalysis,
+  deleteCheckpoint,
+  discardAnalysis,
+} from "@/lib/actions/checkpoints";
 import { AnalysisCharts } from "./AnalysisCharts";
 import Typography from "@mui/joy/Typography";
 import Breadcrumbs from "@mui/joy/Breadcrumbs";
@@ -104,20 +108,10 @@ export default async function CheckpointDetailPage({
   return (
     <Box sx={{ p: 3 }}>
       <Breadcrumbs sx={{ mb: 2 }}>
-        <AppLink href="/">
-          Home
-        </AppLink>
-        <AppLink href="/courses">
-          Courses
-        </AppLink>
-        <AppLink href={`/courses/${courseId}`}>
-          {course.name}
-        </AppLink>
-        <AppLink
-          href={`/courses/${courseId}/checkpoints`}
-        >
-          Checkpoints
-        </AppLink>
+        <AppLink href="/">Home</AppLink>
+        <AppLink href="/courses">Courses</AppLink>
+        <AppLink href={`/courses/${courseId}`}>{course.name}</AppLink>
+        <AppLink href={`/courses/${courseId}/checkpoints`}>Checkpoints</AppLink>
         <Typography>{checkpoint.name}</Typography>
       </Breadcrumbs>
 
@@ -134,9 +128,8 @@ export default async function CheckpointDetailPage({
             <Typography level="h2">{checkpoint.name}</Typography>
             <Chip
               color={
-                statusColor[
-                  checkpoint.status as keyof typeof statusColor
-                ] ?? "neutral"
+                statusColor[checkpoint.status as keyof typeof statusColor] ??
+                "neutral"
               }
             >
               {checkpoint.status}
@@ -208,10 +201,7 @@ export default async function CheckpointDetailPage({
           </Box>
           <AnalysisCharts data={analysisData} />
 
-          <Sheet
-            variant="outlined"
-            sx={{ borderRadius: "sm", mt: 3 }}
-          >
+          <Sheet variant="outlined" sx={{ borderRadius: "sm", mt: 3 }}>
             <Typography level="title-lg" sx={{ p: 2 }}>
               Summary
             </Typography>
@@ -263,7 +253,9 @@ export default async function CheckpointDetailPage({
           variant="soft"
           sx={{ p: 4, borderRadius: "sm", textAlign: "center" }}
         >
-          <Typography sx={{ mb: 2 }}>Analysis complete but no data found.</Typography>
+          <Typography sx={{ mb: 2 }}>
+            Analysis complete but no data found.
+          </Typography>
           <form action={discardAnalysisWithIds}>
             <Button type="submit" color="warning" variant="soft" size="sm">
               Discard Analysis
