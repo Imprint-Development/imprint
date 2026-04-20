@@ -1,12 +1,19 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { checkpoints, checkpointAnalyses } from "@/lib/db/schema";
+import {
+  checkpoints,
+  checkpointAnalyses,
+  checkpointRepoMeta,
+} from "@/lib/db/schema";
 import { auth } from "@/lib/auth";
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { analyzeCheckpoint } from "@/lib/analysis/analyzer";
+import {
+  analyzeCheckpoint,
+  analyzeCheckpointForGroup,
+} from "@/lib/analysis/analyzer";
 
 export async function createCheckpoint(courseId: string, formData: FormData) {
   const session = await auth();
@@ -69,9 +76,34 @@ export async function discardAnalysis(checkpointId: string, courseId: string) {
     .where(eq(checkpointAnalyses.checkpointId, checkpointId));
 
   await db
+    .delete(checkpointRepoMeta)
+    .where(eq(checkpointRepoMeta.checkpointId, checkpointId));
+
+  await db
     .update(checkpoints)
     .set({ status: "pending" })
     .where(eq(checkpoints.id, checkpointId));
 
+  revalidatePath(`/courses/${courseId}/checkpoints/${checkpointId}`);
+}
+
+export async function rerunGroupAnalysis(
+  checkpointId: string,
+  groupId: string,
+  courseId: string
+) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  try {
+    await analyzeCheckpointForGroup(checkpointId, groupId);
+  } catch (error) {
+    console.error("Group re-analysis failed:", error);
+    throw error;
+  }
+
+  revalidatePath(
+    `/courses/${courseId}/groups/${groupId}/checkpoints/${checkpointId}`
+  );
   revalidatePath(`/courses/${courseId}/checkpoints/${checkpointId}`);
 }

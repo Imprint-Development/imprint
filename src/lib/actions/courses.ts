@@ -3,7 +3,7 @@
 import { db } from "@/lib/db";
 import { courses, courseCollaborators, users } from "@/lib/db/schema";
 import { auth } from "@/lib/auth";
-import { eq, and } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
@@ -84,4 +84,35 @@ export async function removeCollaborator(
     .where(eq(courseCollaborators.id, collaboratorId));
 
   revalidatePath(`/courses/${courseId}`);
+}
+
+export async function addIgnoredGitEmail(courseId: string, formData: FormData) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  const email = (formData.get("ignoredEmail") as string).trim().toLowerCase();
+  if (!email) return;
+
+  await db
+    .update(courses)
+    .set({
+      ignoredGitEmails: sql`array_append(${courses.ignoredGitEmails}, ${email})`,
+    })
+    .where(eq(courses.id, courseId));
+
+  revalidatePath(`/courses/${courseId}/edit`);
+}
+
+export async function removeIgnoredGitEmail(courseId: string, email: string) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  await db
+    .update(courses)
+    .set({
+      ignoredGitEmails: sql`array_remove(${courses.ignoredGitEmails}, ${email})`,
+    })
+    .where(eq(courses.id, courseId));
+
+  revalidatePath(`/courses/${courseId}/edit`);
 }

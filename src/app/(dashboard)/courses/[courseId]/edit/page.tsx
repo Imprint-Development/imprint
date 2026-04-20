@@ -4,7 +4,12 @@ import { db } from "@/lib/db";
 import { courses, courseCollaborators } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { redirect } from "next/navigation";
-import { updateCourse, deleteCourse } from "@/lib/actions/courses";
+import {
+  updateCourse,
+  deleteCourse,
+  addIgnoredGitEmail,
+  removeIgnoredGitEmail,
+} from "@/lib/actions/courses";
 import Typography from "@mui/joy/Typography";
 import Button from "@mui/joy/Button";
 import Card from "@mui/joy/Card";
@@ -15,8 +20,11 @@ import FormControl from "@mui/joy/FormControl";
 import FormLabel from "@mui/joy/FormLabel";
 import Input from "@mui/joy/Input";
 import Breadcrumbs from "@mui/joy/Breadcrumbs";
-import Link from "@mui/joy/Link";
+import Chip from "@mui/joy/Chip";
+import IconButton from "@mui/joy/IconButton";
+import Divider from "@mui/joy/Divider";
 import HomeRounded from "@mui/icons-material/HomeRounded";
+import DeleteRounded from "@mui/icons-material/DeleteRounded";
 
 export default async function EditCoursePage({
   params,
@@ -46,6 +54,7 @@ export default async function EditCoursePage({
 
   const updateCourseWithId = updateCourse.bind(null, courseId);
   const deleteCourseWithId = deleteCourse.bind(null, courseId);
+  const addIgnoredEmailWithId = addIgnoredGitEmail.bind(null, courseId);
 
   return (
     <Box sx={{ p: 3, maxWidth: 600 }}>
@@ -75,6 +84,64 @@ export default async function EditCoursePage({
                 <Input name="semester" defaultValue={course.semester} />
               </FormControl>
               <Button type="submit">Save Changes</Button>
+            </Stack>
+          </form>
+        </CardContent>
+      </Card>
+
+      <Card variant="outlined" sx={{ mb: 3 }}>
+        <CardContent>
+          <Typography level="title-lg" sx={{ mb: 1 }}>
+            Ignored Git Emails
+          </Typography>
+          <Typography level="body-sm" sx={{ mb: 2 }}>
+            Commits from these git identities will not appear as unidentified
+            author warnings (e.g. template repository authors).
+          </Typography>
+
+          {course.ignoredGitEmails.length > 0 && (
+            <Stack direction="row" flexWrap="wrap" gap={1} sx={{ mb: 2 }}>
+              {course.ignoredGitEmails.map((email) => (
+                <form
+                  key={email}
+                  action={removeIgnoredGitEmail.bind(null, courseId, email)}
+                >
+                  <Chip
+                    size="sm"
+                    variant="soft"
+                    color="neutral"
+                    endDecorator={
+                      <IconButton
+                        type="submit"
+                        size="sm"
+                        variant="plain"
+                        color="neutral"
+                        sx={{ borderRadius: "50%" }}
+                      >
+                        <DeleteRounded fontSize="small" />
+                      </IconButton>
+                    }
+                  >
+                    {email}
+                  </Chip>
+                </form>
+              ))}
+            </Stack>
+          )}
+
+          <Divider sx={{ my: 2 }} />
+
+          <form action={addIgnoredEmailWithId}>
+            <Stack direction="row" spacing={1}>
+              <Input
+                name="ignoredEmail"
+                placeholder="git-email@example.com"
+                type="email"
+                sx={{ flex: 1 }}
+              />
+              <Button type="submit" size="sm" variant="outlined">
+                Add
+              </Button>
             </Stack>
           </form>
         </CardContent>

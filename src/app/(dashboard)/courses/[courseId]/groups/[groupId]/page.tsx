@@ -18,6 +18,8 @@ import {
   removeRepository,
   deleteGroup,
   renameGroup,
+  addStudentGitEmail,
+  removeStudentGitEmail,
 } from "@/lib/actions/groups";
 import Typography from "@mui/joy/Typography";
 import Button from "@mui/joy/Button";
@@ -31,6 +33,7 @@ import Table from "@mui/joy/Table";
 import Input from "@mui/joy/Input";
 import IconButton from "@mui/joy/IconButton";
 import Divider from "@mui/joy/Divider";
+import Chip from "@mui/joy/Chip";
 import HomeRounded from "@mui/icons-material/HomeRounded";
 import DeleteRounded from "@mui/icons-material/DeleteRounded";
 
@@ -129,6 +132,7 @@ export default async function GroupDetailPage({
                 <tr>
                   <th>Display Name</th>
                   <th>Email</th>
+                  <th>Git Email Aliases</th>
                   <th style={{ width: 60 }} />
                 </tr>
               </thead>
@@ -137,6 +141,62 @@ export default async function GroupDetailPage({
                   <tr key={student.id}>
                     <td>{student.displayName}</td>
                     <td>{student.email}</td>
+                    <td>
+                      <Stack spacing={0.5}>
+                        <Stack direction="row" flexWrap="wrap" gap={0.5}>
+                          {student.gitEmails.map((alias) => (
+                            <form
+                              key={alias}
+                              action={removeStudentGitEmail.bind(
+                                null,
+                                student.id,
+                                courseId,
+                                alias
+                              )}
+                            >
+                              <Chip
+                                size="sm"
+                                variant="soft"
+                                color="neutral"
+                                endDecorator={
+                                  <IconButton
+                                    type="submit"
+                                    size="sm"
+                                    variant="plain"
+                                    color="neutral"
+                                    sx={{ borderRadius: "50%" }}
+                                  >
+                                    ×
+                                  </IconButton>
+                                }
+                              >
+                                {alias}
+                              </Chip>
+                            </form>
+                          ))}
+                        </Stack>
+                        <form
+                          action={addStudentGitEmail.bind(
+                            null,
+                            student.id,
+                            courseId
+                          )}
+                        >
+                          <Stack direction="row" spacing={0.5}>
+                            <Input
+                              name="gitEmail"
+                              placeholder="Add git email"
+                              size="sm"
+                              type="email"
+                              sx={{ flex: 1, minWidth: 180 }}
+                            />
+                            <Button type="submit" size="sm" variant="outlined">
+                              Add
+                            </Button>
+                          </Stack>
+                        </form>
+                      </Stack>
+                    </td>
                     <td>
                       <form
                         action={removeStudent.bind(null, student.id, courseId)}
@@ -227,6 +287,23 @@ export default async function GroupDetailPage({
               </Button>
             </Stack>
           </form>
+        </CardContent>
+      </Card>
+      {/* Checkpoints */}
+      <Card variant="outlined" sx={{ mb: 3 }}>
+        <CardContent>
+          <Stack
+            direction="row"
+            justifyContent="space-between"
+            alignItems="center"
+          >
+            <Typography level="title-lg">Checkpoints</Typography>
+            <AppLink
+              href={`/courses/${courseId}/groups/${groupId}/checkpoints`}
+            >
+              View Analysis
+            </AppLink>
+          </Stack>
         </CardContent>
       </Card>
       {/* Danger Zone */}

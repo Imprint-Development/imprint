@@ -1,0 +1,1 @@
+ALTER TABLE "courses" ADD COLUMN "ignored_git_emails" text[] DEFAULT ARRAY[]::text[] NOT NULL;

@@ -1,11 +1,6 @@
 import AppLink from "@/components/AppLink";
 import { db } from "@/lib/db";
-import {
-  checkpoints,
-  checkpointAnalyses,
-  students,
-  courses,
-} from "@/lib/db/schema";
+import { checkpoints, courses, studentGroups, students } from "@/lib/db/schema";
 import { auth } from "@/lib/auth";
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
@@ -14,7 +9,6 @@ import {
   deleteCheckpoint,
   discardAnalysis,
 } from "@/lib/actions/checkpoints";
-import { AnalysisCharts } from "./AnalysisCharts";
 import Typography from "@mui/joy/Typography";
 import Breadcrumbs from "@mui/joy/Breadcrumbs";
 import Button from "@mui/joy/Button";
@@ -24,8 +18,8 @@ import Chip from "@mui/joy/Chip";
 import Sheet from "@mui/joy/Sheet";
 import Box from "@mui/joy/Box";
 import Stack from "@mui/joy/Stack";
-import Table from "@mui/joy/Table";
 import Divider from "@mui/joy/Divider";
+import Table from "@mui/joy/Table";
 
 const statusColor = {
   pending: "warning",
@@ -59,6 +53,21 @@ export default async function CheckpointDetailPage({
 
   if (!checkpoint) redirect(`/courses/${courseId}/checkpoints`);
 
+  const groups = await db
+    .select()
+    .from(studentGroups)
+    .where(eq(studentGroups.courseId, courseId));
+
+  const groupsWithCounts = await Promise.all(
+    groups.map(async (group) => {
+      const studentList = await db
+        .select()
+        .from(students)
+        .where(eq(students.groupId, group.id));
+      return { ...group, studentCount: studentList.length };
+    })
+  );
+
   const triggerAnalysisWithIds = triggerAnalysis.bind(
     null,
     checkpointId,
@@ -74,36 +83,6 @@ export default async function CheckpointDetailPage({
     checkpointId,
     courseId
   );
-
-  let analysisData: {
-    studentName: string;
-    codeMetrics: Record<string, number>;
-    testMetrics: Record<string, number>;
-    docMetrics: Record<string, number>;
-    cicdMetrics: Record<string, number>;
-  }[] = [];
-
-  if (checkpoint.status === "complete") {
-    const analyses = await db
-      .select({
-        codeMetrics: checkpointAnalyses.codeMetrics,
-        testMetrics: checkpointAnalyses.testMetrics,
-        docMetrics: checkpointAnalyses.docMetrics,
-        cicdMetrics: checkpointAnalyses.cicdMetrics,
-        studentName: students.displayName,
-      })
-      .from(checkpointAnalyses)
-      .innerJoin(students, eq(students.id, checkpointAnalyses.studentId))
-      .where(eq(checkpointAnalyses.checkpointId, checkpointId));
-
-    analysisData = analyses.map((a) => ({
-      studentName: a.studentName,
-      codeMetrics: (a.codeMetrics as Record<string, number>) ?? {},
-      testMetrics: (a.testMetrics as Record<string, number>) ?? {},
-      docMetrics: (a.docMetrics as Record<string, number>) ?? {},
-      cicdMetrics: (a.cicdMetrics as Record<string, number>) ?? {},
-    }));
-  }
 
   return (
     <Box sx={{ p: 3 }}>
@@ -190,7 +169,7 @@ export default async function CheckpointDetailPage({
         </Stack>
       )}
 
-      {checkpoint.status === "complete" && analysisData.length > 0 && (
+      {checkpoint.status === "complete" && (
         <>
           <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
             <form action={discardAnalysisWithIds}>
@@ -199,46 +178,38 @@ export default async function CheckpointDetailPage({
               </Button>
             </form>
           </Box>
-          <AnalysisCharts data={analysisData} />
 
-          <Sheet variant="outlined" sx={{ borderRadius: "sm", mt: 3 }}>
+          <Sheet variant="outlined" sx={{ borderRadius: "sm", mb: 3 }}>
             <Typography level="title-lg" sx={{ p: 2 }}>
-              Summary
+              Group Analysis
             </Typography>
             <Divider />
             <Table>
               <thead>
                 <tr>
-                  <th>Student</th>
-                  <th style={{ textAlign: "right" }}>Commits</th>
-                  <th style={{ textAlign: "right" }}>Code +/-</th>
-                  <th style={{ textAlign: "right" }}>Test +/-</th>
-                  <th style={{ textAlign: "right" }}>Docs +/-</th>
-                  <th style={{ textAlign: "right" }}>CI/CD +/-</th>
+                  <th>Group</th>
+                  <th>Students</th>
+                  <th>Analysis</th>
                 </tr>
               </thead>
               <tbody>
-                {analysisData.map((a, i) => (
-                  <tr key={i}>
-                    <td>{a.studentName}</td>
-                    <td style={{ textAlign: "right" }}>
-                      {a.codeMetrics.commits ?? 0}
+                {groupsWithCounts.map((group) => (
+                  <tr key={group.id}>
+                    <td>
+                      <AppLink href={`/courses/${courseId}/groups/${group.id}`}>
+                        {group.name}
+                      </AppLink>
                     </td>
-                    <td style={{ textAlign: "right" }}>
-                      +{a.codeMetrics.linesAdded ?? 0} / -
-                      {a.codeMetrics.linesRemoved ?? 0}
+                    <td>
+                      {group.studentCount} student
+                      {group.studentCount !== 1 ? "s" : ""}
                     </td>
-                    <td style={{ textAlign: "right" }}>
-                      +{a.testMetrics.linesAdded ?? 0} / -
-                      {a.testMetrics.linesRemoved ?? 0}
-                    </td>
-                    <td style={{ textAlign: "right" }}>
-                      +{a.docMetrics.linesAdded ?? 0} / -
-                      {a.docMetrics.linesRemoved ?? 0}
-                    </td>
-                    <td style={{ textAlign: "right" }}>
-                      +{a.cicdMetrics.linesAdded ?? 0} / -
-                      {a.cicdMetrics.linesRemoved ?? 0}
+                    <td>
+                      <AppLink
+                        href={`/courses/${courseId}/groups/${group.id}/checkpoints/${checkpointId}`}
+                      >
+                        View Analysis
+                      </AppLink>
                     </td>
                   </tr>
                 ))}
@@ -246,22 +217,6 @@ export default async function CheckpointDetailPage({
             </Table>
           </Sheet>
         </>
-      )}
-
-      {checkpoint.status === "complete" && analysisData.length === 0 && (
-        <Sheet
-          variant="soft"
-          sx={{ p: 4, borderRadius: "sm", textAlign: "center" }}
-        >
-          <Typography sx={{ mb: 2 }}>
-            Analysis complete but no data found.
-          </Typography>
-          <form action={discardAnalysisWithIds}>
-            <Button type="submit" color="warning" variant="soft" size="sm">
-              Discard Analysis
-            </Button>
-          </form>
-        </Sheet>
       )}
 
       <Divider sx={{ my: 4 }} />
