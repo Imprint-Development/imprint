@@ -71,10 +71,7 @@ export default async function CourseGradingPage({
     gradeMap.set(`${g.checkpointId}:${g.groupId}`, g);
   }
 
-  const groupTotals = new Map<
-    string,
-    { points: number; maxPoints: number }
-  >();
+  const groupTotals = new Map<string, { points: number; maxPoints: number }>();
   for (const group of groups) {
     let points = 0;
     let maxPoints = 0;
@@ -91,12 +88,8 @@ export default async function CourseGradingPage({
   return (
     <Box sx={{ p: 3 }}>
       <Breadcrumbs sx={{ mb: 2 }}>
-        <AppLink href="/">
-          Home
-        </AppLink>
-        <AppLink href="/grading">
-          Grading
-        </AppLink>
+        <AppLink href="/">Home</AppLink>
+        <AppLink href="/grading">Grading</AppLink>
         <Typography>{course.name}</Typography>
       </Breadcrumbs>
 
@@ -129,10 +122,7 @@ export default async function CourseGradingPage({
           </Typography>
         </Sheet>
       ) : (
-        <Sheet
-          variant="outlined"
-          sx={{ borderRadius: "sm", overflow: "auto" }}
-        >
+        <Sheet variant="outlined" sx={{ borderRadius: "sm", overflow: "auto" }}>
           <Table size="sm">
             <thead>
               <tr>
@@ -152,9 +142,7 @@ export default async function CourseGradingPage({
                     </Typography>
                   </td>
                   {courseCheckpoints.map((cp) => {
-                    const existing = gradeMap.get(
-                      `${cp.id}:${group.id}`
-                    );
+                    const existing = gradeMap.get(`${cp.id}:${group.id}`);
                     return (
                       <td key={cp.id}>
                         <form action={saveGrade}>
@@ -180,33 +168,23 @@ export default async function CourseGradingPage({
                               type="number"
                               name="points"
                               slotProps={{ input: { step: 0.5, min: 0 } }}
-                              defaultValue={
-                                existing?.points ?? ""
-                              }
+                              defaultValue={existing?.points ?? ""}
                               placeholder="Pts"
                               required
                               sx={{ width: 64 }}
                             />
-                            <Typography level="body-xs">
-                              /
-                            </Typography>
+                            <Typography level="body-xs">/</Typography>
                             <Input
                               size="sm"
                               type="number"
                               name="maxPoints"
                               slotProps={{ input: { step: 0.5, min: 0 } }}
-                              defaultValue={
-                                existing?.maxPoints ?? ""
-                              }
+                              defaultValue={existing?.maxPoints ?? ""}
                               placeholder="Max"
                               required
                               sx={{ width: 64 }}
                             />
-                            <IconButton
-                              type="submit"
-                              size="sm"
-                              variant="plain"
-                            >
+                            <IconButton type="submit" size="sm" variant="plain">
                               <Save fontSize="small" />
                             </IconButton>
                           </Box>
@@ -218,16 +196,11 @@ export default async function CourseGradingPage({
                     {(() => {
                       const t = groupTotals.get(group.id);
                       if (!t || t.maxPoints === 0) return "—";
-                      const pct = (
-                        (t.points / t.maxPoints) *
-                        100
-                      ).toFixed(1);
+                      const pct = ((t.points / t.maxPoints) * 100).toFixed(1);
                       return (
                         <Typography level="body-sm">
                           {t.points}/{t.maxPoints}{" "}
-                          <Typography level="body-xs">
-                            ({pct}%)
-                          </Typography>
+                          <Typography level="body-xs">({pct}%)</Typography>
                         </Typography>
                       );
                     })()}
@@ -246,9 +219,7 @@ export default async function CourseGradingPage({
                   let pts = 0;
                   let max = 0;
                   for (const group of groups) {
-                    const g = gradeMap.get(
-                      `${cp.id}:${group.id}`
-                    );
+                    const g = gradeMap.get(`${cp.id}:${group.id}`);
                     if (g) {
                       pts += g.points;
                       max += g.maxPoints;
@@ -273,8 +244,7 @@ export default async function CourseGradingPage({
                     if (max === 0) return "—";
                     return (
                       <Typography level="body-sm" fontWeight="lg">
-                        {pts}/{max} (
-                        {((pts / max) * 100).toFixed(1)}%)
+                        {pts}/{max} ({((pts / max) * 100).toFixed(1)}%)
                       </Typography>
                     );
                   })()}

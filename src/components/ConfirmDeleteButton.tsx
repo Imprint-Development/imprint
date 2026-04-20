@@ -27,11 +27,7 @@ export default function ConfirmDeleteButton({
 
   return (
     <>
-      <Button
-        color="danger"
-        variant="solid"
-        onClick={() => setOpen(true)}
-      >
+      <Button color="danger" variant="solid" onClick={() => setOpen(true)}>
         {buttonLabel}
       </Button>
       <Modal open={open} onClose={() => setOpen(false)}>

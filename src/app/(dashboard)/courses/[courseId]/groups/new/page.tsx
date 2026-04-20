@@ -52,12 +52,8 @@ export default async function NewGroupPage({
         <AppLink href="/">
           <HomeRounded />
         </AppLink>
-        <AppLink href="/courses">
-          Courses
-        </AppLink>
-        <AppLink href={`/courses/${courseId}`}>
-          {course.name}
-        </AppLink>
+        <AppLink href="/courses">Courses</AppLink>
+        <AppLink href={`/courses/${courseId}`}>{course.name}</AppLink>
         <Typography>New Group</Typography>
       </Breadcrumbs>
 

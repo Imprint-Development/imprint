@@ -156,7 +156,12 @@ export default function LoginClient({
                       required
                     />
                   </FormControl>
-                  <Button type="submit" variant="soft" color="neutral" fullWidth>
+                  <Button
+                    type="submit"
+                    variant="soft"
+                    color="neutral"
+                    fullWidth
+                  >
                     Sign in as Local Admin
                   </Button>
                 </Stack>

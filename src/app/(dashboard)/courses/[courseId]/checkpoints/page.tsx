@@ -47,15 +47,9 @@ export default async function CheckpointsPage({
   return (
     <Box sx={{ p: 3 }}>
       <Breadcrumbs sx={{ mb: 2 }}>
-        <AppLink href="/">
-          Home
-        </AppLink>
-        <AppLink href="/courses">
-          Courses
-        </AppLink>
-        <AppLink href={`/courses/${courseId}`}>
-          {course.name}
-        </AppLink>
+        <AppLink href="/">Home</AppLink>
+        <AppLink href="/courses">Courses</AppLink>
+        <AppLink href={`/courses/${courseId}`}>{course.name}</AppLink>
         <Typography>Checkpoints</Typography>
       </Breadcrumbs>
 
@@ -110,9 +104,8 @@ export default async function CheckpointsPage({
                     <Chip
                       size="sm"
                       color={
-                        statusColor[
-                          cp.status as keyof typeof statusColor
-                        ] ?? "neutral"
+                        statusColor[cp.status as keyof typeof statusColor] ??
+                        "neutral"
                       }
                     >
                       {cp.status}
@@ -124,9 +117,7 @@ export default async function CheckpointsPage({
                       : "—"}
                   </td>
                   <td>
-                    <AppLink
-                      href={`/courses/${courseId}/checkpoints/${cp.id}`}
-                    >
+                    <AppLink href={`/courses/${courseId}/checkpoints/${cp.id}`}>
                       View
                     </AppLink>
                   </td>

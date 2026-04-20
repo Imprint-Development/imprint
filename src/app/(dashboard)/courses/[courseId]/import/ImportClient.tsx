@@ -55,10 +55,10 @@ function parseCsvPreview(text: string, delimiter: string): PreviewRow[] {
   for (let i = 1; i < lines.length; i++) {
     const cols = lines[i].split(delimiter).map((c) => c.trim());
     rows.push({
-      vorname: col.vorname >= 0 ? cols[col.vorname] ?? "" : "",
-      nachname: col.nachname >= 0 ? cols[col.nachname] ?? "" : "",
-      email: col.email >= 0 ? cols[col.email] ?? "" : "",
-      gruppe: col.gruppe >= 0 ? cols[col.gruppe] ?? "" : "",
+      vorname: col.vorname >= 0 ? (cols[col.vorname] ?? "") : "",
+      nachname: col.nachname >= 0 ? (cols[col.nachname] ?? "") : "",
+      email: col.email >= 0 ? (cols[col.email] ?? "") : "",
+      gruppe: col.gruppe >= 0 ? (cols[col.gruppe] ?? "") : "",
     });
   }
   return rows;
@@ -172,10 +172,7 @@ export default function ImportClient({
               />
 
               {preview.length > 0 && (
-                <Sheet
-                  variant="soft"
-                  sx={{ p: 1.5, borderRadius: "sm" }}
-                >
+                <Sheet variant="soft" sx={{ p: 1.5, borderRadius: "sm" }}>
                   <Typography level="body-sm">
                     {displayed.length} student{displayed.length !== 1 && "s"} in{" "}
                     {groupCount} group{groupCount !== 1 && "s"} will be imported

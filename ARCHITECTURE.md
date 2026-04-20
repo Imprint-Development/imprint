@@ -28,6 +28,7 @@ Imprint is a SaaS platform that analyzes student contributions in Software Engin
 ### Frontend + Backend: Next.js 15 (App Router)
 
 **Why:**
+
 - Full-stack in one framework — API routes, SSR, and React UI in a single deployment. For a small team building a SaaS, this eliminates the overhead of managing separate frontend/backend repos and deployments.
 - Server Components reduce client-side JS, improving load times for data-heavy dashboards.
 - Built-in routing, middleware (for auth guards), and image optimization out of the box.
@@ -37,6 +38,7 @@ Imprint is a SaaS platform that analyzes student contributions in Software Engin
 ### UI Components: MUI Joy UI
 
 **Why:**
+
 - Joy UI is MUI's modern component library built for clean, minimal interfaces. It provides a comprehensive set of accessible components (Cards, Tables, Inputs, Sheets, Drawers) with a design language that suits data-heavy dashboards.
 - Built-in CSS variables-based theming with dark mode support out of the box.
 - Based on the Joy UI "Order Dashboard" and "Sign In Side" templates for a polished, professional look.
@@ -46,6 +48,7 @@ Imprint is a SaaS platform that analyzes student contributions in Software Engin
 ### Charts/Visualization: Recharts
 
 **Why:**
+
 - React-native charting library, composes well with React components.
 - Good support for bar charts, radar charts, and stacked area charts — all needed for contribution breakdowns.
 - Lightweight compared to D3 (which is overkill for structured dashboards).
@@ -54,6 +57,7 @@ Imprint is a SaaS platform that analyzes student contributions in Software Engin
 ### Database: PostgreSQL
 
 **Why:**
+
 - Relational data is the natural fit — courses have users, users have roles, courses have repos, repos have checkpoints, checkpoints have analysis results. These are all well-defined relationships.
 - JSONB columns for flexible storage of raw GitHub API responses (board snapshots, PR metadata) without needing a separate document store.
 - Mature, battle-tested, excellent tooling.
@@ -62,6 +66,7 @@ Imprint is a SaaS platform that analyzes student contributions in Software Engin
 ### ORM: Drizzle ORM
 
 **Why:**
+
 - Type-safe SQL with zero runtime overhead — queries map 1:1 to SQL, no magic.
 - Schema-as-code with excellent migration tooling (`drizzle-kit`).
 - Much lighter than Prisma (no engine binary, no query engine process).
@@ -70,6 +75,7 @@ Imprint is a SaaS platform that analyzes student contributions in Software Engin
 ### Authentication: Auth.js (NextAuth) v5 with GitHub OAuth
 
 **Why:**
+
 - Native Next.js integration with App Router support.
 - GitHub OAuth is the natural provider — lecturers likely already have GitHub accounts, and we need GitHub API access anyway for repo analysis.
 - Supports adding more providers later (institutional SSO via SAML/OIDC).
@@ -79,6 +85,7 @@ Imprint is a SaaS platform that analyzes student contributions in Software Engin
 ### Background Jobs: BullMQ + Redis
 
 **Why:**
+
 - Repository analysis is expensive — cloning repos, running git log analysis, fetching GitHub API data. This must happen asynchronously.
 - BullMQ provides reliable job queues with retries, rate limiting (critical for GitHub API limits), progress tracking, and scheduling.
 - Redis doubles as a cache layer for GitHub API responses (which have rate limits).
@@ -87,6 +94,7 @@ Imprint is a SaaS platform that analyzes student contributions in Software Engin
 ### GitHub Integration: Octokit
 
 **Why:**
+
 - Official GitHub SDK for JavaScript/TypeScript. First-party support, always up to date with the API.
 - Built-in pagination, rate limit handling, and auth.
 - No real alternative worth considering.
@@ -94,6 +102,7 @@ Imprint is a SaaS platform that analyzes student contributions in Software Engin
 ### Git Analysis: simple-git
 
 **Why:**
+
 - Need to run `git log`, `git diff`, `git blame` etc. programmatically to attribute contributions.
 - simple-git is a mature, well-maintained wrapper around the git CLI.
 - For deeper analysis (lines changed per author, file-type breakdown), we parse git log output with custom logic.
@@ -101,6 +110,7 @@ Imprint is a SaaS platform that analyzes student contributions in Software Engin
 ### Deployment: Vercel + managed services (production), Docker Compose (local dev)
 
 **Why:**
+
 - **Production (Vercel):** Zero-config deployment for Next.js (built by the same team). Serverless functions for API routes, edge middleware for auth. Preview deployments per PR.
   - Database: **Neon** (serverless Postgres, free tier, branching for dev/preview).
   - Redis: **Upstash** (serverless Redis, pay-per-request, built-in BullMQ support).
@@ -110,6 +120,7 @@ Imprint is a SaaS platform that analyzes student contributions in Software Engin
 ### Future — AI Chatbot: Vercel AI SDK + OpenAI
 
 **Why:**
+
 - Vercel AI SDK provides streaming chat UI components and server-side LLM integration with minimal code.
 - OpenAI for the model (or swap for any provider — the SDK is model-agnostic).
 - RAG approach: embed analysis data into a vector store (pgvector extension in Postgres), retrieve relevant context per question.
@@ -185,34 +196,34 @@ Grade
 
 ### Phase 1 — Foundation (MVP)
 
-| Feature | Details |
-|---|---|
-| **Auth** | GitHub OAuth login, session management, lecturer role |
-| **Course CRUD** | Create/edit/delete courses, invite collaborators |
-| **Student Groups** | Add groups with students (by email), assign repos |
-| **Checkpoint Creation** | Define checkpoints with name + git ref or timestamp |
-| **Basic Analysis** | On checkpoint trigger: clone repos, run git log analysis, compute per-student code/test/doc metrics |
-| **Dashboard** | Per-checkpoint view showing contribution breakdown per student (bar/radar charts) |
-| **Grading** | Points input per checkpoint per group, exportable as CSV |
+| Feature                 | Details                                                                                             |
+| ----------------------- | --------------------------------------------------------------------------------------------------- |
+| **Auth**                | GitHub OAuth login, session management, lecturer role                                               |
+| **Course CRUD**         | Create/edit/delete courses, invite collaborators                                                    |
+| **Student Groups**      | Add groups with students (by email), assign repos                                                   |
+| **Checkpoint Creation** | Define checkpoints with name + git ref or timestamp                                                 |
+| **Basic Analysis**      | On checkpoint trigger: clone repos, run git log analysis, compute per-student code/test/doc metrics |
+| **Dashboard**           | Per-checkpoint view showing contribution breakdown per student (bar/radar charts)                   |
+| **Grading**             | Points input per checkpoint per group, exportable as CSV                                            |
 
 ### Phase 2 — GitHub Integration Deep Dive
 
-| Feature | Details |
-|---|---|
-| **PR Analysis** | Import PRs up to checkpoint, analyze review activity per student |
-| **Board Import** | Snapshot GitHub Projects board state at checkpoint, analyze issue activity |
-| **CI/CD Attribution** | Detect workflow file changes, attribute CI/CD contributions |
-| **Comparison View** | Compare student contributions across checkpoints (timeline) |
-| **Notifications** | Email/webhook when analysis completes |
+| Feature               | Details                                                                    |
+| --------------------- | -------------------------------------------------------------------------- |
+| **PR Analysis**       | Import PRs up to checkpoint, analyze review activity per student           |
+| **Board Import**      | Snapshot GitHub Projects board state at checkpoint, analyze issue activity |
+| **CI/CD Attribution** | Detect workflow file changes, attribute CI/CD contributions                |
+| **Comparison View**   | Compare student contributions across checkpoints (timeline)                |
+| **Notifications**     | Email/webhook when analysis completes                                      |
 
 ### Phase 3 — Intelligence
 
-| Feature | Details |
-|---|---|
-| **AI Chatbot** | "How did student X contribute in checkpoint 2?" — RAG over analysis data |
+| Feature               | Details                                                                              |
+| --------------------- | ------------------------------------------------------------------------------------ |
+| **AI Chatbot**        | "How did student X contribute in checkpoint 2?" — RAG over analysis data             |
 | **Anomaly Detection** | Flag unusual patterns (sudden spike in commits before deadline, empty commits, etc.) |
-| **Report Generation** | PDF export of per-group or per-student analysis |
-| **Institutional SSO** | SAML/OIDC for university login systems |
+| **Report Generation** | PDF export of per-group or per-student analysis                                      |
+| **Institutional SSO** | SAML/OIDC for university login systems                                               |
 
 ---
 

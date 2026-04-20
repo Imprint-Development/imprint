@@ -34,12 +34,14 @@ export default async function CoursesPage() {
         <Typography>Courses</Typography>
       </Breadcrumbs>
 
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
+      <Stack
+        direction="row"
+        justifyContent="space-between"
+        alignItems="center"
+        sx={{ mb: 3 }}
+      >
         <Typography level="h2">Courses</Typography>
-        <ButtonLink
-          href="/courses/new"
-          startDecorator={<AddRounded />}
-        >
+        <ButtonLink href="/courses/new" startDecorator={<AddRounded />}>
           Create Course
         </ButtonLink>
       </Stack>
@@ -72,9 +74,7 @@ export default async function CoursesPage() {
                   <Typography level="body-sm" color="neutral">
                     Created {course.createdAt?.toLocaleDateString()}
                   </Typography>
-                  <AppLink href={`/courses/${course.id}`}>
-                    View
-                  </AppLink>
+                  <AppLink href={`/courses/${course.id}`}>View</AppLink>
                 </Stack>
               </CardContent>
             </Card>

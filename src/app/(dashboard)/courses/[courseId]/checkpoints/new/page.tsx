@@ -39,20 +39,10 @@ export default async function NewCheckpointPage({
   return (
     <Box sx={{ p: 3, maxWidth: 600, mx: "auto" }}>
       <Breadcrumbs sx={{ mb: 2 }}>
-        <AppLink href="/">
-          Home
-        </AppLink>
-        <AppLink href="/courses">
-          Courses
-        </AppLink>
-        <AppLink href={`/courses/${courseId}`}>
-          {course.name}
-        </AppLink>
-        <AppLink
-          href={`/courses/${courseId}/checkpoints`}
-        >
-          Checkpoints
-        </AppLink>
+        <AppLink href="/">Home</AppLink>
+        <AppLink href="/courses">Courses</AppLink>
+        <AppLink href={`/courses/${courseId}`}>{course.name}</AppLink>
+        <AppLink href={`/courses/${courseId}/checkpoints`}>Checkpoints</AppLink>
         <Typography>New</Typography>
       </Breadcrumbs>
 
@@ -71,10 +61,7 @@ export default async function NewCheckpointPage({
 
               <FormControl>
                 <FormLabel>Git Ref (optional)</FormLabel>
-                <Input
-                  name="gitRef"
-                  placeholder="e.g. main, v1.0, abc123"
-                />
+                <Input name="gitRef" placeholder="e.g. main, v1.0, abc123" />
               </FormControl>
 
               <FormControl>

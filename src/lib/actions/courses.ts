@@ -61,10 +61,7 @@ export async function addCollaborator(courseId: string, formData: FormData) {
 
   const email = formData.get("email") as string;
 
-  const [user] = await db
-    .select()
-    .from(users)
-    .where(eq(users.email, email));
+  const [user] = await db.select().from(users).where(eq(users.email, email));
 
   if (!user) throw new Error("User not found");
 

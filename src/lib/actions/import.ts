@@ -24,8 +24,12 @@ function parseCsv(text: string, delimiter: string): CsvRow[] {
   const colMap = {
     nachname: headers.findIndex((h) => h === "nachname"),
     vorname: headers.findIndex((h) => h === "vorname"),
-    idNummer: headers.findIndex((h) => h === "id-nummer" || h === "idnummer" || h === "id"),
-    email: headers.findIndex((h) => h === "e-mail-adresse" || h === "email" || h === "e-mail"),
+    idNummer: headers.findIndex(
+      (h) => h === "id-nummer" || h === "idnummer" || h === "id"
+    ),
+    email: headers.findIndex(
+      (h) => h === "e-mail-adresse" || h === "email" || h === "e-mail"
+    ),
     gruppe: headers.findIndex((h) => h === "gruppe" || h === "group"),
     gruppenwahl: headers.findIndex((h) => h === "gruppenwahl"),
   };
@@ -34,12 +38,13 @@ function parseCsv(text: string, delimiter: string): CsvRow[] {
   for (let i = 1; i < lines.length; i++) {
     const cols = lines[i].split(delimiter).map((c) => c.trim());
     rows.push({
-      nachname: colMap.nachname >= 0 ? cols[colMap.nachname] ?? "" : "",
-      vorname: colMap.vorname >= 0 ? cols[colMap.vorname] ?? "" : "",
-      idNummer: colMap.idNummer >= 0 ? cols[colMap.idNummer] ?? "" : "",
-      email: colMap.email >= 0 ? cols[colMap.email] ?? "" : "",
-      gruppe: colMap.gruppe >= 0 ? cols[colMap.gruppe] ?? "" : "",
-      gruppenwahl: colMap.gruppenwahl >= 0 ? cols[colMap.gruppenwahl] ?? "" : "",
+      nachname: colMap.nachname >= 0 ? (cols[colMap.nachname] ?? "") : "",
+      vorname: colMap.vorname >= 0 ? (cols[colMap.vorname] ?? "") : "",
+      idNummer: colMap.idNummer >= 0 ? (cols[colMap.idNummer] ?? "") : "",
+      email: colMap.email >= 0 ? (cols[colMap.email] ?? "") : "",
+      gruppe: colMap.gruppe >= 0 ? (cols[colMap.gruppe] ?? "") : "",
+      gruppenwahl:
+        colMap.gruppenwahl >= 0 ? (cols[colMap.gruppenwahl] ?? "") : "",
     });
   }
   return rows;
@@ -105,13 +110,12 @@ export async function importCsv(courseId: string, formData: FormData) {
       const existingStudent = await db
         .select()
         .from(students)
-        .where(
-          and(eq(students.groupId, groupId), eq(students.email, email))
-        )
+        .where(and(eq(students.groupId, groupId), eq(students.email, email)))
         .limit(1);
 
       if (existingStudent.length === 0) {
-        const displayName = `${member.vorname} ${member.nachname}`.trim() || email;
+        const displayName =
+          `${member.vorname} ${member.nachname}`.trim() || email;
         await db.insert(students).values({
           email,
           displayName,

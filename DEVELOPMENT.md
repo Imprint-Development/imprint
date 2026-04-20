@@ -30,13 +30,13 @@ cp .env.example .env
 
 Edit `.env` and fill in the values:
 
-| Variable | Description |
-|---|---|
-| `DATABASE_URL` | Postgres connection string. Default works with the Docker Compose setup. |
-| `AUTH_SECRET` | Random secret for signing sessions. Generate one with `npx auth secret`. |
-| `AUTH_GITHUB_ID` | GitHub OAuth App client ID (see below). |
-| `AUTH_GITHUB_SECRET` | GitHub OAuth App client secret (see below). |
-| `REDIS_URL` | Redis connection string. Default works with the Docker Compose setup. |
+| Variable             | Description                                                              |
+| -------------------- | ------------------------------------------------------------------------ |
+| `DATABASE_URL`       | Postgres connection string. Default works with the Docker Compose setup. |
+| `AUTH_SECRET`        | Random secret for signing sessions. Generate one with `npx auth secret`. |
+| `AUTH_GITHUB_ID`     | GitHub OAuth App client ID (see below).                                  |
+| `AUTH_GITHUB_SECRET` | GitHub OAuth App client secret (see below).                              |
+| `REDIS_URL`          | Redis connection string. Default works with the Docker Compose setup.    |
 
 ### 4. Create a GitHub OAuth App (optional for local dev)
 
@@ -57,6 +57,7 @@ docker compose up -d
 ```
 
 This starts:
+
 - **PostgreSQL 16** on port 5432 (user: `postgres`, password: `postgres`, database: `imprint`)
 - **Redis 7** on port 6379
 
@@ -88,18 +89,18 @@ This login method is only available when `NODE_ENV=development` and is not compi
 
 ## Common Commands
 
-| Command | Description |
-|---|---|
-| `npm run dev` | Start the development server |
-| `npm run build` | Production build |
-| `npm run start` | Start the production server |
-| `npm run lint` | Run ESLint |
+| Command                    | Description                             |
+| -------------------------- | --------------------------------------- |
+| `npm run dev`              | Start the development server            |
+| `npm run build`            | Production build                        |
+| `npm run start`            | Start the production server             |
+| `npm run lint`             | Run ESLint                              |
 | `npx drizzle-kit generate` | Generate migrations from schema changes |
-| `npx drizzle-kit migrate` | Apply pending migrations |
-| `npx drizzle-kit studio` | Open Drizzle Studio (database browser) |
-| `docker compose up -d` | Start Postgres and Redis |
-| `docker compose down` | Stop Postgres and Redis |
-| `docker compose down -v` | Stop and delete all data |
+| `npx drizzle-kit migrate`  | Apply pending migrations                |
+| `npx drizzle-kit studio`   | Open Drizzle Studio (database browser)  |
+| `docker compose up -d`     | Start Postgres and Redis                |
+| `docker compose down`      | Stop Postgres and Redis                 |
+| `docker compose down -v`   | Stop and delete all data                |
 
 ## Project Structure
 
