@@ -4,12 +4,14 @@ import { courses, courseCollaborators } from "@/lib/db/schema";
 import { auth } from "@/lib/auth";
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
-import Typography from "@mui/joy/Typography";
-import Breadcrumbs from "@mui/joy/Breadcrumbs";
-import Card from "@mui/joy/Card";
-import CardContent from "@mui/joy/CardContent";
-import Box from "@mui/joy/Box";
-import Sheet from "@mui/joy/Sheet";
+import Typography from "@mui/material/Typography";
+import Breadcrumbs from "@mui/material/Breadcrumbs";
+import Card from "@mui/material/Card";
+import CardActionArea from "@mui/material/CardActionArea";
+import CardContent from "@mui/material/CardContent";
+import Box from "@mui/material/Box";
+import Alert from "@mui/material/Alert";
+import Link from "next/link";
 
 export default async function GradingOverviewPage() {
   const session = await auth();
@@ -32,17 +34,12 @@ export default async function GradingOverviewPage() {
         <Typography>Grading</Typography>
       </Breadcrumbs>
 
-      <Typography level="h2" sx={{ mb: 3 }}>
+      <Typography variant="h5" sx={{ mb: 3 }}>
         Grading
       </Typography>
 
       {myCourses.length === 0 ? (
-        <Sheet
-          variant="soft"
-          sx={{ p: 4, borderRadius: "sm", textAlign: "center" }}
-        >
-          <Typography>No courses found.</Typography>
-        </Sheet>
+        <Alert severity="info">No courses found.</Alert>
       ) : (
         <Box
           sx={{
@@ -56,22 +53,16 @@ export default async function GradingOverviewPage() {
           }}
         >
           {myCourses.map((course) => (
-            <AppLink
-              key={course.id}
-              href={`/grading/${course.id}`}
-              sx={{ textDecoration: "none" }}
-            >
-              <Card
-                sx={{
-                  "&:hover": { boxShadow: "md" },
-                }}
-              >
+            <Card key={course.id} variant="outlined">
+              <CardActionArea component={Link} href={`/grading/${course.id}`}>
                 <CardContent>
-                  <Typography level="title-lg">{course.name}</Typography>
-                  <Typography level="body-sm">{course.semester}</Typography>
+                  <Typography variant="h6">{course.name}</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {course.semester}
+                  </Typography>
                 </CardContent>
-              </Card>
-            </AppLink>
+              </CardActionArea>
+            </Card>
           ))}
         </Box>
       )}

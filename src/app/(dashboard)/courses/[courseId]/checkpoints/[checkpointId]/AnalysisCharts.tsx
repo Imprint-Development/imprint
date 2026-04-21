@@ -1,9 +1,9 @@
 "use client";
 
-import Card from "@mui/joy/Card";
-import CardContent from "@mui/joy/CardContent";
-import Typography from "@mui/joy/Typography";
-import Sheet from "@mui/joy/Sheet";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import Typography from "@mui/material/Typography";
+import Box from "@mui/material/Box";
 import {
   BarChart,
   Bar,
@@ -31,10 +31,10 @@ export function AnalysisCharts({ data }: { data: AnalysisEntry[] }) {
   return (
     <Card>
       <CardContent>
-        <Typography level="title-lg" sx={{ mb: 2 }}>
+        <Typography variant="h6" sx={{ mb: 2 }}>
           Contribution Breakdown
         </Typography>
-        <Sheet sx={{ p: 1 }}>
+        <Box sx={{ p: 1 }}>
           <ResponsiveContainer width="100%" height={350}>
             <BarChart data={barData}>
               <XAxis dataKey="name" />
@@ -45,7 +45,7 @@ export function AnalysisCharts({ data }: { data: AnalysisEntry[] }) {
               <Bar dataKey="Test" stackId="a" fill="#388e3c" />
             </BarChart>
           </ResponsiveContainer>
-        </Sheet>
+        </Box>
       </CardContent>
     </Card>
   );

@@ -1,14 +1,14 @@
 "use client";
 
-import Box from "@mui/joy/Box";
-import Button from "@mui/joy/Button";
-import Divider from "@mui/joy/Divider";
-import FormControl from "@mui/joy/FormControl";
-import FormLabel from "@mui/joy/FormLabel";
-import Input from "@mui/joy/Input";
-import Sheet from "@mui/joy/Sheet";
-import Stack from "@mui/joy/Stack";
-import Typography from "@mui/joy/Typography";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Divider from "@mui/material/Divider";
+import FormControl from "@mui/material/FormControl";
+import FormLabel from "@mui/material/FormLabel";
+import TextField from "@mui/material/TextField";
+import Paper from "@mui/material/Paper";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
 import GitHubIcon from "@mui/icons-material/GitHub";
 import CodeIcon from "@mui/icons-material/Code";
 import RateReviewIcon from "@mui/icons-material/RateReview";
@@ -41,19 +41,15 @@ export default function LoginClient({
           justifyContent: "center",
           px: 6,
           py: 4,
-          bgcolor: "primary.800",
+          bgcolor: "primary.dark",
           color: "common.white",
-          background:
-            "linear-gradient(135deg, var(--joy-palette-primary-800) 0%, var(--joy-palette-primary-700) 100%)",
+          background: "linear-gradient(135deg, #1565c0 0%, #1976d2 100%)",
         }}
       >
-        <Typography
-          level="h1"
-          sx={{ color: "inherit", fontSize: "2.5rem", mb: 1 }}
-        >
+        <Typography variant="h3" sx={{ color: "inherit", mb: 1 }}>
           Imprint
         </Typography>
-        <Typography level="body-lg" sx={{ color: "primary.200", mb: 5 }}>
+        <Typography variant="body1" sx={{ color: "primary.100", mb: 5 }}>
           Analyze student contributions in Software Engineering courses
         </Typography>
 
@@ -76,15 +72,15 @@ export default function LoginClient({
             },
           ].map((item) => (
             <Box key={item.title} sx={{ display: "flex", gap: 2 }}>
-              <Box sx={{ color: "primary.300", mt: 0.5 }}>{item.icon}</Box>
+              <Box sx={{ color: "primary.200", mt: 0.5 }}>{item.icon}</Box>
               <Box>
                 <Typography
-                  level="title-md"
+                  variant="subtitle1"
                   sx={{ color: "inherit", mb: 0.25 }}
                 >
                   {item.title}
                 </Typography>
-                <Typography level="body-sm" sx={{ color: "primary.300" }}>
+                <Typography variant="body2" sx={{ color: "primary.200" }}>
                   {item.desc}
                 </Typography>
               </Box>
@@ -103,30 +99,29 @@ export default function LoginClient({
           p: 3,
         }}
       >
-        <Sheet
+        <Paper
           variant="outlined"
           sx={{
             width: "100%",
             maxWidth: 400,
             p: 4,
-            borderRadius: "md",
-            boxShadow: "sm",
+            borderRadius: 2,
           }}
         >
-          <Typography level="h3" sx={{ mb: 0.5 }}>
+          <Typography variant="h5" sx={{ mb: 0.5 }}>
             Welcome back
           </Typography>
-          <Typography level="body-sm" sx={{ mb: 3, color: "neutral.500" }}>
+          <Typography variant="body2" sx={{ mb: 3, color: "text.secondary" }}>
             Sign in to your account
           </Typography>
 
           <form action={signInWithGitHub}>
             <Button
               type="submit"
-              variant="solid"
-              color="neutral"
+              variant="contained"
+              color="inherit"
               fullWidth
-              startDecorator={<GitHubIcon />}
+              startIcon={<GitHubIcon />}
               sx={{ mb: 2 }}
             >
               Sign in with GitHub
@@ -140,26 +135,30 @@ export default function LoginClient({
                 <Stack spacing={1.5}>
                   <FormControl>
                     <FormLabel>Username</FormLabel>
-                    <Input
+                    <TextField
                       name="username"
                       type="text"
                       defaultValue="admin"
                       required
+                      size="small"
+                      fullWidth
                     />
                   </FormControl>
                   <FormControl>
                     <FormLabel>Password</FormLabel>
-                    <Input
+                    <TextField
                       name="password"
                       type="password"
                       defaultValue="admin"
                       required
+                      size="small"
+                      fullWidth
                     />
                   </FormControl>
                   <Button
                     type="submit"
-                    variant="soft"
-                    color="neutral"
+                    variant="outlined"
+                    color="inherit"
                     fullWidth
                   >
                     Sign in as Local Admin
@@ -168,7 +167,7 @@ export default function LoginClient({
               </form>
             </>
           )}
-        </Sheet>
+        </Paper>
       </Box>
     </Box>
   );

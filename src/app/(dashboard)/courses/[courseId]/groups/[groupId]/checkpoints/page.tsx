@@ -9,19 +9,19 @@ import {
 import { auth } from "@/lib/auth";
 import { eq, and } from "drizzle-orm";
 import { redirect } from "next/navigation";
-import Typography from "@mui/joy/Typography";
-import Breadcrumbs from "@mui/joy/Breadcrumbs";
-import Box from "@mui/joy/Box";
-import Chip from "@mui/joy/Chip";
-import Card from "@mui/joy/Card";
-import CardContent from "@mui/joy/CardContent";
-import Sheet from "@mui/joy/Sheet";
+import Typography from "@mui/material/Typography";
+import Breadcrumbs from "@mui/material/Breadcrumbs";
+import Box from "@mui/material/Box";
+import Chip from "@mui/material/Chip";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import Alert from "@mui/material/Alert";
 
 const statusColor = {
   pending: "warning",
   analyzing: "primary",
   complete: "success",
-  failed: "danger",
+  failed: "error",
 } as const;
 
 export default async function GroupCheckpointsPage({
@@ -74,39 +74,28 @@ export default async function GroupCheckpointsPage({
         <Typography>Checkpoints</Typography>
       </Breadcrumbs>
 
-      <Typography level="h2" sx={{ mb: 3 }}>
+      <Typography variant="h5" sx={{ mb: 3 }}>
         {group.name} — Checkpoints
       </Typography>
 
       {repoList.length === 0 && (
-        <Sheet
-          variant="soft"
-          color="warning"
-          sx={{ p: 2, borderRadius: "sm", mb: 3 }}
-        >
-          <Typography>
-            This group has no repositories. Add one from the{" "}
-            <AppLink href={`/courses/${courseId}/groups/${groupId}`}>
-              group page
-            </AppLink>{" "}
-            before running analysis.
-          </Typography>
-        </Sheet>
+        <Alert severity="warning" sx={{ mb: 3 }}>
+          This group has no repositories. Add one from the{" "}
+          <AppLink href={`/courses/${courseId}/groups/${groupId}`}>
+            group page
+          </AppLink>{" "}
+          before running analysis.
+        </Alert>
       )}
 
       {courseCheckpoints.length === 0 ? (
-        <Sheet
-          variant="soft"
-          sx={{ p: 4, borderRadius: "sm", textAlign: "center" }}
-        >
-          <Typography>
-            No checkpoints yet.{" "}
-            <AppLink href={`/courses/${courseId}/checkpoints/new`}>
-              Create one
-            </AppLink>{" "}
-            to get started.
-          </Typography>
-        </Sheet>
+        <Alert severity="info">
+          No checkpoints yet.{" "}
+          <AppLink href={`/courses/${courseId}/checkpoints/new`}>
+            Create one
+          </AppLink>{" "}
+          to get started.
+        </Alert>
       ) : (
         <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
           {courseCheckpoints.map((cp) => (
@@ -120,23 +109,25 @@ export default async function GroupCheckpointsPage({
                   }}
                 >
                   <Box>
-                    <Typography level="title-md">{cp.name}</Typography>
+                    <Typography variant="subtitle1">{cp.name}</Typography>
                     {cp.gitRef && (
-                      <Typography level="body-sm" fontFamily="code">
+                      <Typography
+                        variant="body2"
+                        sx={{ fontFamily: "monospace" }}
+                      >
                         {cp.gitRef}
                       </Typography>
                     )}
                   </Box>
                   <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
                     <Chip
-                      size="sm"
+                      size="small"
                       color={
                         statusColor[cp.status as keyof typeof statusColor] ??
-                        "neutral"
+                        "default"
                       }
-                    >
-                      {cp.status}
-                    </Chip>
+                      label={cp.status}
+                    />
                     {cp.status === "complete" ? (
                       <AppLink
                         href={`/courses/${courseId}/groups/${groupId}/checkpoints/${cp.id}`}
