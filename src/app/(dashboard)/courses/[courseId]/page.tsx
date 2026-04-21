@@ -136,7 +136,12 @@ export default async function CourseDetailPage({
 
       <Stack direction="row" sx={{ alignItems: "center", mb: 3 }} spacing={2}>
         <Typography variant="h5">{course.name}</Typography>
-        <Chip size="small" label={course.semester} color="primary" variant="outlined" />
+        <Chip
+          size="small"
+          label={course.semester}
+          color="primary"
+          variant="outlined"
+        />
       </Stack>
 
       <TabNav tabs={TABS} defaultTab="groups" />
@@ -146,7 +151,11 @@ export default async function CourseDetailPage({
         <Box>
           <Stack
             direction="row"
-            sx={{ justifyContent: "space-between", alignItems: "center", mb: 2 }}
+            sx={{
+              justifyContent: "space-between",
+              alignItems: "center",
+              mb: 2,
+            }}
           >
             <Typography variant="h6">Student Groups</Typography>
             <Stack direction="row" spacing={1}>
@@ -175,7 +184,11 @@ export default async function CourseDetailPage({
                 </TableHead>
                 <TableBody>
                   {groupsWithCounts.map((group) => (
-                    <TableRow key={group.id} hover sx={{ position: "relative" }}>
+                    <TableRow
+                      key={group.id}
+                      hover
+                      sx={{ position: "relative" }}
+                    >
                       <TableCell>
                         <AppLink
                           href={`/courses/${courseId}/groups/${group.id}`}
@@ -205,7 +218,11 @@ export default async function CourseDetailPage({
         <Box>
           <Stack
             direction="row"
-            sx={{ justifyContent: "space-between", alignItems: "center", mb: 2 }}
+            sx={{
+              justifyContent: "space-between",
+              alignItems: "center",
+              mb: 2,
+            }}
           >
             <Typography variant="h6">Checkpoints</Typography>
             <ButtonLink
@@ -249,19 +266,28 @@ export default async function CourseDetailPage({
                         </AppLink>
                       </TableCell>
                       <TableCell>
-                        <Typography variant="body2" sx={{ fontFamily: "monospace" }}>
+                        <Typography
+                          variant="body2"
+                          sx={{ fontFamily: "monospace" }}
+                        >
                           {cp.gitRef ?? "—"}
                         </Typography>
                       </TableCell>
                       <TableCell>
                         <Chip
                           size="small"
-                          color={CHECKPOINT_STATUS_COLOR[cp.status as keyof typeof CHECKPOINT_STATUS_COLOR] ?? "default"}
+                          color={
+                            CHECKPOINT_STATUS_COLOR[
+                              cp.status as keyof typeof CHECKPOINT_STATUS_COLOR
+                            ] ?? "default"
+                          }
                           label={cp.status}
                         />
                       </TableCell>
                       <TableCell>
-                        {cp.createdAt ? new Date(cp.createdAt).toLocaleDateString() : "—"}
+                        {cp.createdAt
+                          ? new Date(cp.createdAt).toLocaleDateString()
+                          : "—"}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -292,10 +318,20 @@ export default async function CourseDetailPage({
                   <TableRow key={collab.id}>
                     <TableCell>{collab.email}</TableCell>
                     <TableCell>
-                      <Chip size="small" label={collab.role} variant="outlined" />
+                      <Chip
+                        size="small"
+                        label={collab.role}
+                        variant="outlined"
+                      />
                     </TableCell>
                     <TableCell>
-                      <form action={removeCollaborator.bind(null, collab.id, courseId)}>
+                      <form
+                        action={removeCollaborator.bind(
+                          null,
+                          collab.id,
+                          courseId
+                        )}
+                      >
                         <IconButton type="submit" size="small" color="error">
                           <DeleteRounded />
                         </IconButton>
@@ -336,13 +372,27 @@ export default async function CourseDetailPage({
                 <Stack spacing={2}>
                   <FormControl required>
                     <FormLabel>Course Name</FormLabel>
-                    <TextField name="name" defaultValue={course.name} size="small" fullWidth />
+                    <TextField
+                      name="name"
+                      defaultValue={course.name}
+                      size="small"
+                      fullWidth
+                    />
                   </FormControl>
                   <FormControl required>
                     <FormLabel>Semester</FormLabel>
-                    <TextField name="semester" defaultValue={course.semester} size="small" fullWidth />
+                    <TextField
+                      name="semester"
+                      defaultValue={course.semester}
+                      size="small"
+                      fullWidth
+                    />
                   </FormControl>
-                  <Button type="submit" variant="contained" sx={{ alignSelf: "flex-start" }}>
+                  <Button
+                    type="submit"
+                    variant="contained"
+                    sx={{ alignSelf: "flex-start" }}
+                  >
                     Save Changes
                   </Button>
                 </Stack>
@@ -356,18 +406,26 @@ export default async function CourseDetailPage({
                 Ignored Git Emails
               </Typography>
               <Typography variant="body2" sx={{ mb: 2 }}>
-                Commits from these git identities will not appear as unidentified author warnings.
+                Commits from these git identities will not appear as
+                unidentified author warnings.
               </Typography>
               {course.ignoredGitEmails.length > 0 && (
                 <Stack direction="row" sx={{ mb: 2, flexWrap: "wrap", gap: 1 }}>
                   {course.ignoredGitEmails.map((email) => (
-                    <form key={email} action={removeIgnoredGitEmail.bind(null, courseId, email)}>
+                    <form
+                      key={email}
+                      action={removeIgnoredGitEmail.bind(null, courseId, email)}
+                    >
                       <Chip
                         size="small"
                         label={email}
                         onDelete={undefined}
                         deleteIcon={
-                          <IconButton type="submit" size="small" sx={{ borderRadius: "50%", p: 0 }}>
+                          <IconButton
+                            type="submit"
+                            size="small"
+                            sx={{ borderRadius: "50%", p: 0 }}
+                          >
                             <DeleteRounded fontSize="small" />
                           </IconButton>
                         }

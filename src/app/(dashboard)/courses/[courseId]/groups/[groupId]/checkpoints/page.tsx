@@ -111,7 +111,10 @@ export default async function GroupCheckpointsPage({
                   <Box>
                     <Typography variant="subtitle1">{cp.name}</Typography>
                     {cp.gitRef && (
-                      <Typography variant="body2" sx={{ fontFamily: "monospace" }}>
+                      <Typography
+                        variant="body2"
+                        sx={{ fontFamily: "monospace" }}
+                      >
                         {cp.gitRef}
                       </Typography>
                     )}

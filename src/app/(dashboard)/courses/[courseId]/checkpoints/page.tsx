@@ -97,7 +97,10 @@ export default async function CheckpointsPage({
                 <TableRow key={cp.id}>
                   <TableCell>{cp.name}</TableCell>
                   <TableCell>
-                    <Typography variant="body2" sx={{ fontFamily: "monospace" }}>
+                    <Typography
+                      variant="body2"
+                      sx={{ fontFamily: "monospace" }}
+                    >
                       {cp.gitRef ?? "—"}
                     </Typography>
                   </TableCell>

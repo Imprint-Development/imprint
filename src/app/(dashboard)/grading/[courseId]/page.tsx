@@ -122,7 +122,11 @@ export default async function CourseGradingPage({
           Add checkpoints and groups to this course before grading.
         </Alert>
       ) : (
-        <TableContainer component={Paper} variant="outlined" sx={{ overflow: "auto" }}>
+        <TableContainer
+          component={Paper}
+          variant="outlined"
+          sx={{ overflow: "auto" }}
+        >
           <Table size="small">
             <TableHead>
               <TableRow>
@@ -175,7 +179,7 @@ export default async function CourseGradingPage({
                             />
                             <Typography variant="caption">/</Typography>
                             <TextField
-                               size="small"
+                              size="small"
                               type="number"
                               name="maxPoints"
                               slotProps={{ htmlInput: { step: 0.5, min: 0 } }}
@@ -200,7 +204,9 @@ export default async function CourseGradingPage({
                       return (
                         <Typography variant="body2">
                           {t.points}/{t.maxPoints}{" "}
-                          <Typography component="span" variant="caption">({pct}%)</Typography>
+                          <Typography component="span" variant="caption">
+                            ({pct}%)
+                          </Typography>
                         </Typography>
                       );
                     })()}

@@ -7,4 +7,7 @@ export const CHECKPOINT_STATUS_COLOR = {
   analyzing: "primary",
   complete: "success",
   failed: "error",
-} as const satisfies Record<string, "warning" | "primary" | "success" | "error">;
+} as const satisfies Record<
+  string,
+  "warning" | "primary" | "success" | "error"
+>;

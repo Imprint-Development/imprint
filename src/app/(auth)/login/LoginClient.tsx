@@ -43,14 +43,10 @@ export default function LoginClient({
           py: 4,
           bgcolor: "primary.dark",
           color: "common.white",
-          background:
-            "linear-gradient(135deg, #1565c0 0%, #1976d2 100%)",
+          background: "linear-gradient(135deg, #1565c0 0%, #1976d2 100%)",
         }}
       >
-        <Typography
-          variant="h3"
-          sx={{ color: "inherit", mb: 1 }}
-        >
+        <Typography variant="h3" sx={{ color: "inherit", mb: 1 }}>
           Imprint
         </Typography>
         <Typography variant="body1" sx={{ color: "primary.100", mb: 5 }}>

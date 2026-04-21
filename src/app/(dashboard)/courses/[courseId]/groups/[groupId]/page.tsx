@@ -88,7 +88,9 @@ export default async function GroupDetailPage({
   const [group] = await db
     .select()
     .from(studentGroups)
-    .where(and(eq(studentGroups.id, groupId), eq(studentGroups.courseId, courseId)));
+    .where(
+      and(eq(studentGroups.id, groupId), eq(studentGroups.courseId, courseId))
+    );
   if (!group) redirect(`/courses/${courseId}`);
 
   const studentList = await db
@@ -153,18 +155,30 @@ export default async function GroupDetailPage({
                       <TableCell>{student.email}</TableCell>
                       <TableCell>
                         <Stack spacing={0.5}>
-                          <Stack direction="row" sx={{ flexWrap: "wrap", gap: 0.5 }}>
+                          <Stack
+                            direction="row"
+                            sx={{ flexWrap: "wrap", gap: 0.5 }}
+                          >
                             {student.gitEmails.map((alias) => (
                               <form
                                 key={alias}
-                                action={removeStudentGitEmail.bind(null, student.id, courseId, alias)}
+                                action={removeStudentGitEmail.bind(
+                                  null,
+                                  student.id,
+                                  courseId,
+                                  alias
+                                )}
                               >
                                 <Chip
                                   size="small"
                                   label={alias}
                                   onDelete={undefined}
                                   deleteIcon={
-                                    <IconButton type="submit" size="small" sx={{ borderRadius: "50%", p: 0 }}>
+                                    <IconButton
+                                      type="submit"
+                                      size="small"
+                                      sx={{ borderRadius: "50%", p: 0 }}
+                                    >
                                       ×
                                     </IconButton>
                                   }
@@ -173,7 +187,13 @@ export default async function GroupDetailPage({
                               </form>
                             ))}
                           </Stack>
-                          <form action={addStudentGitEmail.bind(null, student.id, courseId)}>
+                          <form
+                            action={addStudentGitEmail.bind(
+                              null,
+                              student.id,
+                              courseId
+                            )}
+                          >
                             <Stack direction="row" spacing={0.5}>
                               <TextField
                                 name="gitEmail"
@@ -182,7 +202,11 @@ export default async function GroupDetailPage({
                                 type="email"
                                 sx={{ flex: 1, minWidth: 180 }}
                               />
-                              <Button type="submit" size="small" variant="outlined">
+                              <Button
+                                type="submit"
+                                size="small"
+                                variant="outlined"
+                              >
                                 Add
                               </Button>
                             </Stack>
@@ -190,7 +214,13 @@ export default async function GroupDetailPage({
                         </Stack>
                       </TableCell>
                       <TableCell>
-                        <form action={removeStudent.bind(null, student.id, courseId)}>
+                        <form
+                          action={removeStudent.bind(
+                            null,
+                            student.id,
+                            courseId
+                          )}
+                        >
                           <IconButton type="submit" size="small" color="error">
                             <DeleteRounded />
                           </IconButton>
@@ -205,8 +235,19 @@ export default async function GroupDetailPage({
           <Divider sx={{ my: 2 }} />
           <form action={addStudentWithIds}>
             <Stack direction="row" spacing={1}>
-              <TextField name="displayName" placeholder="Display name" size="small" sx={{ flex: 1 }} />
-              <TextField name="email" placeholder="Email" type="email" size="small" sx={{ flex: 1 }} />
+              <TextField
+                name="displayName"
+                placeholder="Display name"
+                size="small"
+                sx={{ flex: 1 }}
+              />
+              <TextField
+                name="email"
+                placeholder="Email"
+                type="email"
+                size="small"
+                sx={{ flex: 1 }}
+              />
               <Button type="submit" size="small" variant="contained">
                 Add Student
               </Button>
@@ -229,7 +270,11 @@ export default async function GroupDetailPage({
                   direction="row"
                   sx={{ alignItems: "center", justifyContent: "space-between" }}
                 >
-                  <MuiLink href={repo.url} target="_blank" rel="noopener noreferrer">
+                  <MuiLink
+                    href={repo.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     {repo.url}
                   </MuiLink>
                   <form action={removeRepository.bind(null, repo.id, courseId)}>
@@ -298,7 +343,11 @@ export default async function GroupDetailPage({
                       <TableCell>
                         <Chip
                           size="small"
-                          color={CHECKPOINT_STATUS_COLOR[cp.status as keyof typeof CHECKPOINT_STATUS_COLOR] ?? "default"}
+                          color={
+                            CHECKPOINT_STATUS_COLOR[
+                              cp.status as keyof typeof CHECKPOINT_STATUS_COLOR
+                            ] ?? "default"
+                          }
                           label={cp.status}
                         />
                       </TableCell>
@@ -323,9 +372,19 @@ export default async function GroupDetailPage({
                 <Stack direction="row" spacing={1}>
                   <FormControl required sx={{ flex: 1 }}>
                     <FormLabel>Group Name</FormLabel>
-                    <TextField name="name" defaultValue={group.name} size="small" fullWidth />
+                    <TextField
+                      name="name"
+                      defaultValue={group.name}
+                      size="small"
+                      fullWidth
+                    />
                   </FormControl>
-                  <Button type="submit" size="small" variant="contained" sx={{ mt: "auto" }}>
+                  <Button
+                    type="submit"
+                    size="small"
+                    variant="contained"
+                    sx={{ mt: "auto" }}
+                  >
                     Rename
                   </Button>
                 </Stack>

@@ -138,7 +138,11 @@ export default function ImportClient({
             <Stack spacing={2}>
               <input type="hidden" name="delimiter" value={delimiter} />
 
-              <Stack direction="row" spacing={2} sx={{ alignItems: "flex-end" }}>
+              <Stack
+                direction="row"
+                spacing={2}
+                sx={{ alignItems: "flex-end" }}
+              >
                 <Button
                   component="label"
                   variant="outlined"
@@ -184,7 +188,10 @@ export default function ImportClient({
               />
 
               {preview.length > 0 && (
-                <Paper variant="outlined" sx={{ p: 1.5, bgcolor: "action.hover" }}>
+                <Paper
+                  variant="outlined"
+                  sx={{ p: 1.5, bgcolor: "action.hover" }}
+                >
                   <Typography variant="body2">
                     {displayed.length} student{displayed.length !== 1 && "s"} in{" "}
                     {groupCount} group{groupCount !== 1 && "s"} will be imported

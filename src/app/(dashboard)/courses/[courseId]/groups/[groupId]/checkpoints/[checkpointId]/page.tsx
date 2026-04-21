@@ -213,7 +213,12 @@ export default async function GroupCheckpointAnalysisPage({
       {checkpoint.status === "complete" && (
         <Box sx={{ mt: 3, display: "flex", justifyContent: "flex-end" }}>
           <form action={rerunWithIds}>
-            <Button type="submit" variant="outlined" color="warning" size="small">
+            <Button
+              type="submit"
+              variant="outlined"
+              color="warning"
+              size="small"
+            >
               Re-run Analysis for This Group
             </Button>
           </form>

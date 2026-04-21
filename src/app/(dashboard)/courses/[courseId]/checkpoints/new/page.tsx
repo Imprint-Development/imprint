@@ -53,10 +53,7 @@ export default async function NewCheckpointPage({
         Create Checkpoint
       </Typography>
 
-      <Paper
-        variant="outlined"
-        sx={{ p: 2, bgcolor: "action.hover", mb: 3 }}
-      >
+      <Paper variant="outlined" sx={{ p: 2, bgcolor: "action.hover", mb: 3 }}>
         <Typography variant="subtitle2" sx={{ mb: 1 }}>
           How checkpoints work
         </Typography>

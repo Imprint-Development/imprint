@@ -140,7 +140,11 @@ export default function ImportModal({
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
       <DialogTitle
-        sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
       >
         Import Students from CSV
         <IconButton size="small" onClick={handleClose} disabled={importing}>
@@ -251,7 +255,11 @@ export default function ImportModal({
               </Box>
             )}
 
-            <Stack direction="row" spacing={1} sx={{ justifyContent: "flex-end" }}>
+            <Stack
+              direction="row"
+              spacing={1}
+              sx={{ justifyContent: "flex-end" }}
+            >
               <Button
                 color="inherit"
                 onClick={handleClose}

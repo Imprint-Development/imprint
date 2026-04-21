@@ -65,11 +65,19 @@ export default async function CoursesPage() {
             <AppLink
               key={course.id}
               href={`/courses/${course.id}`}
-              sx={{ textDecoration: "none", color: "inherit", display: "block" }}
+              sx={{
+                textDecoration: "none",
+                color: "inherit",
+                display: "block",
+              }}
             >
               <Card
                 variant="outlined"
-                sx={{ height: "100%", "&:hover": { boxShadow: 3 }, transition: "box-shadow 0.2s" }}
+                sx={{
+                  height: "100%",
+                  "&:hover": { boxShadow: 3 },
+                  transition: "box-shadow 0.2s",
+                }}
               >
                 <CardContent>
                   <Stack spacing={1}>

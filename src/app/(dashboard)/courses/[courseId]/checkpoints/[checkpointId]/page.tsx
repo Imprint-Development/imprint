@@ -79,9 +79,21 @@ export default async function CheckpointDetailPage({
     })
   );
 
-  const triggerAnalysisWithIds = triggerAnalysis.bind(null, checkpointId, courseId);
-  const deleteCheckpointWithIds = deleteCheckpoint.bind(null, checkpointId, courseId);
-  const discardAnalysisWithIds = discardAnalysis.bind(null, checkpointId, courseId);
+  const triggerAnalysisWithIds = triggerAnalysis.bind(
+    null,
+    checkpointId,
+    courseId
+  );
+  const deleteCheckpointWithIds = deleteCheckpoint.bind(
+    null,
+    checkpointId,
+    courseId
+  );
+  const discardAnalysisWithIds = discardAnalysis.bind(
+    null,
+    checkpointId,
+    courseId
+  );
 
   return (
     <Box sx={{ p: 3 }}>
@@ -91,14 +103,20 @@ export default async function CheckpointDetailPage({
         </AppLink>
         <AppLink href="/courses">Courses</AppLink>
         <AppLink href={`/courses/${courseId}`}>{course.name}</AppLink>
-        <AppLink href={`/courses/${courseId}?tab=checkpoints`}>Checkpoints</AppLink>
+        <AppLink href={`/courses/${courseId}?tab=checkpoints`}>
+          Checkpoints
+        </AppLink>
         <Typography>{checkpoint.name}</Typography>
       </Breadcrumbs>
 
       <Stack direction="row" sx={{ alignItems: "center", mb: 3 }} spacing={2}>
         <Typography variant="h5">{checkpoint.name}</Typography>
         <Chip
-          color={CHECKPOINT_STATUS_COLOR[checkpoint.status as keyof typeof CHECKPOINT_STATUS_COLOR] ?? "default"}
+          color={
+            CHECKPOINT_STATUS_COLOR[
+              checkpoint.status as keyof typeof CHECKPOINT_STATUS_COLOR
+            ] ?? "default"
+          }
           label={checkpoint.status}
         />
       </Stack>
@@ -158,7 +176,12 @@ export default async function CheckpointDetailPage({
             <>
               <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
                 <form action={discardAnalysisWithIds}>
-                  <Button type="submit" color="warning" variant="outlined" size="small">
+                  <Button
+                    type="submit"
+                    color="warning"
+                    variant="outlined"
+                    size="small"
+                  >
                     Discard Analysis
                   </Button>
                 </form>
@@ -181,12 +204,15 @@ export default async function CheckpointDetailPage({
                     {groupsWithCounts.map((group) => (
                       <TableRow key={group.id}>
                         <TableCell>
-                          <AppLink href={`/courses/${courseId}/groups/${group.id}`}>
+                          <AppLink
+                            href={`/courses/${courseId}/groups/${group.id}`}
+                          >
                             {group.name}
                           </AppLink>
                         </TableCell>
                         <TableCell>
-                          {group.studentCount} student{group.studentCount !== 1 ? "s" : ""}
+                          {group.studentCount} student
+                          {group.studentCount !== 1 ? "s" : ""}
                         </TableCell>
                         <TableCell>
                           <AppLink

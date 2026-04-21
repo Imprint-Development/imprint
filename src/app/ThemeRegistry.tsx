@@ -4,11 +4,7 @@ import * as React from "react";
 import { useServerInsertedHTML } from "next/navigation";
 import createCache from "@emotion/cache";
 import { CacheProvider } from "@emotion/react";
-import {
-  createTheme,
-  ThemeProvider,
-  CssBaseline,
-} from "@mui/material";
+import { createTheme, ThemeProvider, CssBaseline } from "@mui/material";
 
 const theme = createTheme({
   colorSchemes: { dark: true },
@@ -213,7 +209,10 @@ const theme = createTheme({
     },
     MuiDialog: {
       styleOverrides: {
-        paper: { borderRadius: 14, boxShadow: "0 25px 50px -12px rgb(0 0 0 / 0.15)" },
+        paper: {
+          borderRadius: 14,
+          boxShadow: "0 25px 50px -12px rgb(0 0 0 / 0.15)",
+        },
       },
     },
     MuiAppBar: {

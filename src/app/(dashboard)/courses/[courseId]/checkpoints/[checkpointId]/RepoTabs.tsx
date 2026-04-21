@@ -82,7 +82,9 @@ function SummaryPanel({
     <>
       {warnings.map((w) => (
         <Alert key={w.repoId} severity="warning" sx={{ mb: 2 }}>
-          <AlertTitle>Unidentified authors in {shortRepoLabel(w.repoUrl)}</AlertTitle>
+          <AlertTitle>
+            Unidentified authors in {shortRepoLabel(w.repoUrl)}
+          </AlertTitle>
           The following git emails are not registered as students:{" "}
           {w.unidentifiedAuthors.join(", ")}
         </Alert>
@@ -158,7 +160,11 @@ export function RepoTabs({ rows, warnings }: Props) {
           const repoRows = rows.filter((r) => r.repoId === repo.id);
           const repoWarnings = warnings.filter((w) => w.repoId === repo.id);
           return tab === i + 1 ? (
-            <SummaryPanel key={repo.id} rows={repoRows} warnings={repoWarnings} />
+            <SummaryPanel
+              key={repo.id}
+              rows={repoRows}
+              warnings={repoWarnings}
+            />
           ) : null;
         })}
       </Box>
