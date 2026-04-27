@@ -8,6 +8,7 @@ import {
 import { eq, and } from "drizzle-orm";
 import type { LogLevel } from "./pipelines/types";
 import { runContributionsPipeline } from "./pipelines/contributions";
+import { ALL_PIPELINE_IDS } from "./pipelines/registry";
 
 /**
  * Runs all analysis pipelines for a checkpoint (or a single group within it).
@@ -64,31 +65,40 @@ export async function runAnalysis(
           console.log(`[${pipeline}][${group.name}][${level}] ${message}`);
         };
 
-      const log = makeLogger("contributions");
-      await log(
-        "info",
-        `Starting contributions pipeline for group "${group.name}"`
-      );
+      const enabledPipelines: string[] =
+        checkpoint.enabledPipelines.length > 0
+          ? checkpoint.enabledPipelines
+          : ALL_PIPELINE_IDS;
 
-      try {
-        await runContributionsPipeline({
-          checkpoint,
-          group,
-          ignoredEmails,
-          log,
-        });
+      // contributions pipeline
+      if (enabledPipelines.includes("contributions")) {
+        const log = makeLogger("contributions");
         await log(
           "info",
-          `Contributions pipeline complete for group "${group.name}"`
+          `Starting contributions pipeline for group "${group.name}"`
         );
-      } catch (err) {
-        failed = true;
-        const msg = err instanceof Error ? err.message : String(err);
-        await log("error", `Contributions pipeline failed: ${msg}`);
+        try {
+          await runContributionsPipeline({
+            checkpoint,
+            group,
+            ignoredEmails,
+            log,
+          });
+          await log(
+            "info",
+            `Contributions pipeline complete for group "${group.name}"`
+          );
+        } catch (err) {
+          failed = true;
+          const msg = err instanceof Error ? err.message : String(err);
+          await log("error", `Contributions pipeline failed: ${msg}`);
+        }
       }
 
       // Future pipelines can be added here, e.g.:
-      // await runCicdPipeline({ checkpoint, group, ignoredEmails, log: makeLogger("cicd") });
+      // if (enabledPipelines.includes("cicd")) {
+      //   await runCicdPipeline({ checkpoint, group, ignoredEmails, log: makeLogger("cicd") });
+      // }
     }
   } catch (err) {
     // Unexpected error outside the per-group try/catch (e.g. DB lookup failure)

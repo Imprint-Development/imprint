@@ -12,6 +12,7 @@ import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { analysisQueue } from "@/lib/queue";
+import { ALL_PIPELINE_IDS } from "@/lib/analysis/pipelines/registry";
 
 export async function createCheckpoint(courseId: string, formData: FormData) {
   const session = await auth();
@@ -32,9 +33,16 @@ export async function createCheckpoint(courseId: string, formData: FormData) {
   redirect(`/courses/${courseId}/checkpoints/${checkpoint.id}`);
 }
 
-export async function triggerAnalysis(checkpointId: string, courseId: string) {
+export async function triggerAnalysis(
+  checkpointId: string,
+  courseId: string,
+  formData: FormData
+) {
   const session = await auth();
   if (!session?.user?.id) throw new Error("Unauthorized");
+
+  const selected = formData.getAll("pipeline") as string[];
+  const enabledPipelines = selected.length > 0 ? selected : ALL_PIPELINE_IDS;
 
   // Clear any previous logs for this checkpoint
   await db
@@ -43,7 +51,7 @@ export async function triggerAnalysis(checkpointId: string, courseId: string) {
 
   await db
     .update(checkpoints)
-    .set({ status: "analyzing" })
+    .set({ status: "analyzing", enabledPipelines })
     .where(eq(checkpoints.id, checkpointId));
 
   // Enqueue the analysis job — the worker will update status when done

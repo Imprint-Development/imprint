@@ -3,12 +3,15 @@ import ButtonLink from "@/components/ButtonLink";
 import { db } from "@/lib/db";
 import { checkpoints, courses } from "@/lib/db/schema";
 import { auth } from "@/lib/auth";
+import { triggerAnalysis } from "@/lib/actions/checkpoints";
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import Typography from "@mui/material/Typography";
-import Breadcrumbs from "@mui/material/Breadcrumbs";
+import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 import Chip from "@mui/material/Chip";
 import Alert from "@mui/material/Alert";
+import Button from "@mui/material/Button";
+import Stack from "@mui/material/Stack";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";
@@ -18,6 +21,7 @@ import TableRow from "@mui/material/TableRow";
 import Paper from "@mui/material/Paper";
 import Box from "@mui/material/Box";
 import Add from "@mui/icons-material/Add";
+import ReplayRounded from "@mui/icons-material/ReplayRounded";
 
 const statusColor = {
   pending: "warning",
@@ -52,12 +56,7 @@ export default async function CheckpointsPage({
 
   return (
     <Box sx={{ p: 3 }}>
-      <Breadcrumbs sx={{ mb: 2 }}>
-        <AppLink href="/">Home</AppLink>
-        <AppLink href="/courses">Courses</AppLink>
-        <AppLink href={`/courses/${courseId}`}>{course.name}</AppLink>
-        <Typography>Checkpoints</Typography>
-      </Breadcrumbs>
+      <PageBreadcrumbs items={[{ label: "Checkpoints" }]} />
 
       <Box
         sx={{
@@ -126,9 +125,32 @@ export default async function CheckpointsPage({
                       : "—"}
                   </TableCell>
                   <TableCell>
-                    <AppLink href={`/courses/${courseId}/checkpoints/${cp.id}`}>
-                      View
-                    </AppLink>
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      sx={{ alignItems: "center" }}
+                    >
+                      <AppLink
+                        href={`/courses/${courseId}/checkpoints/${cp.id}`}
+                      >
+                        View
+                      </AppLink>
+                      {cp.status !== "analyzing" && (
+                        <form
+                          action={triggerAnalysis.bind(null, cp.id, courseId)}
+                        >
+                          <Button
+                            type="submit"
+                            size="small"
+                            variant="outlined"
+                            color="warning"
+                            startIcon={<ReplayRounded />}
+                          >
+                            Re-run
+                          </Button>
+                        </form>
+                      )}
+                    </Stack>
                   </TableCell>
                 </TableRow>
               ))}

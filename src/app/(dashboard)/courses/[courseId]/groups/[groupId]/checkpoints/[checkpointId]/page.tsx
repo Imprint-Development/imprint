@@ -20,7 +20,7 @@ import {
   type RepoWarning,
 } from "./GroupAnalysisClient";
 import Typography from "@mui/material/Typography";
-import Breadcrumbs from "@mui/material/Breadcrumbs";
+import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
@@ -151,18 +151,20 @@ export default async function GroupCheckpointAnalysisPage({
 
   return (
     <Box sx={{ p: 3 }}>
-      <Breadcrumbs sx={{ mb: 2 }}>
-        <AppLink href="/">Home</AppLink>
-        <AppLink href="/courses">Courses</AppLink>
-        <AppLink href={`/courses/${courseId}`}>{course.name}</AppLink>
-        <AppLink href={`/courses/${courseId}/groups/${groupId}`}>
-          {group.name}
-        </AppLink>
-        <AppLink href={`/courses/${courseId}/groups/${groupId}/checkpoints`}>
-          Checkpoints
-        </AppLink>
-        <Typography>{checkpoint.name}</Typography>
-      </Breadcrumbs>
+      <PageBreadcrumbs
+        items={[
+          { label: "Groups", href: `/courses/${courseId}/groups` },
+          {
+            label: group.name,
+            href: `/courses/${courseId}/groups/${groupId}`,
+          },
+          {
+            label: "Checkpoints",
+            href: `/courses/${courseId}/groups/${groupId}/checkpoints`,
+          },
+          { label: checkpoint.name },
+        ]}
+      />
 
       <Stack direction="row" sx={{ alignItems: "center", mb: 3 }} spacing={2}>
         <Typography variant="h5">

@@ -50,6 +50,13 @@
       "when": 1777317664340,
       "tag": "0006_absent_wolfpack",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1777325238105,
+      "tag": "0007_mean_photon",
+      "breakpoints": true
     }
   ]
 }

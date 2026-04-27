@@ -116,6 +116,10 @@ export const checkpoints = pgTable("checkpoints", {
   endDate: timestamp("end_date", { mode: "date" }),
   gitRef: text("git_ref"),
   status: text("status").default("pending").notNull(),
+  enabledPipelines: text("enabled_pipelines")
+    .array()
+    .notNull()
+    .default(sql`ARRAY['contributions']::text[]`),
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow(),
 });
 

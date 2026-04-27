@@ -20,6 +20,8 @@ export interface GroupPaneData {
   groupId: string;
   groupName: string;
   studentCount: number;
+  analysedAt: Date | null;
+  executedPipelines: string[];
   analysisRows: AnalysisRow[];
   repoWarnings: RepoWarning[];
 }
@@ -100,7 +102,20 @@ export default function CheckpointGroupsPane({
                     )}
                   </Box>
                 }
-                secondary={`${g.studentCount} student${g.studentCount !== 1 ? "s" : ""}`}
+                secondary={
+                  <>
+                    {`${g.studentCount} student${g.studentCount !== 1 ? "s" : ""}`}
+                    {g.analysedAt && (
+                      <>
+                        {" · "}
+                        {g.analysedAt.toLocaleString(undefined, {
+                          dateStyle: "short",
+                          timeStyle: "short",
+                        })}
+                      </>
+                    )}
+                  </>
+                }
               />
             </ListItemButton>
           ))}
@@ -128,6 +143,26 @@ export default function CheckpointGroupsPane({
                 Open full page ↗
               </AppLink>
             </Box>
+            {selected.analysedAt && (
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ display: "block", mb: 2 }}
+              >
+                Analysed{" "}
+                {selected.analysedAt.toLocaleString(undefined, {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                })}
+              </Typography>
+            )}
+            {selected.executedPipelines.length > 0 && (
+              <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap", mb: 2 }}>
+                {selected.executedPipelines.map((p) => (
+                  <Chip key={p} label={p} size="small" variant="outlined" />
+                ))}
+              </Box>
+            )}
             {selected.analysisRows.length === 0 ? (
               <Typography variant="body2" color="text.secondary">
                 No analysis data found for this group.

@@ -5,6 +5,7 @@ import AnalysisLogsWithRefresh from "@/components/AnalysisLogsWithRefresh";
 import CheckpointGroupsPane, {
   type GroupPaneData,
 } from "./CheckpointGroupsPane";
+import RunAnalysisForm from "./RunAnalysisForm";
 import { db } from "@/lib/db";
 import {
   checkpoints,
@@ -14,34 +15,29 @@ import {
   repositories,
   checkpointAnalyses,
   checkpointRepoMeta,
+  checkpointLogs,
 } from "@/lib/db/schema";
 import { auth } from "@/lib/auth";
 import { eq, and, inArray } from "drizzle-orm";
 import { redirect } from "next/navigation";
-import {
-  triggerAnalysis,
-  deleteCheckpoint,
-  discardAnalysis,
-} from "@/lib/actions/checkpoints";
+import { triggerAnalysis, deleteCheckpoint } from "@/lib/actions/checkpoints";
 import { CHECKPOINT_STATUS_COLOR } from "@/lib/constants";
 import type {
   AnalysisRow,
   RepoWarning,
 } from "../../groups/[groupId]/checkpoints/[checkpointId]/GroupAnalysisClient";
 import Typography from "@mui/material/Typography";
-import Breadcrumbs from "@mui/material/Breadcrumbs";
-import Button from "@mui/material/Button";
+import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Chip from "@mui/material/Chip";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
-import HomeRounded from "@mui/icons-material/HomeRounded";
 
 const TABS = [
   { label: "Overview", value: "overview" },
-  { label: "Logs", value: "logs" },
+  { label: "Analysis", value: "analysis" },
   { label: "Settings", value: "settings" },
 ];
 
@@ -98,6 +94,19 @@ export default async function CheckpointDetailPage({
 
         let analysisRows: AnalysisRow[] = [];
         let repoWarnings: RepoWarning[] = [];
+        let analysedAt: Date | null = null;
+
+        // Fetch distinct pipelines that produced logs for this group
+        const logRows = await db
+          .selectDistinct({ pipeline: checkpointLogs.pipeline })
+          .from(checkpointLogs)
+          .where(
+            and(
+              eq(checkpointLogs.checkpointId, checkpointId),
+              eq(checkpointLogs.groupId, group.id)
+            )
+          );
+        const executedPipelines = logRows.map((r) => r.pipeline);
 
         if (repoIds.length > 0) {
           const analyses = await db
@@ -107,6 +116,7 @@ export default async function CheckpointDetailPage({
               studentName: students.displayName,
               repoId: repositories.id,
               repoUrl: repositories.url,
+              createdAt: checkpointAnalyses.createdAt,
             })
             .from(checkpointAnalyses)
             .innerJoin(students, eq(students.id, checkpointAnalyses.studentId))
@@ -120,6 +130,12 @@ export default async function CheckpointDetailPage({
                 inArray(checkpointAnalyses.repositoryId, repoIds)
               )
             );
+
+          analysedAt = analyses.reduce<Date | null>((max, a) => {
+            if (!a.createdAt) return max;
+            if (!max || a.createdAt > max) return a.createdAt;
+            return max;
+          }, null);
 
           analysisRows = analyses.map((a) => ({
             studentName: a.studentName,
@@ -160,6 +176,8 @@ export default async function CheckpointDetailPage({
           groupId: group.id,
           groupName: group.name,
           studentCount: studentList.length,
+          analysedAt,
+          executedPipelines,
           analysisRows,
           repoWarnings,
         };
@@ -177,6 +195,8 @@ export default async function CheckpointDetailPage({
           groupId: group.id,
           groupName: group.name,
           studentCount: studentList.length,
+          analysedAt: null,
+          executedPipelines: [],
           analysisRows: [],
           repoWarnings: [],
         };
@@ -194,25 +214,25 @@ export default async function CheckpointDetailPage({
     checkpointId,
     courseId
   );
-  const discardAnalysisWithIds = discardAnalysis.bind(
-    null,
-    checkpointId,
-    courseId
-  );
+
+  // Most recent analysis run across all groups
+  const lastRunAt = groupPaneData.reduce<Date | null>((max, g) => {
+    if (!g.analysedAt) return max;
+    if (!max || g.analysedAt > max) return g.analysedAt;
+    return max;
+  }, null);
 
   return (
     <Box sx={{ p: 3 }}>
-      <Breadcrumbs sx={{ mb: 2 }}>
-        <AppLink href="/">
-          <HomeRounded fontSize="small" />
-        </AppLink>
-        <AppLink href="/courses">Courses</AppLink>
-        <AppLink href={`/courses/${courseId}`}>{course.name}</AppLink>
-        <AppLink href={`/courses/${courseId}?tab=checkpoints`}>
-          Checkpoints
-        </AppLink>
-        <Typography>{checkpoint.name}</Typography>
-      </Breadcrumbs>
+      <PageBreadcrumbs
+        items={[
+          {
+            label: "Checkpoints",
+            href: `/courses/${courseId}/checkpoints`,
+          },
+          { label: checkpoint.name },
+        ]}
+      />
 
       <Stack direction="row" sx={{ alignItems: "center", mb: 3 }} spacing={2}>
         <Typography variant="h5">{checkpoint.name}</Typography>
@@ -228,7 +248,7 @@ export default async function CheckpointDetailPage({
 
       <TabNav tabs={TABS} defaultTab="overview" />
 
-      {/* Overview tab */}
+      {/* Overview tab — details + last run timestamp + logs */}
       {tab === "overview" && (
         <Box>
           <Card variant="outlined" sx={{ mb: 3 }}>
@@ -248,23 +268,37 @@ export default async function CheckpointDetailPage({
                   <strong>End Date:</strong>{" "}
                   {checkpoint.endDate?.toLocaleString() ?? "—"}
                 </Typography>
+                <Typography variant="body2">
+                  <strong>Last Run:</strong>{" "}
+                  {lastRunAt ? lastRunAt.toLocaleString() : "—"}
+                </Typography>
               </Stack>
             </CardContent>
           </Card>
 
+          <AnalysisLogsWithRefresh
+            checkpointId={checkpointId}
+            initialStatus={checkpoint.status}
+          />
+        </Box>
+      )}
+
+      {/* Analysis tab — action buttons + groups pane */}
+      {tab === "analysis" && (
+        <Box>
           {checkpoint.status === "pending" && (
-            <form action={triggerAnalysisWithIds}>
-              <Button type="submit" variant="contained" sx={{ mb: 3 }}>
-                Run Analysis
-              </Button>
-            </form>
+            <RunAnalysisForm
+              action={triggerAnalysisWithIds}
+              enabledPipelines={checkpoint.enabledPipelines}
+              submitLabel="Run Analysis"
+            />
           )}
 
           {checkpoint.status === "analyzing" && (
             <Alert severity="info" sx={{ mb: 3 }}>
               Analysis is running in the background.{" "}
               <AppLink
-                href={`/courses/${courseId}/checkpoints/${checkpointId}?tab=logs`}
+                href={`/courses/${courseId}/checkpoints/${checkpointId}?tab=overview`}
               >
                 View logs
               </AppLink>
@@ -276,51 +310,28 @@ export default async function CheckpointDetailPage({
               <Alert severity="error">
                 Analysis failed.{" "}
                 <AppLink
-                  href={`/courses/${courseId}/checkpoints/${checkpointId}?tab=logs`}
+                  href={`/courses/${courseId}/checkpoints/${checkpointId}?tab=overview`}
                 >
                   View logs
                 </AppLink>{" "}
                 or retry below.
               </Alert>
-              <form action={triggerAnalysisWithIds}>
-                <Button type="submit" variant="contained">
-                  Retry Analysis
-                </Button>
-              </form>
+              <RunAnalysisForm
+                action={triggerAnalysisWithIds}
+                enabledPipelines={checkpoint.enabledPipelines}
+                submitLabel="Retry Analysis"
+              />
             </Stack>
           )}
 
           {checkpoint.status === "complete" && (
-            <>
-              <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
-                <form action={discardAnalysisWithIds}>
-                  <Button
-                    type="submit"
-                    color="warning"
-                    variant="outlined"
-                    size="small"
-                  >
-                    Discard Analysis
-                  </Button>
-                </form>
-              </Box>
-
-              <CheckpointGroupsPane
-                groups={groupPaneData}
-                courseId={courseId}
-                checkpointId={checkpointId}
-              />
-            </>
+            <CheckpointGroupsPane
+              groups={groupPaneData}
+              courseId={courseId}
+              checkpointId={checkpointId}
+            />
           )}
         </Box>
-      )}
-
-      {/* Logs tab */}
-      {tab === "logs" && (
-        <AnalysisLogsWithRefresh
-          checkpointId={checkpointId}
-          initialStatus={checkpoint.status}
-        />
       )}
 
       {/* Settings tab */}

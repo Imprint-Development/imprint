@@ -1,4 +1,3 @@
-import AppLink from "@/components/AppLink";
 import ButtonLink from "@/components/ButtonLink";
 import ImportCsvButton from "@/components/ImportCsvButton";
 import { db } from "@/lib/db";
@@ -12,11 +11,10 @@ import { auth } from "@/lib/auth";
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import Typography from "@mui/material/Typography";
-import Breadcrumbs from "@mui/material/Breadcrumbs";
+import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import AddRounded from "@mui/icons-material/AddRounded";
-import HomeRounded from "@mui/icons-material/HomeRounded";
 import GroupsTable from "./GroupsTable";
 
 export default async function GroupsPage({
@@ -67,14 +65,7 @@ export default async function GroupsPage({
 
   return (
     <Box sx={{ p: 3 }}>
-      <Breadcrumbs sx={{ mb: 2 }}>
-        <AppLink href="/">
-          <HomeRounded fontSize="small" />
-        </AppLink>
-        <AppLink href="/courses">Courses</AppLink>
-        <AppLink href={`/courses/${courseId}`}>{course.name}</AppLink>
-        <Typography>Groups</Typography>
-      </Breadcrumbs>
+      <PageBreadcrumbs items={[{ label: "Groups" }]} />
 
       <Stack
         direction="row"
