@@ -43,13 +43,7 @@ ghcr.io/imprint-development/imprint:sha-<sha>   # exact commit
    docker compose --profile app up -d
    ```
 
-3. Run the database migrations:
-
-   ```bash
-   docker compose exec app npx drizzle-kit migrate
-   ```
-
-The app is now available at [http://localhost:3000](http://localhost:3000).
+The app is now available at [http://localhost:3000](http://localhost:3000). Database migrations are applied automatically on every container start.
 
 > **Note:** `DATABASE_URL` and `REDIS_URL` are pre-configured in `docker-compose.yml` to point at the bundled postgres and redis services. Only the three variables in the table above need to be set in your `.env` file.
 
