@@ -3,7 +3,7 @@
 import {
   createContext,
   useContext,
-  useState,
+  useSyncExternalStore,
   useEffect,
   useCallback,
   type ReactNode,
@@ -34,6 +34,19 @@ const CourseContext = createContext<CourseContextValue>({
 
 const STORAGE_KEY = "imprint:selectedCourseId";
 
+function subscribeStorage(callback: () => void) {
+  window.addEventListener("storage", callback);
+  return () => window.removeEventListener("storage", callback);
+}
+
+function writeStorage(id: string) {
+  localStorage.setItem(STORAGE_KEY, id);
+  // Notify useSyncExternalStore subscribers in the same tab
+  window.dispatchEvent(
+    new StorageEvent("storage", { key: STORAGE_KEY, newValue: id })
+  );
+}
+
 export function CourseProvider({
   courses,
   children,
@@ -41,36 +54,38 @@ export function CourseProvider({
   courses: CourseOption[];
   children: ReactNode;
 }) {
-  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
-  const [hydrated, setHydrated] = useState(false);
+  // Read from localStorage — useSyncExternalStore handles SSR (server snapshot = null)
+  // and re-renders the component on the client once the real value is available.
+  const storedId = useSyncExternalStore(
+    subscribeStorage,
+    () => localStorage.getItem(STORAGE_KEY),
+    () => null
+  );
 
-  // Hydrate from localStorage
+  const selectedCourseId =
+    storedId && courses.some((c) => c.id === storedId) ? storedId : null;
+
+  // Auto-select when there is exactly one course; write to the external store only
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored && courses.some((c) => c.id === stored)) {
-      setSelectedCourseId(stored);
-    } else if (courses.length === 1) {
-      // Auto-select if only one course
-      setSelectedCourseId(courses[0].id);
-      localStorage.setItem(STORAGE_KEY, courses[0].id);
+    if (!storedId && courses.length === 1) {
+      writeStorage(courses[0].id);
     }
-    setHydrated(true);
-  }, [courses]);
+  }, [storedId, courses]);
 
   const selectCourse = useCallback(
     (id: string) => {
       if (courses.some((c) => c.id === id)) {
-        setSelectedCourseId(id);
-        localStorage.setItem(STORAGE_KEY, id);
+        writeStorage(id);
       }
     },
     [courses]
   );
 
-  const selectedCourse =
-    courses.find((c) => c.id === selectedCourseId) ?? null;
+  const selectedCourse = courses.find((c) => c.id === selectedCourseId) ?? null;
 
-  const needsSelection = hydrated && !selectedCourse && courses.length > 0;
+  // useSyncExternalStore returns the server snapshot (null) during SSR and switches to
+  // the real localStorage value after hydration, so needsSelection is safe to derive here.
+  const needsSelection = !selectedCourse && courses.length > 0;
 
   return (
     <CourseContext.Provider

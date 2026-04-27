@@ -49,7 +49,6 @@ import HomeRounded from "@mui/icons-material/HomeRounded";
 import DeleteRounded from "@mui/icons-material/DeleteRounded";
 import CheckCircleRounded from "@mui/icons-material/CheckCircleRounded";
 import ErrorRounded from "@mui/icons-material/ErrorRounded";
-import Alert from "@mui/material/Alert";
 
 function HealthCheck({
   pass,
@@ -207,7 +206,9 @@ export default async function GroupDetailPage({
                   hint="Add a repository in the Repositories tab"
                 />
                 <HealthCheck
-                  pass={courseCheckpoints.some((cp) => cp.status === "complete")}
+                  pass={courseCheckpoints.some(
+                    (cp) => cp.status === "complete"
+                  )}
                   label="At least one checkpoint analysis completed"
                   hint="Run an analysis from the Checkpoints page"
                 />

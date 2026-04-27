@@ -6,7 +6,6 @@ import Paper from "@mui/material/Paper";
 import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
 import Typography from "@mui/material/Typography";
-import Divider from "@mui/material/Divider";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";
@@ -321,8 +320,7 @@ function AiChatTab() {
                   px: 1.5,
                   py: 0.75,
                   borderRadius: 2,
-                  bgcolor:
-                    msg.role === "user" ? "primary.main" : "grey.200",
+                  bgcolor: msg.role === "user" ? "primary.main" : "grey.200",
                   color: msg.role === "user" ? "white" : "text.primary",
                 }}
               >

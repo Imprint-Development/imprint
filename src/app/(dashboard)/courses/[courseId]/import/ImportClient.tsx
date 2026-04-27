@@ -71,10 +71,7 @@ function parseCsvPreview(text: string, delimiter: string): PreviewRow[] {
   return rows;
 }
 
-export default function ImportClient({
-  courseId,
-  courseName,
-}: ImportClientProps) {
+export default function ImportClient({ courseId }: ImportClientProps) {
   const [preview, setPreview] = useState<PreviewRow[]>([]);
   const [onlyWithGroup, setOnlyWithGroup] = useState(true);
   const [delimiter, setDelimiter] = useState("\t");
