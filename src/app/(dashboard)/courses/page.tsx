@@ -88,9 +88,6 @@ export default async function CoursesPage() {
                       color="primary"
                       variant="outlined"
                     />
-                    <Typography variant="body2" color="text.secondary">
-                      Created {course.createdAt?.toLocaleDateString()}
-                    </Typography>
                   </Stack>
                 </CardContent>
               </Card>

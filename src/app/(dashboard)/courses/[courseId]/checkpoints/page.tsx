@@ -88,7 +88,8 @@ export default async function CheckpointsPage({
                 <TableCell>Name</TableCell>
                 <TableCell>Git Ref</TableCell>
                 <TableCell>Status</TableCell>
-                <TableCell>Created</TableCell>
+                <TableCell>Start Date</TableCell>
+                <TableCell>End Date</TableCell>
                 <TableCell>Actions</TableCell>
               </TableRow>
             </TableHead>
@@ -115,8 +116,13 @@ export default async function CheckpointsPage({
                     />
                   </TableCell>
                   <TableCell>
-                    {cp.createdAt
-                      ? new Date(cp.createdAt).toLocaleDateString()
+                    {cp.startDate
+                      ? new Date(cp.startDate).toLocaleDateString()
+                      : "—"}
+                  </TableCell>
+                  <TableCell>
+                    {cp.endDate
+                      ? new Date(cp.endDate).toLocaleDateString()
                       : "—"}
                   </TableCell>
                   <TableCell>

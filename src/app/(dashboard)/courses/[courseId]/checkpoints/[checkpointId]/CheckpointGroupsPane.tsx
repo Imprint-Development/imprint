@@ -8,6 +8,7 @@ import ListItemText from "@mui/material/ListItemText";
 import Typography from "@mui/material/Typography";
 import Divider from "@mui/material/Divider";
 import Badge from "@mui/material/Badge";
+import Chip from "@mui/material/Chip";
 import AppLink from "@/components/AppLink";
 import {
   GroupAnalysisClient,
@@ -87,6 +88,9 @@ export default function CheckpointGroupsPane({
                 primary={
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                     {g.groupName}
+                    {g.analysisRows.length === 0 && (
+                      <Chip label="empty" size="small" color="default" />
+                    )}
                     {g.repoWarnings.length > 0 && (
                       <Badge
                         badgeContent={g.repoWarnings.length}

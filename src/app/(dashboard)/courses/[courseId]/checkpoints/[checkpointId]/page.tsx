@@ -248,10 +248,6 @@ export default async function CheckpointDetailPage({
                   <strong>End Date:</strong>{" "}
                   {checkpoint.endDate?.toLocaleString() ?? "—"}
                 </Typography>
-                <Typography variant="body2">
-                  <strong>Created:</strong>{" "}
-                  {checkpoint.createdAt?.toLocaleString() ?? "—"}
-                </Typography>
               </Stack>
             </CardContent>
           </Card>

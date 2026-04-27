@@ -245,7 +245,8 @@ export default async function CourseDetailPage({
                     <TableCell>Name</TableCell>
                     <TableCell>Git Ref</TableCell>
                     <TableCell>Status</TableCell>
-                    <TableCell>Created</TableCell>
+                    <TableCell>Start Date</TableCell>
+                    <TableCell>End Date</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -285,8 +286,13 @@ export default async function CourseDetailPage({
                         />
                       </TableCell>
                       <TableCell>
-                        {cp.createdAt
-                          ? new Date(cp.createdAt).toLocaleDateString()
+                        {cp.startDate
+                          ? new Date(cp.startDate).toLocaleDateString()
+                          : "—"}
+                      </TableCell>
+                      <TableCell>
+                        {cp.endDate
+                          ? new Date(cp.endDate).toLocaleDateString()
                           : "—"}
                       </TableCell>
                     </TableRow>
