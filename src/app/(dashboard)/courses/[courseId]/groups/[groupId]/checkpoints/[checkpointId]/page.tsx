@@ -90,6 +90,7 @@ export default async function GroupCheckpointAnalysisPage({
       .select({
         codeMetrics: checkpointAnalyses.codeMetrics,
         testMetrics: checkpointAnalyses.testMetrics,
+        reviewMetrics: checkpointAnalyses.reviewMetrics,
         studentName: students.displayName,
         repoId: repositories.id,
         repoUrl: repositories.url,
@@ -113,6 +114,7 @@ export default async function GroupCheckpointAnalysisPage({
       repoUrl: a.repoUrl,
       codeMetrics: (a.codeMetrics as Record<string, number>) ?? {},
       testMetrics: (a.testMetrics as Record<string, number>) ?? {},
+      reviewMetrics: (a.reviewMetrics as Record<string, number>) ?? {},
     }));
 
     const metaRows = await db

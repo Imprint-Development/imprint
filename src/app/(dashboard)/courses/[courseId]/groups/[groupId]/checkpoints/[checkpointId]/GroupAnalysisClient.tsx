@@ -39,6 +39,7 @@ export interface AnalysisRow {
   repoUrl: string;
   codeMetrics: Record<string, number>;
   testMetrics: Record<string, number>;
+  reviewMetrics: Record<string, number>;
 }
 
 export interface RepoWarning {
@@ -72,6 +73,7 @@ function aggregateRows(rows: AnalysisRow[]): AnalysisRow[] {
         repoUrl: "all",
         codeMetrics: { ...row.codeMetrics },
         testMetrics: { ...row.testMetrics },
+        reviewMetrics: { ...row.reviewMetrics },
       });
     } else {
       for (const key of Object.keys(row.codeMetrics)) {
@@ -81,6 +83,10 @@ function aggregateRows(rows: AnalysisRow[]): AnalysisRow[] {
       for (const key of Object.keys(row.testMetrics)) {
         existing.testMetrics[key] =
           (existing.testMetrics[key] ?? 0) + (row.testMetrics[key] ?? 0);
+      }
+      for (const key of Object.keys(row.reviewMetrics)) {
+        existing.reviewMetrics[key] =
+          (existing.reviewMetrics[key] ?? 0) + (row.reviewMetrics[key] ?? 0);
       }
     }
   }
@@ -257,6 +263,92 @@ function FilesTab({ rows }: { rows: AnalysisRow[] }) {
   );
 }
 
+/* ---------- Review Tab ---------- */
+
+function ReviewTab({ rows }: { rows: AnalysisRow[] }) {
+  const hasData = rows.some((r) => Object.keys(r.reviewMetrics).length > 0);
+
+  if (!hasData) {
+    return (
+      <Alert severity="info">
+        No review data available. Run the <strong>review</strong> pipeline to
+        see PR review activity.
+      </Alert>
+    );
+  }
+
+  const barData = rows.map((d) => ({
+    name: d.studentName,
+    "PRs Reviewed": d.reviewMetrics.prsReviewed ?? 0,
+    Approvals: d.reviewMetrics.approvals ?? 0,
+    "Changes Requested": d.reviewMetrics.changesRequested ?? 0,
+    "Review Comments": d.reviewMetrics.reviewComments ?? 0,
+    "Issue Comments": d.reviewMetrics.issueComments ?? 0,
+  }));
+
+  return (
+    <>
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <Typography variant="h6" sx={{ mb: 2 }}>
+            PR Review Activity
+          </Typography>
+          <ResponsiveContainer width="100%" height={350}>
+            <BarChart data={barData}>
+              <XAxis dataKey="name" />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              <Bar dataKey="PRs Reviewed" fill="#1976d2" />
+              <Bar dataKey="Approvals" fill="#388e3c" />
+              <Bar dataKey="Changes Requested" fill="#f57c00" />
+              <Bar dataKey="Review Comments" fill="#7b1fa2" />
+              <Bar dataKey="Issue Comments" fill="#0097a7" />
+            </BarChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
+      <TableContainer component={Paper} variant="outlined">
+        <Table size="small">
+          <TableHead>
+            <TableRow>
+              <TableCell>Student</TableCell>
+              <TableCell align="right">PRs Reviewed</TableCell>
+              <TableCell align="right">Approvals</TableCell>
+              <TableCell align="right">Changes Requested</TableCell>
+              <TableCell align="right">Review Comments</TableCell>
+              <TableCell align="right">Issue Comments</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {rows.map((a, i) => (
+              <TableRow key={i}>
+                <TableCell>{a.studentName}</TableCell>
+                <TableCell align="right">
+                  {a.reviewMetrics.prsReviewed ?? 0}
+                </TableCell>
+                <TableCell align="right">
+                  {a.reviewMetrics.approvals ?? 0}
+                </TableCell>
+                <TableCell align="right">
+                  {a.reviewMetrics.changesRequested ?? 0}
+                </TableCell>
+                <TableCell align="right">
+                  {a.reviewMetrics.reviewComments ?? 0}
+                </TableCell>
+                <TableCell align="right">
+                  {a.reviewMetrics.issueComments ?? 0}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </>
+  );
+}
+
 /* ---------- AI Chat Tab ---------- */
 
 function AiChatTab() {
@@ -391,6 +483,7 @@ export function GroupAnalysisClient({ rows, warnings }: Props) {
       >
         <Tab label="Contributions" />
         <Tab label="Files" />
+        <Tab label="Review" />
         <Tab label="AI Chat" />
       </Tabs>
 
@@ -398,7 +491,8 @@ export function GroupAnalysisClient({ rows, warnings }: Props) {
         <ContributionsTab rows={filteredRows} warnings={filteredWarnings} />
       )}
       {tab === 1 && <FilesTab rows={filteredRows} />}
-      {tab === 2 && <AiChatTab />}
+      {tab === 2 && <ReviewTab rows={filteredRows} />}
+      {tab === 3 && <AiChatTab />}
     </Box>
   );
 }

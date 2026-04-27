@@ -8,6 +8,7 @@ import {
 import { eq, and } from "drizzle-orm";
 import type { LogLevel } from "./pipelines/types";
 import { runContributionsPipeline } from "./pipelines/contributions";
+import { runReviewPipeline } from "./pipelines/review";
 import { ALL_PIPELINE_IDS } from "./pipelines/registry";
 
 /**
@@ -95,10 +96,27 @@ export async function runAnalysis(
         }
       }
 
-      // Future pipelines can be added here, e.g.:
-      // if (enabledPipelines.includes("cicd")) {
-      //   await runCicdPipeline({ checkpoint, group, ignoredEmails, log: makeLogger("cicd") });
-      // }
+      // review pipeline
+      if (enabledPipelines.includes("review")) {
+        const log = makeLogger("review");
+        await log("info", `Starting review pipeline for group "${group.name}"`);
+        try {
+          await runReviewPipeline({
+            checkpoint,
+            group,
+            ignoredEmails,
+            log,
+          });
+          await log(
+            "info",
+            `Review pipeline complete for group "${group.name}"`
+          );
+        } catch (err) {
+          failed = true;
+          const msg = err instanceof Error ? err.message : String(err);
+          await log("error", `Review pipeline failed: ${msg}`);
+        }
+      }
     }
   } catch (err) {
     // Unexpected error outside the per-group try/catch (e.g. DB lookup failure)
