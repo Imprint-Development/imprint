@@ -12,7 +12,9 @@ import { runReviewPipeline } from "./pipelines/review";
 import { ALL_PIPELINE_IDS } from "./pipelines/registry";
 
 /**
- * Runs all analysis pipelines for a checkpoint (or a single group within it).
+ * Runs all enabled analysis pipelines for a checkpoint in parallel — both
+ * across groups and across pipelines within each group.
+ *
  * Progress and errors are written to checkpointLogs.
  * Status is always set to "complete" or "failed" in a finally block so the
  * checkpoint never gets stuck in "analyzing".
@@ -52,74 +54,88 @@ export async function runAnalysis(
           : eq(studentGroups.courseId, checkpoint.courseId)
       );
 
-    for (const group of allGroups) {
-      const makeLogger =
-        (pipeline: string) =>
-        async (level: LogLevel, message: string): Promise<void> => {
-          await db.insert(checkpointLogs).values({
-            checkpointId,
-            groupId: group.id,
-            pipeline,
-            level,
-            message,
-          });
-          console.log(`[${pipeline}][${group.name}][${level}] ${message}`);
-        };
+    const enabledPipelines: string[] =
+      checkpoint.enabledPipelines.length > 0
+        ? checkpoint.enabledPipelines
+        : ALL_PIPELINE_IDS;
 
-      const enabledPipelines: string[] =
-        checkpoint.enabledPipelines.length > 0
-          ? checkpoint.enabledPipelines
-          : ALL_PIPELINE_IDS;
+    // Run all groups in parallel; within each group run all pipelines in parallel.
+    const groupResults = await Promise.allSettled(
+      allGroups.map(async (group) => {
+        const makeLogger =
+          (pipeline: string) =>
+          async (level: LogLevel, message: string): Promise<void> => {
+            await db.insert(checkpointLogs).values({
+              checkpointId,
+              groupId: group.id,
+              pipeline,
+              level,
+              message,
+            });
+            console.log(`[${pipeline}][${group.name}][${level}] ${message}`);
+          };
 
-      // contributions pipeline
-      if (enabledPipelines.includes("contributions")) {
-        const log = makeLogger("contributions");
-        await log(
-          "info",
-          `Starting contributions pipeline for group "${group.name}"`
+        const pipelineResults = await Promise.allSettled(
+          enabledPipelines.map(async (pipelineId) => {
+            const log = makeLogger(pipelineId);
+            await log(
+              "info",
+              `Starting ${pipelineId} pipeline for group "${group.name}"`
+            );
+
+            switch (pipelineId) {
+              case "contributions":
+                await runContributionsPipeline({
+                  checkpoint,
+                  group,
+                  ignoredEmails,
+                  log,
+                });
+                break;
+              case "review":
+                await runReviewPipeline({
+                  checkpoint,
+                  group,
+                  ignoredEmails,
+                  log,
+                });
+                break;
+              default:
+                await log("warn", `Unknown pipeline "${pipelineId}" — skipped`);
+                return;
+            }
+
+            await log(
+              "info",
+              `${pipelineId} pipeline complete for group "${group.name}"`
+            );
+          })
         );
-        try {
-          await runContributionsPipeline({
-            checkpoint,
-            group,
-            ignoredEmails,
-            log,
-          });
-          await log(
-            "info",
-            `Contributions pipeline complete for group "${group.name}"`
-          );
-        } catch (err) {
-          failed = true;
-          const msg = err instanceof Error ? err.message : String(err);
-          await log("error", `Contributions pipeline failed: ${msg}`);
-        }
-      }
 
-      // review pipeline
-      if (enabledPipelines.includes("review")) {
-        const log = makeLogger("review");
-        await log("info", `Starting review pipeline for group "${group.name}"`);
-        try {
-          await runReviewPipeline({
-            checkpoint,
-            group,
-            ignoredEmails,
-            log,
-          });
-          await log(
-            "info",
-            `Review pipeline complete for group "${group.name}"`
-          );
-        } catch (err) {
-          failed = true;
-          const msg = err instanceof Error ? err.message : String(err);
-          await log("error", `Review pipeline failed: ${msg}`);
+        for (const result of pipelineResults) {
+          if (result.status === "rejected") {
+            const pipelineLog = makeLogger("runner");
+            const msg =
+              result.reason instanceof Error
+                ? result.reason.message
+                : String(result.reason);
+            await pipelineLog(
+              "error",
+              `Pipeline failed for group "${group.name}": ${msg}`
+            );
+            throw new Error(msg);
+          }
         }
+      })
+    );
+
+    for (const result of groupResults) {
+      if (result.status === "rejected") {
+        failed = true;
       }
     }
   } catch (err) {
-    // Unexpected error outside the per-group try/catch (e.g. DB lookup failure)
+    // Unexpected error outside the per-group logic (e.g. DB lookup failure)
     failed = true;
     console.error(
       `[runner] Unexpected error for checkpoint ${checkpointId}:`,

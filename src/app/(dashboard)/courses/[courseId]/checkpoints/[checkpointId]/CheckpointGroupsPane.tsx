@@ -171,6 +171,7 @@ export default function CheckpointGroupsPane({
               <GroupAnalysisClient
                 rows={selected.analysisRows}
                 warnings={selected.repoWarnings}
+                executedPipelines={selected.executedPipelines}
               />
             )}
           </>

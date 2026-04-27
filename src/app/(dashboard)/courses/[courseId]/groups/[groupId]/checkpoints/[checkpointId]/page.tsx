@@ -5,6 +5,7 @@ import {
   checkpoints,
   checkpointAnalyses,
   checkpointRepoMeta,
+  checkpointLogs,
   students,
   repositories,
   studentGroups,
@@ -84,6 +85,7 @@ export default async function GroupCheckpointAnalysisPage({
 
   let analysisRows: AnalysisRow[] = [];
   let repoWarnings: RepoWarning[] = [];
+  let executedPipelines: string[] = [];
 
   if (checkpoint.status === "complete" && repoIds.length > 0) {
     const analyses = await db
@@ -142,6 +144,17 @@ export default async function GroupCheckpointAnalysisPage({
         repoUrl: m.repoUrl,
         unidentifiedAuthors: m.unidentifiedAuthors as string[],
       }));
+
+    const logRows = await db
+      .selectDistinct({ pipeline: checkpointLogs.pipeline })
+      .from(checkpointLogs)
+      .where(
+        and(
+          eq(checkpointLogs.checkpointId, checkpointId),
+          eq(checkpointLogs.groupId, groupId)
+        )
+      );
+    executedPipelines = logRows.map((r) => r.pipeline);
   }
 
   const rerunWithIds = rerunGroupAnalysis.bind(
@@ -234,7 +247,11 @@ export default async function GroupCheckpointAnalysisPage({
       )}
 
       {checkpoint.status === "complete" && analysisRows.length > 0 && (
-        <GroupAnalysisClient rows={analysisRows} warnings={repoWarnings} />
+        <GroupAnalysisClient
+          rows={analysisRows}
+          warnings={repoWarnings}
+          executedPipelines={executedPipelines}
+        />
       )}
 
       {checkpoint.status === "complete" && (

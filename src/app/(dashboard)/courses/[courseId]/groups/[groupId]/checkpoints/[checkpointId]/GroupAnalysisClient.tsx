@@ -23,6 +23,7 @@ import CardContent from "@mui/material/CardContent";
 import TextField from "@mui/material/TextField";
 import Button from "@mui/material/Button";
 import Stack from "@mui/material/Stack";
+import MuiTooltip from "@mui/material/Tooltip";
 import {
   BarChart,
   Bar,
@@ -51,7 +52,20 @@ export interface RepoWarning {
 interface Props {
   rows: AnalysisRow[];
   warnings: RepoWarning[];
+  executedPipelines: string[];
 }
+
+interface TabConfig {
+  label: string;
+  requiredPipeline: string | null;
+}
+
+const TABS: TabConfig[] = [
+  { label: "Contributions", requiredPipeline: "contributions" },
+  { label: "Files", requiredPipeline: "contributions" },
+  { label: "Review", requiredPipeline: "review" },
+  { label: "AI Chat", requiredPipeline: null },
+];
 
 function shortRepoLabel(url: string): string {
   try {
@@ -441,7 +455,11 @@ function AiChatTab() {
 
 /* ---------- Main Component ---------- */
 
-export function GroupAnalysisClient({ rows, warnings }: Props) {
+export function GroupAnalysisClient({
+  rows,
+  warnings,
+  executedPipelines,
+}: Props) {
   const repos = getUniqueRepos(rows);
   const [selectedRepo, setSelectedRepo] = useState<string>("all");
   const [tab, setTab] = useState(0);
@@ -481,10 +499,23 @@ export function GroupAnalysisClient({ rows, warnings }: Props) {
         onChange={(_, v) => setTab(v as number)}
         sx={{ borderBottom: 1, borderColor: "divider", mb: 3 }}
       >
-        <Tab label="Contributions" />
-        <Tab label="Files" />
-        <Tab label="Review" />
-        <Tab label="AI Chat" />
+        {TABS.map((t, i) => {
+          const pipelineRan =
+            t.requiredPipeline === null ||
+            executedPipelines.includes(t.requiredPipeline);
+          const tabEl = <Tab key={i} label={t.label} disabled={!pipelineRan} />;
+          return pipelineRan ? (
+            tabEl
+          ) : (
+            <MuiTooltip
+              key={i}
+              title={`Run the "${t.requiredPipeline}" pipeline to enable this tab`}
+            >
+              {/* Tooltip requires a non-disabled wrapper to receive pointer events */}
+              <span>{tabEl}</span>
+            </MuiTooltip>
+          );
+        })}
       </Tabs>
 
       {tab === 0 && (
