@@ -1,4 +1,25 @@
 services:
+  # The app service is only started when the "app" profile is active.
+  # Use it for self-hosting with the published container image:
+  #   docker compose --profile app up -d
+  # For local development, omit the profile so only postgres and redis start,
+  # then run the app with: npm run dev
+  app:
+    image: ghcr.io/imprint-development/imprint:main
+    profiles: ["app"]
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/imprint
+      REDIS_URL: redis://redis:6379
+      AUTH_SECRET: ${AUTH_SECRET}
+      AUTH_GITHUB_ID: ${AUTH_GITHUB_ID}
+      AUTH_GITHUB_SECRET: ${AUTH_GITHUB_SECRET}
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+
   postgres:
     image: postgres:16-alpine
     ports:
