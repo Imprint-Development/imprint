@@ -7,6 +7,7 @@ import CheckpointGroupsPane, {
 } from "./CheckpointGroupsPane";
 import RunAnalysisForm from "./RunAnalysisForm";
 import { db } from "@/lib/db";
+import { ALL_PIPELINE_IDS } from "@/lib/analysis/pipelines/registry";
 import {
   checkpoints,
   courses,
@@ -297,6 +298,8 @@ export default async function CheckpointDetailPage({
 
           <AnalysisLogsWithRefresh
             checkpointId={checkpointId}
+            groups={groups.map((g) => ({ id: g.id, name: g.name }))}
+            pipelines={ALL_PIPELINE_IDS}
             initialStatus={checkpoint.status}
           />
         </Box>

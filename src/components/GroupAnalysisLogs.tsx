@@ -14,6 +14,7 @@ interface Props {
   checkpointId: string;
   groupId: string;
   groupName: string;
+  pipelines: string[];
   initialStatus: string;
 }
 
@@ -21,6 +22,7 @@ export default function GroupAnalysisLogs({
   checkpointId,
   groupId,
   groupName,
+  pipelines,
   initialStatus,
 }: Props) {
   const [open, setOpen] = useState(false);
@@ -56,7 +58,9 @@ export default function GroupAnalysisLogs({
           {open && (
             <AnalysisLogsWithRefresh
               checkpointId={checkpointId}
-              groupId={groupId}
+              groups={[{ id: groupId, name: groupName }]}
+              pipelines={pipelines}
+              defaultGroupId={groupId}
               initialStatus={initialStatus}
             />
           )}

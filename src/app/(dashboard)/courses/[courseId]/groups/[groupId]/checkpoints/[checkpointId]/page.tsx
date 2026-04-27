@@ -1,5 +1,6 @@
 import AppLink from "@/components/AppLink";
 import GroupAnalysisLogs from "@/components/GroupAnalysisLogs";
+import { ALL_PIPELINE_IDS } from "@/lib/analysis/pipelines/registry";
 import { db } from "@/lib/db";
 import {
   checkpoints,
@@ -274,6 +275,7 @@ export default async function GroupCheckpointAnalysisPage({
           checkpointId={checkpointId}
           groupId={groupId}
           groupName={group.name}
+          pipelines={ALL_PIPELINE_IDS}
           initialStatus={checkpoint.status}
         />
       )}
