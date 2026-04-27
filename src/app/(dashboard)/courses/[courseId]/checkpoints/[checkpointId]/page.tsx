@@ -222,6 +222,11 @@ export default async function CheckpointDetailPage({
     return max;
   }, null);
 
+  // Distinct pipelines executed across all groups in the last run
+  const executedPipelines = [
+    ...new Set(groupPaneData.flatMap((g) => g.executedPipelines)),
+  ];
+
   return (
     <Box sx={{ p: 3 }}>
       <PageBreadcrumbs
@@ -272,6 +277,18 @@ export default async function CheckpointDetailPage({
                   <strong>Last Run:</strong>{" "}
                   {lastRunAt ? lastRunAt.toLocaleString() : "—"}
                 </Typography>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <Typography variant="body2">
+                    <strong>Pipelines run:</strong>
+                  </Typography>
+                  {executedPipelines.length > 0 ? (
+                    executedPipelines.map((p) => (
+                      <Chip key={p} label={p} size="small" variant="outlined" />
+                    ))
+                  ) : (
+                    <Typography variant="body2">—</Typography>
+                  )}
+                </Box>
               </Stack>
             </CardContent>
           </Card>

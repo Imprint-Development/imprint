@@ -1,5 +1,6 @@
 import AppLink from "@/components/AppLink";
 import ButtonLink from "@/components/ButtonLink";
+import RerunButton from "@/components/RerunButton";
 import { db } from "@/lib/db";
 import { checkpoints, courses } from "@/lib/db/schema";
 import { auth } from "@/lib/auth";
@@ -10,7 +11,6 @@ import Typography from "@mui/material/Typography";
 import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 import Chip from "@mui/material/Chip";
 import Alert from "@mui/material/Alert";
-import Button from "@mui/material/Button";
 import Stack from "@mui/material/Stack";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
@@ -21,7 +21,6 @@ import TableRow from "@mui/material/TableRow";
 import Paper from "@mui/material/Paper";
 import Box from "@mui/material/Box";
 import Add from "@mui/icons-material/Add";
-import ReplayRounded from "@mui/icons-material/ReplayRounded";
 
 const statusColor = {
   pending: "warning",
@@ -136,19 +135,10 @@ export default async function CheckpointsPage({
                         View
                       </AppLink>
                       {cp.status !== "analyzing" && (
-                        <form
+                        <RerunButton
                           action={triggerAnalysis.bind(null, cp.id, courseId)}
-                        >
-                          <Button
-                            type="submit"
-                            size="small"
-                            variant="outlined"
-                            color="warning"
-                            startIcon={<ReplayRounded />}
-                          >
-                            Re-run
-                          </Button>
-                        </form>
+                          enabledPipelines={cp.enabledPipelines}
+                        />
                       )}
                     </Stack>
                   </TableCell>

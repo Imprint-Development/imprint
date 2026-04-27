@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import NextLink from "next/link";
+import NextImage from "next/image";
 import { usePathname } from "next/navigation";
 import Box from "@mui/material/Box";
 import Drawer from "@mui/material/Drawer";
@@ -152,10 +153,22 @@ function SidebarContent({
         width: SIDEBAR_WIDTH,
       }}
     >
-      <Box sx={{ p: 2, display: "flex", alignItems: "center" }}>
-        <Typography variant="h6" sx={{ fontWeight: 700 }}>
-          Imprint
-        </Typography>
+      <Box
+        sx={{
+          p: 2,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <NextImage
+          src="/header-logo.png"
+          alt="Imprint"
+          width={160}
+          height={48}
+          style={{ objectFit: "contain" }}
+          priority
+        />
       </Box>
       <Divider />
 
