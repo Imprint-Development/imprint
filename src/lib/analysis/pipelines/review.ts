@@ -100,6 +100,11 @@ export async function runReviewPipeline(ctx: PipelineContext): Promise<void> {
   // Cache GitHub login → resolved studentId to avoid redundant API calls
   const loginToStudentId = new Map<string, string | null>();
 
+  // Track which students were matched from at least one GitHub login
+  const resolvedStudentIds = new Set<string>();
+  // Track GitHub logins that appeared on PRs but couldn't be matched to any student
+  const unmappedLogins = new Set<string>();
+
   async function resolveLogin(login: string): Promise<string | null> {
     if (loginToStudentId.has(login)) return loginToStudentId.get(login)!;
 
@@ -110,11 +115,13 @@ export async function runReviewPipeline(ctx: PipelineContext): Promise<void> {
       if (!ignoredEmails.has(normalised) && emailToStudentId.has(normalised)) {
         const id = emailToStudentId.get(normalised)!;
         loginToStudentId.set(login, id);
+        resolvedStudentIds.add(id);
         return id;
       }
     }
 
     loginToStudentId.set(login, null);
+    unmappedLogins.add(login);
     return null;
   }
 
@@ -257,6 +264,27 @@ export async function runReviewPipeline(ctx: PipelineContext): Promise<void> {
         }
       }
     }
+  }
+
+  // Warn about students who were never matched from any GitHub login —
+  // their review activity will be missing or incomplete.
+  const unmatchedStudents = groupStudents.filter(
+    (s) => !resolvedStudentIds.has(s.id)
+  );
+  if (unmatchedStudents.length > 0) {
+    await log(
+      "warn",
+      `The following students could not be matched to a GitHub account and their review activity may be missing: ${unmatchedStudents.map((s) => s.displayName).join(", ")}. ` +
+        `Ensure each student has a public GitHub email that matches their registered email or git emails.`
+    );
+  }
+
+  // Warn about GitHub users who interacted on PRs but are not in this group.
+  if (unmappedLogins.size > 0) {
+    await log(
+      "warn",
+      `The following GitHub users interacted on PRs but could not be matched to any student in this group: ${[...unmappedLogins].join(", ")}.`
+    );
   }
 
   // Persist metrics — upsert into existing checkpointAnalyses rows
