@@ -47,8 +47,41 @@ import FormControl from "@mui/material/FormControl";
 import FormLabel from "@mui/material/FormLabel";
 import HomeRounded from "@mui/icons-material/HomeRounded";
 import DeleteRounded from "@mui/icons-material/DeleteRounded";
+import CheckCircleRounded from "@mui/icons-material/CheckCircleRounded";
+import ErrorRounded from "@mui/icons-material/ErrorRounded";
+
+function HealthCheck({
+  pass,
+  label,
+  hint,
+}: {
+  pass: boolean;
+  label: string;
+  hint: string;
+}) {
+  return (
+    <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+      {pass ? (
+        <CheckCircleRounded color="success" fontSize="small" />
+      ) : (
+        <ErrorRounded color="error" fontSize="small" />
+      )}
+      <Box>
+        <Typography variant="body2" sx={{ fontWeight: pass ? 400 : 600 }}>
+          {label}
+        </Typography>
+        {!pass && (
+          <Typography variant="caption" color="text.secondary">
+            {hint}
+          </Typography>
+        )}
+      </Box>
+    </Stack>
+  );
+}
 
 const TABS = [
+  { label: "Overview", value: "overview" },
   { label: "Members", value: "members" },
   { label: "Repositories", value: "repositories" },
   { label: "Checkpoints", value: "checkpoints" },
@@ -63,7 +96,7 @@ export default async function GroupDetailPage({
   searchParams: Promise<{ tab?: string }>;
 }) {
   const { courseId, groupId } = await params;
-  const { tab = "members" } = await searchParams;
+  const { tab = "overview" } = await searchParams;
 
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
@@ -129,7 +162,61 @@ export default async function GroupDetailPage({
         {group.name}
       </Typography>
 
-      <TabNav tabs={TABS} defaultTab="members" />
+      <TabNav tabs={TABS} defaultTab="overview" />
+
+      {/* Overview tab */}
+      {tab === "overview" && (
+        <Box>
+          <Card variant="outlined" sx={{ mb: 3 }}>
+            <CardContent>
+              <Typography variant="h6" sx={{ mb: 2 }}>
+                Group Info
+              </Typography>
+              <Stack spacing={1}>
+                <Typography variant="body2">
+                  <strong>Course:</strong> {course.name} ({course.semester})
+                </Typography>
+                <Typography variant="body2">
+                  <strong>Members:</strong> {studentList.length}
+                </Typography>
+                <Typography variant="body2">
+                  <strong>Repositories:</strong> {repoList.length}
+                </Typography>
+                <Typography variant="body2">
+                  <strong>Checkpoints:</strong> {courseCheckpoints.length}
+                </Typography>
+              </Stack>
+            </CardContent>
+          </Card>
+
+          <Card variant="outlined">
+            <CardContent>
+              <Typography variant="h6" sx={{ mb: 2 }}>
+                Health Checks
+              </Typography>
+              <Stack spacing={1.5}>
+                <HealthCheck
+                  pass={studentList.length > 0}
+                  label="At least one member defined"
+                  hint="Add students in the Members tab"
+                />
+                <HealthCheck
+                  pass={repoList.length > 0}
+                  label="At least one repository added"
+                  hint="Add a repository in the Repositories tab"
+                />
+                <HealthCheck
+                  pass={courseCheckpoints.some(
+                    (cp) => cp.status === "complete"
+                  )}
+                  label="At least one checkpoint analysis completed"
+                  hint="Run an analysis from the Checkpoints page"
+                />
+              </Stack>
+            </CardContent>
+          </Card>
+        </Box>
+      )}
 
       {/* Members tab */}
       {tab === "members" && (

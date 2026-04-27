@@ -13,11 +13,11 @@ import { auth } from "@/lib/auth";
 import { eq, and, inArray } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { rerunGroupAnalysis } from "@/lib/actions/checkpoints";
-import { RepoTabs } from "@/app/(dashboard)/courses/[courseId]/checkpoints/[checkpointId]/RepoTabs";
-import type {
-  AnalysisRow,
-  RepoWarning,
-} from "@/app/(dashboard)/courses/[courseId]/checkpoints/[checkpointId]/RepoTabs";
+import {
+  GroupAnalysisClient,
+  type AnalysisRow,
+  type RepoWarning,
+} from "./GroupAnalysisClient";
 import Typography from "@mui/material/Typography";
 import Breadcrumbs from "@mui/material/Breadcrumbs";
 import Box from "@mui/material/Box";
@@ -207,7 +207,7 @@ export default async function GroupCheckpointAnalysisPage({
       )}
 
       {checkpoint.status === "complete" && analysisRows.length > 0 && (
-        <RepoTabs rows={analysisRows} warnings={repoWarnings} />
+        <GroupAnalysisClient rows={analysisRows} warnings={repoWarnings} />
       )}
 
       {checkpoint.status === "complete" && (

@@ -14,16 +14,42 @@ import Typography from "@mui/material/Typography";
 import Divider from "@mui/material/Divider";
 import IconButton from "@mui/material/IconButton";
 import Tooltip from "@mui/material/Tooltip";
+import Select from "@mui/material/Select";
+import MenuItem from "@mui/material/MenuItem";
+import FormControl from "@mui/material/FormControl";
 import HomeRounded from "@mui/icons-material/HomeRounded";
 import SchoolRounded from "@mui/icons-material/SchoolRounded";
 import GradingRounded from "@mui/icons-material/GradingRounded";
 import LogoutRounded from "@mui/icons-material/LogoutRounded";
+import GroupsRounded from "@mui/icons-material/GroupsRounded";
+import FlagRounded from "@mui/icons-material/FlagRounded";
+import { useCourse } from "./CourseProvider";
 
 const SIDEBAR_WIDTH = 240;
 
-const navItems = [
+interface NavItem {
+  label: string;
+  href: string;
+  icon: React.ReactNode;
+  /** If true, requires a selected course and href is a suffix after /courses/[id] */
+  courseScoped?: boolean;
+}
+
+const navItems: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: <HomeRounded /> },
   { label: "Courses", href: "/courses", icon: <SchoolRounded /> },
+  {
+    label: "Groups",
+    href: "/groups",
+    icon: <GroupsRounded />,
+    courseScoped: true,
+  },
+  {
+    label: "Checkpoints",
+    href: "/checkpoints",
+    icon: <FlagRounded />,
+    courseScoped: true,
+  },
   { label: "Grading", href: "/grading", icon: <GradingRounded /> },
 ];
 
@@ -39,6 +65,8 @@ function SidebarContent({
   signOutAction,
 }: Pick<SidebarProps, "user" | "signOutAction">) {
   const pathname = usePathname();
+  const { courses, selectedCourseId, selectedCourse, selectCourse } =
+    useCourse();
 
   return (
     <Box
@@ -58,16 +86,66 @@ function SidebarContent({
         </Typography>
       </Box>
       <Divider />
+
+      {/* Course selector */}
+      {courses.length > 0 && (
+        <Box sx={{ px: 1.5, py: 1.5 }}>
+          <FormControl fullWidth size="small">
+            <Select
+              value={selectedCourseId ?? ""}
+              onChange={(e) => selectCourse(e.target.value)}
+              displayEmpty
+              renderValue={(value) => {
+                if (!value) return <em>Select course...</em>;
+                return selectedCourse
+                  ? `${selectedCourse.name} (${selectedCourse.semester})`
+                  : "";
+              }}
+              sx={{ fontSize: "0.85rem" }}
+            >
+              {courses.map((c) => (
+                <MenuItem key={c.id} value={c.id}>
+                  {c.name} ({c.semester})
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Box>
+      )}
+
+      <Divider />
       <List sx={{ flex: 1, pt: 1 }}>
         {navItems.map((item) => {
-          const active =
-            pathname === item.href || pathname.startsWith(item.href + "/");
+          const resolvedHref = item.courseScoped
+            ? selectedCourseId
+              ? `/courses/${selectedCourseId}${item.href}`
+              : "#"
+            : item.href;
+
+          const active = item.courseScoped
+            ? pathname.includes(
+                `/courses/${selectedCourseId ?? ""}${item.href}`
+              )
+            : item.href === "/courses"
+              ? pathname === "/courses" ||
+                (pathname.startsWith("/courses/") &&
+                  !navItems.some(
+                    (n) =>
+                      n.courseScoped &&
+                      selectedCourseId &&
+                      pathname.includes(`/courses/${selectedCourseId}${n.href}`)
+                  ))
+              : pathname === item.href || pathname.startsWith(item.href + "/");
+
+          const disabled = item.courseScoped && !selectedCourseId;
+
           return (
-            <ListItem key={item.href} disablePadding sx={{ px: 1, pb: 0.5 }}>
+            <ListItem key={item.label} disablePadding sx={{ px: 1, pb: 0.5 }}>
               <ListItemButton
-                component={NextLink}
-                href={item.href}
+                component={disabled ? "div" : NextLink}
+                href={disabled ? undefined : resolvedHref}
                 selected={active}
+                disabled={disabled}
                 sx={{ borderRadius: 2 }}
               >
                 <ListItemIcon sx={{ minWidth: 36 }}>{item.icon}</ListItemIcon>
