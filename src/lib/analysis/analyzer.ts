@@ -48,7 +48,7 @@ function emptyAuthorStats(): AuthorStats {
   };
 }
 
-function parseGitLog(raw: string, until?: Date): Map<string, AuthorStats> {
+function parseGitLog(raw: string, since?: Date, until?: Date): Map<string, AuthorStats> {
   const authorMap = new Map<string, AuthorStats>();
 
   const lines = raw.split("\n");
@@ -65,7 +65,10 @@ function parseGitLog(raw: string, until?: Date): Map<string, AuthorStats> {
       const parts = trimmed.split("|");
       if (parts.length === 3 && parts[1].length >= 7) {
         const committerDate = new Date(parts[2]);
-        currentSkip = !!(until && committerDate > until);
+        currentSkip = !!(
+          (until && committerDate > until) ||
+          (since && committerDate < since)
+        );
 
         if (currentSkip) continue;
 
@@ -112,7 +115,8 @@ interface GroupRecord {
 interface CheckpointRecord {
   id: string;
   gitRef: string | null;
-  timestamp: Date | null;
+  startDate: Date | null;
+  endDate: Date | null;
 }
 
 async function analyzeGroupForCheckpoint(
@@ -159,7 +163,8 @@ async function analyzeGroupForCheckpoint(
       const logOutput = await repoGit.raw(logArgs);
       const authorMap = parseGitLog(
         logOutput,
-        checkpoint.timestamp ?? undefined
+        checkpoint.startDate ?? undefined,
+        checkpoint.endDate ?? undefined
       );
 
       // Build email-to-student mapping (primary email + gitEmails aliases)

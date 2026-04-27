@@ -186,8 +186,12 @@ export default async function GroupCheckpointAnalysisPage({
               </Typography>
             </Typography>
             <Typography variant="body2">
-              <strong>Timestamp:</strong>{" "}
-              {checkpoint.timestamp?.toLocaleString() ?? "—"}
+              <strong>Start Date:</strong>{" "}
+              {checkpoint.startDate?.toLocaleString() ?? "—"}
+            </Typography>
+            <Typography variant="body2">
+              <strong>End Date:</strong>{" "}
+              {checkpoint.endDate?.toLocaleString() ?? "—"}
             </Typography>
           </Stack>
         </CardContent>

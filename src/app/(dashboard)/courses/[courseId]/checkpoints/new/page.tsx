@@ -58,19 +58,20 @@ export default async function NewCheckpointPage({
           How checkpoints work
         </Typography>
         <Typography variant="body2">
-          A checkpoint captures each student&apos;s contribution up to a
-          specific point in time. When you run the analysis, Imprint clones
-          every group repository, checks out the configured branch, and counts
-          commits and lines changed — considering only commits whose{" "}
-          <strong>committer date</strong> is on or before the deadline.
+          A checkpoint captures each student&apos;s contribution within a date
+          range. When you run the analysis, Imprint clones every group
+          repository, checks out the configured branch, and counts commits and
+          lines changed — considering only commits whose{" "}
+          <strong>committer date</strong> falls within the specified window.
         </Typography>
         <Divider sx={{ my: 1.5 }} />
         <Typography variant="body2">
           <strong>Typical setup for a submission deadline:</strong> set{" "}
-          <em>Branch / ref</em> to <code>main</code> and <em>Deadline</em> to
-          the exact cutoff date and time. Commits pushed after the deadline will
-          be excluded regardless of what the author date says. Leave both fields
-          blank to analyse the full history of the default branch.
+          <em>Branch / ref</em> to <code>main</code>, <em>Start Date</em> to
+          the opening of the grading window, and <em>End Date</em> to the exact
+          cutoff. Only commits whose <strong>committer date</strong> falls
+          within that window will be counted. Leave both blank to include all
+          commits on the selected branch.
         </Typography>
       </Paper>
 
@@ -109,17 +110,32 @@ export default async function NewCheckpointPage({
               </FormControl>
 
               <FormControl>
-                <FormLabel>Deadline (optional)</FormLabel>
+                <FormLabel>Start Date (optional)</FormLabel>
                 <TextField
-                  name="timestamp"
+                  name="startDate"
+                  type="datetime-local"
+                  size="small"
+                  fullWidth
+                />
+                <FormHelperText>
+                  Only commits whose committer date is on or after this datetime
+                  are counted. Leave blank to include all commits from the
+                  beginning of history.
+                </FormHelperText>
+              </FormControl>
+
+              <FormControl>
+                <FormLabel>End Date (optional)</FormLabel>
+                <TextField
+                  name="endDate"
                   type="datetime-local"
                   size="small"
                   fullWidth
                 />
                 <FormHelperText>
                   Only commits whose committer date is on or before this
-                  datetime are counted. Leave blank to include all commits on
-                  the selected branch.
+                  datetime are counted. Leave blank to include all commits up to
+                  the latest.
                 </FormHelperText>
               </FormControl>
 

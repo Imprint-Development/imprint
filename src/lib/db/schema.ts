@@ -112,7 +112,8 @@ export const checkpoints = pgTable("checkpoints", {
   courseId: uuid("course_id")
     .references(() => courses.id, { onDelete: "cascade" })
     .notNull(),
-  timestamp: timestamp("timestamp", { mode: "date" }),
+  startDate: timestamp("start_date", { mode: "date" }),
+  endDate: timestamp("end_date", { mode: "date" }),
   gitRef: text("git_ref"),
   status: text("status").default("pending").notNull(),
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow(),

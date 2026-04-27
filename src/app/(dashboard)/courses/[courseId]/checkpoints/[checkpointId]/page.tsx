@@ -136,8 +136,12 @@ export default async function CheckpointDetailPage({
                   </Typography>
                 </Typography>
                 <Typography variant="body2">
-                  <strong>Timestamp:</strong>{" "}
-                  {checkpoint.timestamp?.toLocaleString() ?? "—"}
+                  <strong>Start Date:</strong>{" "}
+                  {checkpoint.startDate?.toLocaleString() ?? "—"}
+                </Typography>
+                <Typography variant="body2">
+                  <strong>End Date:</strong>{" "}
+                  {checkpoint.endDate?.toLocaleString() ?? "—"}
                 </Typography>
                 <Typography variant="body2">
                   <strong>Created:</strong>{" "}

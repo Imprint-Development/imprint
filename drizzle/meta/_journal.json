@@ -29,6 +29,13 @@
       "when": 1776699458968,
       "tag": "0003_goofy_wolf_cub",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1776800000000,
+      "tag": "0004_checkpoint_date_range",
+      "breakpoints": true
     }
   ]
 }

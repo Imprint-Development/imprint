@@ -21,12 +21,14 @@ export async function createCheckpoint(courseId: string, formData: FormData) {
 
   const name = formData.get("name") as string;
   const gitRef = (formData.get("gitRef") as string) || null;
-  const timestampStr = formData.get("timestamp") as string;
-  const timestamp = timestampStr ? new Date(timestampStr) : null;
+  const startDateStr = formData.get("startDate") as string;
+  const endDateStr = formData.get("endDate") as string;
+  const startDate = startDateStr ? new Date(startDateStr) : null;
+  const endDate = endDateStr ? new Date(endDateStr) : null;
 
   const [checkpoint] = await db
     .insert(checkpoints)
-    .values({ name, courseId, gitRef, timestamp, status: "pending" })
+    .values({ name, courseId, gitRef, startDate, endDate, status: "pending" })
     .returning();
 
   redirect(`/courses/${courseId}/checkpoints/${checkpoint.id}`);
