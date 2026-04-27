@@ -7,7 +7,7 @@ import { CacheProvider } from "@emotion/react";
 import { createTheme, ThemeProvider, CssBaseline } from "@mui/material";
 
 const theme = createTheme({
-  colorSchemes: { dark: true },
+  colorSchemes: { light: true },
   cssVariables: true,
   typography: {
     fontFamily: "var(--font-geist-sans, Inter, system-ui, sans-serif)",

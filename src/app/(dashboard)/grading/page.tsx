@@ -7,11 +7,10 @@ import { redirect } from "next/navigation";
 import Typography from "@mui/material/Typography";
 import Breadcrumbs from "@mui/material/Breadcrumbs";
 import Card from "@mui/material/Card";
-import CardActionArea from "@mui/material/CardActionArea";
 import CardContent from "@mui/material/CardContent";
 import Box from "@mui/material/Box";
 import Alert from "@mui/material/Alert";
-import Link from "next/link";
+
 
 export default async function GradingOverviewPage() {
   const session = await auth();
@@ -53,16 +52,26 @@ export default async function GradingOverviewPage() {
           }}
         >
           {myCourses.map((course) => (
-            <Card key={course.id} variant="outlined">
-              <CardActionArea component={Link} href={`/grading/${course.id}`}>
+            <AppLink
+              key={course.id}
+              href={`/grading/${course.id}`}
+              sx={{ textDecoration: "none", color: "inherit", display: "block" }}
+            >
+              <Card
+                variant="outlined"
+                sx={{
+                  "&:hover": { boxShadow: 3 },
+                  transition: "box-shadow 0.2s",
+                }}
+              >
                 <CardContent>
                   <Typography variant="h6">{course.name}</Typography>
                   <Typography variant="body2" color="text.secondary">
                     {course.semester}
                   </Typography>
                 </CardContent>
-              </CardActionArea>
-            </Card>
+              </Card>
+            </AppLink>
           ))}
         </Box>
       )}

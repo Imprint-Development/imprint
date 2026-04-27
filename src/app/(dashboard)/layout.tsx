@@ -1,5 +1,8 @@
 import { auth, signOut } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { db } from "@/lib/db";
+import { courses, courseCollaborators } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 import DashboardShell from "@/components/DashboardShell";
 
 export default async function DashboardLayout({
@@ -15,13 +18,23 @@ export default async function DashboardLayout({
     email: session.user?.email ?? "",
   };
 
+  const userCourses = await db
+    .select({
+      id: courses.id,
+      name: courses.name,
+      semester: courses.semester,
+    })
+    .from(courseCollaborators)
+    .innerJoin(courses, eq(courses.id, courseCollaborators.courseId))
+    .where(eq(courseCollaborators.userId, session.user!.id!));
+
   async function signOutAction() {
     "use server";
     await signOut({ redirectTo: "/login" });
   }
 
   return (
-    <DashboardShell user={user} signOutAction={signOutAction}>
+    <DashboardShell user={user} signOutAction={signOutAction} courses={userCourses}>
       {children}
     </DashboardShell>
   );
