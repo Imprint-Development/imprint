@@ -31,7 +31,7 @@ import CardContent from "@mui/material/CardContent";
 import Chip from "@mui/material/Chip";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
-import Breadcrumbs from "@mui/material/Breadcrumbs";
+import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";
@@ -44,10 +44,8 @@ import Divider from "@mui/material/Divider";
 import FormControl from "@mui/material/FormControl";
 import FormLabel from "@mui/material/FormLabel";
 import Paper from "@mui/material/Paper";
-import HomeRounded from "@mui/icons-material/HomeRounded";
 import DeleteRounded from "@mui/icons-material/DeleteRounded";
 import AddRounded from "@mui/icons-material/AddRounded";
-
 const TABS = [
   { label: "Groups", value: "groups" },
   { label: "Checkpoints", value: "checkpoints" },
@@ -126,13 +124,12 @@ export default async function CourseDetailPage({
 
   return (
     <Box sx={{ p: 3 }}>
-      <Breadcrumbs sx={{ mb: 2 }}>
-        <AppLink href="/">
-          <HomeRounded fontSize="small" />
-        </AppLink>
-        <AppLink href="/courses">Courses</AppLink>
-        <Typography>{course.name}</Typography>
-      </Breadcrumbs>
+      <PageBreadcrumbs
+        items={[
+          { label: "Course management", href: "/courses" },
+          { label: course.name },
+        ]}
+      />
 
       <Stack direction="row" sx={{ alignItems: "center", mb: 3 }} spacing={2}>
         <Typography variant="h5">{course.name}</Typography>
@@ -245,7 +242,8 @@ export default async function CourseDetailPage({
                     <TableCell>Name</TableCell>
                     <TableCell>Git Ref</TableCell>
                     <TableCell>Status</TableCell>
-                    <TableCell>Created</TableCell>
+                    <TableCell>Start Date</TableCell>
+                    <TableCell>End Date</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -285,8 +283,13 @@ export default async function CourseDetailPage({
                         />
                       </TableCell>
                       <TableCell>
-                        {cp.createdAt
-                          ? new Date(cp.createdAt).toLocaleDateString()
+                        {cp.startDate
+                          ? new Date(cp.startDate).toLocaleDateString()
+                          : "—"}
+                      </TableCell>
+                      <TableCell>
+                        {cp.endDate
+                          ? new Date(cp.endDate).toLocaleDateString()
                           : "—"}
                       </TableCell>
                     </TableRow>

@@ -1,14 +1,17 @@
 import AppLink from "@/components/AppLink";
 import ButtonLink from "@/components/ButtonLink";
+import RerunButton from "@/components/RerunButton";
 import { db } from "@/lib/db";
 import { checkpoints, courses } from "@/lib/db/schema";
 import { auth } from "@/lib/auth";
+import { triggerAnalysis } from "@/lib/actions/checkpoints";
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import Typography from "@mui/material/Typography";
-import Breadcrumbs from "@mui/material/Breadcrumbs";
+import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 import Chip from "@mui/material/Chip";
 import Alert from "@mui/material/Alert";
+import Stack from "@mui/material/Stack";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";
@@ -52,12 +55,7 @@ export default async function CheckpointsPage({
 
   return (
     <Box sx={{ p: 3 }}>
-      <Breadcrumbs sx={{ mb: 2 }}>
-        <AppLink href="/">Home</AppLink>
-        <AppLink href="/courses">Courses</AppLink>
-        <AppLink href={`/courses/${courseId}`}>{course.name}</AppLink>
-        <Typography>Checkpoints</Typography>
-      </Breadcrumbs>
+      <PageBreadcrumbs items={[{ label: "Checkpoints" }]} />
 
       <Box
         sx={{
@@ -88,7 +86,8 @@ export default async function CheckpointsPage({
                 <TableCell>Name</TableCell>
                 <TableCell>Git Ref</TableCell>
                 <TableCell>Status</TableCell>
-                <TableCell>Created</TableCell>
+                <TableCell>Start Date</TableCell>
+                <TableCell>End Date</TableCell>
                 <TableCell>Actions</TableCell>
               </TableRow>
             </TableHead>
@@ -115,14 +114,33 @@ export default async function CheckpointsPage({
                     />
                   </TableCell>
                   <TableCell>
-                    {cp.createdAt
-                      ? new Date(cp.createdAt).toLocaleDateString()
+                    {cp.startDate
+                      ? new Date(cp.startDate).toLocaleDateString()
                       : "—"}
                   </TableCell>
                   <TableCell>
-                    <AppLink href={`/courses/${courseId}/checkpoints/${cp.id}`}>
-                      View
-                    </AppLink>
+                    {cp.endDate
+                      ? new Date(cp.endDate).toLocaleDateString()
+                      : "—"}
+                  </TableCell>
+                  <TableCell>
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      sx={{ alignItems: "center" }}
+                    >
+                      <AppLink
+                        href={`/courses/${courseId}/checkpoints/${cp.id}`}
+                      >
+                        View
+                      </AppLink>
+                      {cp.status !== "analyzing" && (
+                        <RerunButton
+                          action={triggerAnalysis.bind(null, cp.id, courseId)}
+                          enabledPipelines={cp.enabledPipelines}
+                        />
+                      )}
+                    </Stack>
                   </TableCell>
                 </TableRow>
               ))}

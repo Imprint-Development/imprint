@@ -11,9 +11,8 @@ import CardContent from "@mui/material/CardContent";
 import Chip from "@mui/material/Chip";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
-import Breadcrumbs from "@mui/material/Breadcrumbs";
+import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 import AddRounded from "@mui/icons-material/AddRounded";
-import HomeRounded from "@mui/icons-material/HomeRounded";
 
 export default async function CoursesPage() {
   const session = await auth();
@@ -27,12 +26,7 @@ export default async function CoursesPage() {
 
   return (
     <Box sx={{ p: 3 }}>
-      <Breadcrumbs sx={{ mb: 2 }}>
-        <AppLink href="/">
-          <HomeRounded fontSize="small" />
-        </AppLink>
-        <Typography>Courses</Typography>
-      </Breadcrumbs>
+      <PageBreadcrumbs items={[{ label: "Course management" }]} />
 
       <Stack
         direction="row"
@@ -88,9 +82,6 @@ export default async function CoursesPage() {
                       color="primary"
                       variant="outlined"
                     />
-                    <Typography variant="body2" color="text.secondary">
-                      Created {course.createdAt?.toLocaleDateString()}
-                    </Typography>
                   </Stack>
                 </CardContent>
               </Card>

@@ -6,15 +6,13 @@ import {
   checkpointRepoMeta,
   students,
   repositories,
-  studentGroups,
-  checkpoints,
-  courses,
 } from "@/lib/db/schema";
 import { eq, inArray, and } from "drizzle-orm";
 import path from "path";
 import os from "os";
 import fs from "fs/promises";
 import crypto from "crypto";
+import type { PipelineContext } from "./types";
 
 interface FileStats {
   commits: number;
@@ -54,17 +52,14 @@ function parseGitLog(
   until?: Date
 ): Map<string, AuthorStats> {
   const authorMap = new Map<string, AuthorStats>();
-
   const lines = raw.split("\n");
   let currentEmail: string | null = null;
-  let currentHash: string | null = null;
   let currentSkip = false;
 
   for (const line of lines) {
     const trimmed = line.trim();
     if (!trimmed) continue;
 
-    // Commit header line: email|hash|committerISO
     if (trimmed.includes("|") && !trimmed.includes("\t")) {
       const parts = trimmed.split("|");
       if (parts.length === 3 && parts[1].length >= 7) {
@@ -73,21 +68,18 @@ function parseGitLog(
           (until && committerDate > until) ||
           (since && committerDate < since)
         );
-
         if (currentSkip) continue;
 
         currentEmail = parts[0].toLowerCase();
-        currentHash = parts[1];
-
+        const hash = parts[1];
         if (!authorMap.has(currentEmail)) {
           authorMap.set(currentEmail, emptyAuthorStats());
         }
-        authorMap.get(currentEmail)!.commitHashes.add(currentHash);
+        authorMap.get(currentEmail)!.commitHashes.add(hash);
         continue;
       }
     }
 
-    // numstat line: added\tremoved\tfilename
     if (!currentSkip && currentEmail && trimmed.includes("\t")) {
       const parts = trimmed.split("\t");
       if (parts.length >= 3) {
@@ -104,7 +96,6 @@ function parseGitLog(
     }
   }
 
-  // Set commit count from unique hashes (stored on code bucket)
   for (const stats of authorMap.values()) {
     stats.code.commits = stats.commitHashes.size;
   }
@@ -112,22 +103,11 @@ function parseGitLog(
   return authorMap;
 }
 
-interface GroupRecord {
-  id: string;
-}
+export async function runContributionsPipeline(
+  ctx: PipelineContext
+): Promise<void> {
+  const { checkpoint, group, ignoredEmails, log } = ctx;
 
-interface CheckpointRecord {
-  id: string;
-  gitRef: string | null;
-  startDate: Date | null;
-  endDate: Date | null;
-}
-
-async function analyzeGroupForCheckpoint(
-  checkpoint: CheckpointRecord,
-  group: GroupRecord,
-  ignoredEmails: Set<string>
-) {
   const groupStudents = await db
     .select()
     .from(students)
@@ -138,7 +118,32 @@ async function analyzeGroupForCheckpoint(
     .from(repositories)
     .where(eq(repositories.groupId, group.id));
 
+  if (groupRepos.length === 0) {
+    await log("warn", "No repositories found for this group");
+    return;
+  }
+
+  // Clear any existing analysis data for this group's repos for this checkpoint
+  const repoIds = groupRepos.map((r) => r.id);
+  await db
+    .delete(checkpointAnalyses)
+    .where(
+      and(
+        eq(checkpointAnalyses.checkpointId, checkpoint.id),
+        inArray(checkpointAnalyses.repositoryId, repoIds)
+      )
+    );
+  await db
+    .delete(checkpointRepoMeta)
+    .where(
+      and(
+        eq(checkpointRepoMeta.checkpointId, checkpoint.id),
+        inArray(checkpointRepoMeta.repositoryId, repoIds)
+      )
+    );
+
   for (const repo of groupRepos) {
+    await log("info", `Cloning ${repo.url}`);
     const tmpDir = path.join(
       os.tmpdir(),
       `imprint-analysis-${crypto.randomBytes(8).toString("hex")}`
@@ -146,12 +151,17 @@ async function analyzeGroupForCheckpoint(
 
     try {
       await fs.mkdir(tmpDir, { recursive: true });
-
       const git = simpleGit();
       await git.clone(repo.url, tmpDir);
 
       const repoGit = simpleGit(tmpDir);
 
+      if (checkpoint.gitRef) {
+        await log("info", `Checking out ref ${checkpoint.gitRef}`);
+        await repoGit.checkout(checkpoint.gitRef);
+      }
+
+      await log("info", "Running git log");
       const logArgs = [
         "log",
         "--use-mailmap",
@@ -159,11 +169,6 @@ async function analyzeGroupForCheckpoint(
         "--numstat",
         "--no-merges",
       ];
-
-      if (checkpoint.gitRef) {
-        await repoGit.checkout(checkpoint.gitRef);
-      }
-
       const logOutput = await repoGit.raw(logArgs);
       const authorMap = parseGitLog(
         logOutput,
@@ -171,7 +176,6 @@ async function analyzeGroupForCheckpoint(
         checkpoint.endDate ?? undefined
       );
 
-      // Build email-to-student mapping (primary email + gitEmails aliases)
       const registeredEmails = new Set(
         groupStudents.flatMap((s) => [
           s.email.toLowerCase(),
@@ -179,21 +183,24 @@ async function analyzeGroupForCheckpoint(
         ])
       );
 
-      // Unidentified authors: in git log, not a registered student, not ignored
       const unidentifiedAuthors = [...authorMap.keys()].filter(
         (email) => !registeredEmails.has(email) && !ignoredEmails.has(email)
       );
 
-      // Write per-repo metadata
+      if (unidentifiedAuthors.length > 0) {
+        await log(
+          "warn",
+          `Unidentified authors: ${unidentifiedAuthors.join(", ")}`
+        );
+      }
+
       await db.insert(checkpointRepoMeta).values({
         checkpointId: checkpoint.id,
         repositoryId: repo.id,
         unidentifiedAuthors,
       });
 
-      // Insert analysis for each student
       for (const student of groupStudents) {
-        // Try primary email first, then any gitEmails aliases
         const allEmails = [
           student.email.toLowerCase(),
           ...student.gitEmails.map((e) => e.toLowerCase()),
@@ -232,93 +239,10 @@ async function analyzeGroupForCheckpoint(
           boardMetrics: null,
         });
       }
+
+      await log("info", `Finished processing ${repo.url}`);
     } finally {
       await fs.rm(tmpDir, { recursive: true, force: true }).catch(() => {});
     }
   }
-}
-
-export async function analyzeCheckpoint(checkpointId: string) {
-  const [checkpoint] = await db
-    .select()
-    .from(checkpoints)
-    .where(eq(checkpoints.id, checkpointId));
-
-  if (!checkpoint) throw new Error("Checkpoint not found");
-
-  const [course] = await db
-    .select()
-    .from(courses)
-    .where(eq(courses.id, checkpoint.courseId));
-
-  const ignoredEmails = new Set(
-    (course?.ignoredGitEmails ?? []).map((e) => e.toLowerCase())
-  );
-
-  const groups = await db
-    .select()
-    .from(studentGroups)
-    .where(eq(studentGroups.courseId, checkpoint.courseId));
-
-  for (const group of groups) {
-    await analyzeGroupForCheckpoint(checkpoint, group, ignoredEmails);
-  }
-}
-
-export async function analyzeCheckpointForGroup(
-  checkpointId: string,
-  groupId: string
-) {
-  const [checkpoint] = await db
-    .select()
-    .from(checkpoints)
-    .where(eq(checkpoints.id, checkpointId));
-
-  if (!checkpoint) throw new Error("Checkpoint not found");
-
-  const [group] = await db
-    .select()
-    .from(studentGroups)
-    .where(eq(studentGroups.id, groupId));
-
-  if (!group) throw new Error("Group not found");
-
-  const [course] = await db
-    .select()
-    .from(courses)
-    .where(eq(courses.id, checkpoint.courseId));
-
-  const ignoredEmails = new Set(
-    (course?.ignoredGitEmails ?? []).map((e) => e.toLowerCase())
-  );
-
-  // Clear existing analysis data for this group's repos
-  const groupRepos = await db
-    .select()
-    .from(repositories)
-    .where(eq(repositories.groupId, groupId));
-
-  if (groupRepos.length > 0) {
-    const repoIds = groupRepos.map((r) => r.id);
-
-    await db
-      .delete(checkpointAnalyses)
-      .where(
-        and(
-          eq(checkpointAnalyses.checkpointId, checkpointId),
-          inArray(checkpointAnalyses.repositoryId, repoIds)
-        )
-      );
-
-    await db
-      .delete(checkpointRepoMeta)
-      .where(
-        and(
-          eq(checkpointRepoMeta.checkpointId, checkpointId),
-          inArray(checkpointRepoMeta.repositoryId, repoIds)
-        )
-      );
-  }
-
-  await analyzeGroupForCheckpoint(checkpoint, group, ignoredEmails);
 }

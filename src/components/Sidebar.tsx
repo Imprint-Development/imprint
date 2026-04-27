@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import NextLink from "next/link";
+import NextImage from "next/image";
 import { usePathname } from "next/navigation";
 import Box from "@mui/material/Box";
 import Drawer from "@mui/material/Drawer";
@@ -33,11 +34,15 @@ interface NavItem {
   icon: React.ReactNode;
   /** If true, requires a selected course and href is a suffix after /courses/[id] */
   courseScoped?: boolean;
+  /**
+   * Override the resolved href entirely (receives the selectedCourseId).
+   * Used when the target URL doesn't follow the /courses/[id] prefix pattern.
+   */
+  buildHref?: (selectedCourseId: string | null) => string | null;
 }
 
 const navItems: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: <HomeRounded /> },
-  { label: "Courses", href: "/courses", icon: <SchoolRounded /> },
   {
     label: "Groups",
     href: "/groups",
@@ -50,7 +55,21 @@ const navItems: NavItem[] = [
     icon: <FlagRounded />,
     courseScoped: true,
   },
-  { label: "Grading", href: "/grading", icon: <GradingRounded /> },
+  {
+    label: "Grading",
+    href: "/grading",
+    icon: <GradingRounded />,
+    buildHref: (id) => (id ? `/grading/${id}` : null),
+  },
+];
+
+/** Shown at the bottom of the nav list, above the user footer. */
+const bottomNavItems: NavItem[] = [
+  {
+    label: "Course management",
+    href: "/courses",
+    icon: <SchoolRounded />,
+  },
 ];
 
 interface SidebarProps {
@@ -68,6 +87,60 @@ function SidebarContent({
   const { courses, selectedCourseId, selectedCourse, selectCourse } =
     useCourse();
 
+  function resolveItem(item: NavItem): {
+    href: string | null;
+    active: boolean;
+    disabled: boolean;
+  } {
+    if (item.buildHref) {
+      const href = item.buildHref(selectedCourseId);
+      const active =
+        pathname === item.href ||
+        pathname.startsWith(item.href + "/") ||
+        (href !== null &&
+          (pathname === href || pathname.startsWith(href + "/")));
+      return { href, active, disabled: href === null };
+    }
+    if (item.courseScoped) {
+      const href = selectedCourseId
+        ? `/courses/${selectedCourseId}${item.href}`
+        : null;
+      const active =
+        !!selectedCourseId &&
+        pathname.includes(`/courses/${selectedCourseId}${item.href}`);
+      return { href, active, disabled: !selectedCourseId };
+    }
+    const active =
+      pathname === item.href || pathname.startsWith(item.href + "/");
+    return { href: item.href, active, disabled: false };
+  }
+
+  function NavItemRow({ item }: { item: NavItem }) {
+    const { href, active, disabled } = resolveItem(item);
+    return (
+      <ListItem disablePadding sx={{ px: 1, pb: 0.5 }}>
+        <ListItemButton
+          component={disabled || !href ? "div" : NextLink}
+          href={disabled || !href ? undefined : href}
+          selected={active}
+          disabled={disabled}
+          sx={{ borderRadius: 2 }}
+        >
+          <ListItemIcon sx={{ minWidth: 36 }}>{item.icon}</ListItemIcon>
+          <ListItemText
+            primary={item.label}
+            slotProps={{
+              primary: {
+                variant: "body2",
+                sx: { fontWeight: active ? 600 : undefined },
+              },
+            }}
+          />
+        </ListItemButton>
+      </ListItem>
+    );
+  }
+
   return (
     <Box
       sx={{
@@ -80,10 +153,22 @@ function SidebarContent({
         width: SIDEBAR_WIDTH,
       }}
     >
-      <Box sx={{ p: 2, display: "flex", alignItems: "center" }}>
-        <Typography variant="h6" sx={{ fontWeight: 700 }}>
-          Imprint
-        </Typography>
+      <Box
+        sx={{
+          p: 2,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <NextImage
+          src="/header-logo.png"
+          alt="Imprint"
+          width={160}
+          height={48}
+          style={{ objectFit: "contain" }}
+          priority
+        />
       </Box>
       <Divider />
 
@@ -115,54 +200,18 @@ function SidebarContent({
 
       <Divider />
       <List sx={{ flex: 1, pt: 1 }}>
-        {navItems.map((item) => {
-          const resolvedHref = item.courseScoped
-            ? selectedCourseId
-              ? `/courses/${selectedCourseId}${item.href}`
-              : "#"
-            : item.href;
-
-          const active = item.courseScoped
-            ? pathname.includes(
-                `/courses/${selectedCourseId ?? ""}${item.href}`
-              )
-            : item.href === "/courses"
-              ? pathname === "/courses" ||
-                (pathname.startsWith("/courses/") &&
-                  !navItems.some(
-                    (n) =>
-                      n.courseScoped &&
-                      selectedCourseId &&
-                      pathname.includes(`/courses/${selectedCourseId}${n.href}`)
-                  ))
-              : pathname === item.href || pathname.startsWith(item.href + "/");
-
-          const disabled = item.courseScoped && !selectedCourseId;
-
-          return (
-            <ListItem key={item.label} disablePadding sx={{ px: 1, pb: 0.5 }}>
-              <ListItemButton
-                component={disabled ? "div" : NextLink}
-                href={disabled ? undefined : resolvedHref}
-                selected={active}
-                disabled={disabled}
-                sx={{ borderRadius: 2 }}
-              >
-                <ListItemIcon sx={{ minWidth: 36 }}>{item.icon}</ListItemIcon>
-                <ListItemText
-                  primary={item.label}
-                  slotProps={{
-                    primary: {
-                      variant: "body2",
-                      sx: { fontWeight: active ? 600 : undefined },
-                    },
-                  }}
-                />
-              </ListItemButton>
-            </ListItem>
-          );
-        })}
+        {navItems.map((item) => (
+          <NavItemRow key={item.label} item={item} />
+        ))}
       </List>
+
+      <Divider />
+      <List sx={{ pt: 0.5, pb: 0.5 }}>
+        {bottomNavItems.map((item) => (
+          <NavItemRow key={item.label} item={item} />
+        ))}
+      </List>
+
       <Divider />
       <Box sx={{ display: "flex", alignItems: "center", gap: 1, p: 2 }}>
         <Box sx={{ minWidth: 0, flex: 1 }}>

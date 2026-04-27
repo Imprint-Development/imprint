@@ -1,4 +1,3 @@
-import AppLink from "@/components/AppLink";
 import { db } from "@/lib/db";
 import { courses } from "@/lib/db/schema";
 import { auth } from "@/lib/auth";
@@ -6,7 +5,7 @@ import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { createCheckpoint } from "@/lib/actions/checkpoints";
 import Typography from "@mui/material/Typography";
-import Breadcrumbs from "@mui/material/Breadcrumbs";
+import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
@@ -41,13 +40,12 @@ export default async function NewCheckpointPage({
 
   return (
     <Box sx={{ p: 3, maxWidth: 640, mx: "auto" }}>
-      <Breadcrumbs sx={{ mb: 2 }}>
-        <AppLink href="/">Home</AppLink>
-        <AppLink href="/courses">Courses</AppLink>
-        <AppLink href={`/courses/${courseId}`}>{course.name}</AppLink>
-        <AppLink href={`/courses/${courseId}/checkpoints`}>Checkpoints</AppLink>
-        <Typography>New</Typography>
-      </Breadcrumbs>
+      <PageBreadcrumbs
+        items={[
+          { label: "Checkpoints", href: `/courses/${courseId}/checkpoints` },
+          { label: "New" },
+        ]}
+      />
 
       <Typography variant="h5" sx={{ mb: 3 }}>
         Create Checkpoint
@@ -58,19 +56,20 @@ export default async function NewCheckpointPage({
           How checkpoints work
         </Typography>
         <Typography variant="body2">
-          A checkpoint captures each student&apos;s contribution up to a
-          specific point in time. When you run the analysis, Imprint clones
-          every group repository, checks out the configured branch, and counts
-          commits and lines changed — considering only commits whose{" "}
-          <strong>committer date</strong> is on or before the deadline.
+          A checkpoint captures each student&apos;s contribution within a date
+          range. When you run the analysis, Imprint clones every group
+          repository, checks out the configured branch, and counts commits and
+          lines changed — considering only commits whose{" "}
+          <strong>committer date</strong> falls within the specified window.
         </Typography>
         <Divider sx={{ my: 1.5 }} />
         <Typography variant="body2">
           <strong>Typical setup for a submission deadline:</strong> set{" "}
-          <em>Branch / ref</em> to <code>main</code> and <em>Deadline</em> to
-          the exact cutoff date and time. Commits pushed after the deadline will
-          be excluded regardless of what the author date says. Leave both fields
-          blank to analyse the full history of the default branch.
+          <em>Branch / ref</em> to <code>main</code>, <em>Start Date</em> to the
+          opening of the grading window, and <em>End Date</em> to the exact
+          cutoff. Only commits whose <strong>committer date</strong> falls
+          within that window will be counted. Leave both blank to include all
+          commits on the selected branch.
         </Typography>
       </Paper>
 
@@ -109,17 +108,32 @@ export default async function NewCheckpointPage({
               </FormControl>
 
               <FormControl>
-                <FormLabel>Deadline (optional)</FormLabel>
+                <FormLabel>Start Date (optional)</FormLabel>
                 <TextField
-                  name="timestamp"
+                  name="startDate"
+                  type="datetime-local"
+                  size="small"
+                  fullWidth
+                />
+                <FormHelperText>
+                  Only commits whose committer date is on or after this datetime
+                  are counted. Leave blank to include all commits from the
+                  beginning of history.
+                </FormHelperText>
+              </FormControl>
+
+              <FormControl>
+                <FormLabel>End Date (optional)</FormLabel>
+                <TextField
+                  name="endDate"
                   type="datetime-local"
                   size="small"
                   fullWidth
                 />
                 <FormHelperText>
                   Only commits whose committer date is on or before this
-                  datetime are counted. Leave blank to include all commits on
-                  the selected branch.
+                  datetime are counted. Leave blank to include all commits up to
+                  the latest.
                 </FormHelperText>
               </FormControl>
 

@@ -112,9 +112,14 @@ export const checkpoints = pgTable("checkpoints", {
   courseId: uuid("course_id")
     .references(() => courses.id, { onDelete: "cascade" })
     .notNull(),
-  timestamp: timestamp("timestamp", { mode: "date" }),
+  startDate: timestamp("start_date", { mode: "date" }),
+  endDate: timestamp("end_date", { mode: "date" }),
   gitRef: text("git_ref"),
   status: text("status").default("pending").notNull(),
+  enabledPipelines: text("enabled_pipelines")
+    .array()
+    .notNull()
+    .default(sql`ARRAY['contributions']::text[]`),
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow(),
 });
 
@@ -156,6 +161,20 @@ export const grades = pgTable(
   },
   (table) => [unique().on(table.checkpointId, table.groupId)]
 );
+
+export const checkpointLogs = pgTable("checkpoint_logs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  checkpointId: uuid("checkpoint_id")
+    .references(() => checkpoints.id, { onDelete: "cascade" })
+    .notNull(),
+  groupId: uuid("group_id").references(() => studentGroups.id, {
+    onDelete: "cascade",
+  }),
+  pipeline: text("pipeline").notNull(),
+  level: text("level").notNull(), // "info" | "warn" | "error"
+  message: text("message").notNull(),
+  createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+});
 
 export const checkpointRepoMeta = pgTable("checkpoint_repo_meta", {
   id: uuid("id").primaryKey().defaultRandom(),

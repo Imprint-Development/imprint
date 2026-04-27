@@ -5,15 +5,14 @@ import {
   checkpoints,
   checkpointAnalyses,
   checkpointRepoMeta,
+  checkpointLogs,
 } from "@/lib/db/schema";
 import { auth } from "@/lib/auth";
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import {
-  analyzeCheckpoint,
-  analyzeCheckpointForGroup,
-} from "@/lib/analysis/analyzer";
+import { analysisQueue } from "@/lib/queue";
+import { ALL_PIPELINE_IDS } from "@/lib/analysis/pipelines/registry";
 
 export async function createCheckpoint(courseId: string, formData: FormData) {
   const session = await auth();
@@ -21,39 +20,42 @@ export async function createCheckpoint(courseId: string, formData: FormData) {
 
   const name = formData.get("name") as string;
   const gitRef = (formData.get("gitRef") as string) || null;
-  const timestampStr = formData.get("timestamp") as string;
-  const timestamp = timestampStr ? new Date(timestampStr) : null;
+  const startDateStr = formData.get("startDate") as string;
+  const endDateStr = formData.get("endDate") as string;
+  const startDate = startDateStr ? new Date(startDateStr) : null;
+  const endDate = endDateStr ? new Date(endDateStr) : null;
 
   const [checkpoint] = await db
     .insert(checkpoints)
-    .values({ name, courseId, gitRef, timestamp, status: "pending" })
+    .values({ name, courseId, gitRef, startDate, endDate, status: "pending" })
     .returning();
 
   redirect(`/courses/${courseId}/checkpoints/${checkpoint.id}`);
 }
 
-export async function triggerAnalysis(checkpointId: string, courseId: string) {
+export async function triggerAnalysis(
+  checkpointId: string,
+  courseId: string,
+  formData: FormData
+) {
   const session = await auth();
   if (!session?.user?.id) throw new Error("Unauthorized");
 
+  const selected = formData.getAll("pipeline") as string[];
+  const enabledPipelines = selected.length > 0 ? selected : ALL_PIPELINE_IDS;
+
+  // Clear any previous logs for this checkpoint
+  await db
+    .delete(checkpointLogs)
+    .where(eq(checkpointLogs.checkpointId, checkpointId));
+
   await db
     .update(checkpoints)
-    .set({ status: "analyzing" })
+    .set({ status: "analyzing", enabledPipelines })
     .where(eq(checkpoints.id, checkpointId));
 
-  try {
-    await analyzeCheckpoint(checkpointId);
-    await db
-      .update(checkpoints)
-      .set({ status: "complete" })
-      .where(eq(checkpoints.id, checkpointId));
-  } catch (error) {
-    console.error("Analysis failed:", error);
-    await db
-      .update(checkpoints)
-      .set({ status: "failed" })
-      .where(eq(checkpoints.id, checkpointId));
-  }
+  // Enqueue the analysis job — the worker will update status when done
+  await analysisQueue.add("analyze", { checkpointId, courseId });
 
   revalidatePath(`/courses/${courseId}/checkpoints/${checkpointId}`);
 }
@@ -95,12 +97,14 @@ export async function rerunGroupAnalysis(
   const session = await auth();
   if (!session?.user?.id) throw new Error("Unauthorized");
 
-  try {
-    await analyzeCheckpointForGroup(checkpointId, groupId);
-  } catch (error) {
-    console.error("Group re-analysis failed:", error);
-    throw error;
-  }
+  // Mark checkpoint as analyzing so the UI reflects in-progress state
+  await db
+    .update(checkpoints)
+    .set({ status: "analyzing" })
+    .where(eq(checkpoints.id, checkpointId));
+
+  // Enqueue a targeted job — the worker will restore status to complete/failed
+  await analysisQueue.add("analyze-group", { checkpointId, courseId, groupId });
 
   revalidatePath(
     `/courses/${courseId}/groups/${groupId}/checkpoints/${checkpointId}`

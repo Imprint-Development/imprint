@@ -1,4 +1,3 @@
-import AppLink from "@/components/AppLink";
 import { db } from "@/lib/db";
 import {
   courses,
@@ -12,7 +11,7 @@ import { eq, and } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { saveGrade } from "@/lib/actions/grading";
 import Typography from "@mui/material/Typography";
-import Breadcrumbs from "@mui/material/Breadcrumbs";
+import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 import Button from "@mui/material/Button";
 import TextField from "@mui/material/TextField";
 import IconButton from "@mui/material/IconButton";
@@ -92,11 +91,7 @@ export default async function CourseGradingPage({
 
   return (
     <Box sx={{ p: 3 }}>
-      <Breadcrumbs sx={{ mb: 2 }}>
-        <AppLink href="/">Home</AppLink>
-        <AppLink href="/grading">Grading</AppLink>
-        <Typography>{course.name}</Typography>
-      </Breadcrumbs>
+      <PageBreadcrumbs items={[{ label: "Grading" }]} />
 
       <Box
         sx={{

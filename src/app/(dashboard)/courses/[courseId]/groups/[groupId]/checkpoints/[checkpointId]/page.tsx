@@ -1,4 +1,5 @@
 import AppLink from "@/components/AppLink";
+import GroupAnalysisLogs from "@/components/GroupAnalysisLogs";
 import { db } from "@/lib/db";
 import {
   checkpoints,
@@ -19,7 +20,7 @@ import {
   type RepoWarning,
 } from "./GroupAnalysisClient";
 import Typography from "@mui/material/Typography";
-import Breadcrumbs from "@mui/material/Breadcrumbs";
+import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
@@ -150,18 +151,20 @@ export default async function GroupCheckpointAnalysisPage({
 
   return (
     <Box sx={{ p: 3 }}>
-      <Breadcrumbs sx={{ mb: 2 }}>
-        <AppLink href="/">Home</AppLink>
-        <AppLink href="/courses">Courses</AppLink>
-        <AppLink href={`/courses/${courseId}`}>{course.name}</AppLink>
-        <AppLink href={`/courses/${courseId}/groups/${groupId}`}>
-          {group.name}
-        </AppLink>
-        <AppLink href={`/courses/${courseId}/groups/${groupId}/checkpoints`}>
-          Checkpoints
-        </AppLink>
-        <Typography>{checkpoint.name}</Typography>
-      </Breadcrumbs>
+      <PageBreadcrumbs
+        items={[
+          { label: "Groups", href: `/courses/${courseId}/groups` },
+          {
+            label: group.name,
+            href: `/courses/${courseId}/groups/${groupId}`,
+          },
+          {
+            label: "Checkpoints",
+            href: `/courses/${courseId}/groups/${groupId}/checkpoints`,
+          },
+          { label: checkpoint.name },
+        ]}
+      />
 
       <Stack direction="row" sx={{ alignItems: "center", mb: 3 }} spacing={2}>
         <Typography variant="h5">
@@ -186,16 +189,38 @@ export default async function GroupCheckpointAnalysisPage({
               </Typography>
             </Typography>
             <Typography variant="body2">
-              <strong>Timestamp:</strong>{" "}
-              {checkpoint.timestamp?.toLocaleString() ?? "—"}
+              <strong>Start Date:</strong>{" "}
+              {checkpoint.startDate?.toLocaleString() ?? "—"}
+            </Typography>
+            <Typography variant="body2">
+              <strong>End Date:</strong>{" "}
+              {checkpoint.endDate?.toLocaleString() ?? "—"}
             </Typography>
           </Stack>
         </CardContent>
       </Card>
 
-      {checkpoint.status !== "complete" && (
+      {checkpoint.status === "analyzing" && (
         <Alert severity="info" sx={{ mb: 3 }}>
-          Analysis is not complete yet.{" "}
+          Analysis is running in the background.{" "}
+          <AppLink href={`/courses/${courseId}/checkpoints/${checkpointId}`}>
+            Manage checkpoint
+          </AppLink>
+        </Alert>
+      )}
+
+      {checkpoint.status === "pending" && (
+        <Alert severity="warning" sx={{ mb: 3 }}>
+          Analysis has not been run yet.{" "}
+          <AppLink href={`/courses/${courseId}/checkpoints/${checkpointId}`}>
+            Manage checkpoint
+          </AppLink>
+        </Alert>
+      )}
+
+      {checkpoint.status === "failed" && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          Analysis failed.{" "}
           <AppLink href={`/courses/${courseId}/checkpoints/${checkpointId}`}>
             Manage checkpoint
           </AppLink>
@@ -223,6 +248,15 @@ export default async function GroupCheckpointAnalysisPage({
             </Button>
           </form>
         </Box>
+      )}
+
+      {checkpoint.status !== "pending" && (
+        <GroupAnalysisLogs
+          checkpointId={checkpointId}
+          groupId={groupId}
+          groupName={group.name}
+          initialStatus={checkpoint.status}
+        />
       )}
     </Box>
   );
