@@ -31,11 +31,11 @@ ghcr.io/imprint-development/imprint:sha-<sha>   # exact commit
    cp .env.example .env
    ```
 
-   | Variable             | Description                                              |
-   | -------------------- | -------------------------------------------------------- |
-   | `AUTH_SECRET`        | Random secret for signing sessions (`npx auth secret`)  |
-   | `AUTH_GITHUB_ID`     | GitHub OAuth App client ID                               |
-   | `AUTH_GITHUB_SECRET` | GitHub OAuth App client secret                           |
+   | Variable             | Description                                            |
+   | -------------------- | ------------------------------------------------------ |
+   | `AUTH_SECRET`        | Random secret for signing sessions (`npx auth secret`) |
+   | `AUTH_GITHUB_ID`     | GitHub OAuth App client ID                             |
+   | `AUTH_GITHUB_SECRET` | GitHub OAuth App client secret                         |
 
 2. Start the full stack (app + PostgreSQL + Redis):
 
