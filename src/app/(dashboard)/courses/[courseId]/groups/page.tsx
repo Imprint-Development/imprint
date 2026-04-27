@@ -2,7 +2,12 @@ import AppLink from "@/components/AppLink";
 import ButtonLink from "@/components/ButtonLink";
 import ImportCsvButton from "@/components/ImportCsvButton";
 import { db } from "@/lib/db";
-import { courses, studentGroups, students, repositories } from "@/lib/db/schema";
+import {
+  courses,
+  studentGroups,
+  students,
+  repositories,
+} from "@/lib/db/schema";
 import { auth } from "@/lib/auth";
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";

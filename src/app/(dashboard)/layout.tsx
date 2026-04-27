@@ -34,7 +34,11 @@ export default async function DashboardLayout({
   }
 
   return (
-    <DashboardShell user={user} signOutAction={signOutAction} courses={userCourses}>
+    <DashboardShell
+      user={user}
+      signOutAction={signOutAction}
+      courses={userCourses}
+    >
       {children}
     </DashboardShell>
   );

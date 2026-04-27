@@ -133,9 +133,7 @@ function SidebarContent({
                     (n) =>
                       n.courseScoped &&
                       selectedCourseId &&
-                      pathname.includes(
-                        `/courses/${selectedCourseId}${n.href}`
-                      )
+                      pathname.includes(`/courses/${selectedCourseId}${n.href}`)
                   ))
               : pathname === item.href || pathname.startsWith(item.href + "/");
 

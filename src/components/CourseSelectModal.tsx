@@ -30,10 +30,7 @@ export default function CourseSelectModal() {
                 onClick={() => selectCourse(c.id)}
                 sx={{ borderRadius: 1 }}
               >
-                <ListItemText
-                  primary={c.name}
-                  secondary={c.semester}
-                />
+                <ListItemText primary={c.name} secondary={c.semester} />
               </ListItemButton>
             ))}
           </List>

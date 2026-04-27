@@ -40,7 +40,10 @@ function CollapsibleRow({
 
   return (
     <Fragment>
-      <TableRow hover sx={{ "& > *": { borderBottom: open ? "unset" : undefined } }}>
+      <TableRow
+        hover
+        sx={{ "& > *": { borderBottom: open ? "unset" : undefined } }}
+      >
         <TableCell sx={{ width: 40, pr: 0 }}>
           <IconButton size="small" onClick={() => setOpen(!open)}>
             {open ? (
@@ -90,7 +93,10 @@ function CollapsibleRow({
                   No members yet.
                 </Typography>
               ) : (
-                <Stack direction="row" sx={{ flexWrap: "wrap", gap: 0.75, mb: 2 }}>
+                <Stack
+                  direction="row"
+                  sx={{ flexWrap: "wrap", gap: 0.75, mb: 2 }}
+                >
                   {group.students.map((s) => (
                     <Chip
                       key={s.id}

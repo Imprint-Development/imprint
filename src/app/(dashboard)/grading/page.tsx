@@ -11,7 +11,6 @@ import CardContent from "@mui/material/CardContent";
 import Box from "@mui/material/Box";
 import Alert from "@mui/material/Alert";
 
-
 export default async function GradingOverviewPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
@@ -55,7 +54,11 @@ export default async function GradingOverviewPage() {
             <AppLink
               key={course.id}
               href={`/grading/${course.id}`}
-              sx={{ textDecoration: "none", color: "inherit", display: "block" }}
+              sx={{
+                textDecoration: "none",
+                color: "inherit",
+                display: "block",
+              }}
             >
               <Card
                 variant="outlined"
