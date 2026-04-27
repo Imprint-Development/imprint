@@ -158,6 +158,20 @@ export const grades = pgTable(
   (table) => [unique().on(table.checkpointId, table.groupId)]
 );
 
+export const checkpointLogs = pgTable("checkpoint_logs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  checkpointId: uuid("checkpoint_id")
+    .references(() => checkpoints.id, { onDelete: "cascade" })
+    .notNull(),
+  groupId: uuid("group_id").references(() => studentGroups.id, {
+    onDelete: "cascade",
+  }),
+  pipeline: text("pipeline").notNull(),
+  level: text("level").notNull(), // "info" | "warn" | "error"
+  message: text("message").notNull(),
+  createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+});
+
 export const checkpointRepoMeta = pgTable("checkpoint_repo_meta", {
   id: uuid("id").primaryKey().defaultRandom(),
   checkpointId: uuid("checkpoint_id")

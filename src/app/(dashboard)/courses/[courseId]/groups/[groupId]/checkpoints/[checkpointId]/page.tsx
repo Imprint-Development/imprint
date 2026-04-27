@@ -1,4 +1,5 @@
 import AppLink from "@/components/AppLink";
+import GroupAnalysisLogs from "@/components/GroupAnalysisLogs";
 import { db } from "@/lib/db";
 import {
   checkpoints,
@@ -197,9 +198,27 @@ export default async function GroupCheckpointAnalysisPage({
         </CardContent>
       </Card>
 
-      {checkpoint.status !== "complete" && (
+      {checkpoint.status === "analyzing" && (
         <Alert severity="info" sx={{ mb: 3 }}>
-          Analysis is not complete yet.{" "}
+          Analysis is running in the background.{" "}
+          <AppLink href={`/courses/${courseId}/checkpoints/${checkpointId}`}>
+            Manage checkpoint
+          </AppLink>
+        </Alert>
+      )}
+
+      {checkpoint.status === "pending" && (
+        <Alert severity="warning" sx={{ mb: 3 }}>
+          Analysis has not been run yet.{" "}
+          <AppLink href={`/courses/${courseId}/checkpoints/${checkpointId}`}>
+            Manage checkpoint
+          </AppLink>
+        </Alert>
+      )}
+
+      {checkpoint.status === "failed" && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          Analysis failed.{" "}
           <AppLink href={`/courses/${courseId}/checkpoints/${checkpointId}`}>
             Manage checkpoint
           </AppLink>
@@ -227,6 +246,15 @@ export default async function GroupCheckpointAnalysisPage({
             </Button>
           </form>
         </Box>
+      )}
+
+      {checkpoint.status !== "pending" && (
+        <GroupAnalysisLogs
+          checkpointId={checkpointId}
+          groupId={groupId}
+          groupName={group.name}
+          initialStatus={checkpoint.status}
+        />
       )}
     </Box>
   );

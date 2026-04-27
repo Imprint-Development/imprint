@@ -67,8 +67,8 @@ export default async function NewCheckpointPage({
         <Divider sx={{ my: 1.5 }} />
         <Typography variant="body2">
           <strong>Typical setup for a submission deadline:</strong> set{" "}
-          <em>Branch / ref</em> to <code>main</code>, <em>Start Date</em> to
-          the opening of the grading window, and <em>End Date</em> to the exact
+          <em>Branch / ref</em> to <code>main</code>, <em>Start Date</em> to the
+          opening of the grading window, and <em>End Date</em> to the exact
           cutoff. Only commits whose <strong>committer date</strong> falls
           within that window will be counted. Leave both blank to include all
           commits on the selected branch.

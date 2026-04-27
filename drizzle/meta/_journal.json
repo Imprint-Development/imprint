@@ -36,6 +36,20 @@
       "when": 1776800000000,
       "tag": "0004_checkpoint_date_range",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1745712000000,
+      "tag": "0005_checkpoint_logs",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1777317664340,
+      "tag": "0006_absent_wolfpack",
+      "breakpoints": true
     }
   ]
 }

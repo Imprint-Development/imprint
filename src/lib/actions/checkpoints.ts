@@ -5,15 +5,13 @@ import {
   checkpoints,
   checkpointAnalyses,
   checkpointRepoMeta,
+  checkpointLogs,
 } from "@/lib/db/schema";
 import { auth } from "@/lib/auth";
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import {
-  analyzeCheckpoint,
-  analyzeCheckpointForGroup,
-} from "@/lib/analysis/analyzer";
+import { analysisQueue } from "@/lib/queue";
 
 export async function createCheckpoint(courseId: string, formData: FormData) {
   const session = await auth();
@@ -38,24 +36,18 @@ export async function triggerAnalysis(checkpointId: string, courseId: string) {
   const session = await auth();
   if (!session?.user?.id) throw new Error("Unauthorized");
 
+  // Clear any previous logs for this checkpoint
+  await db
+    .delete(checkpointLogs)
+    .where(eq(checkpointLogs.checkpointId, checkpointId));
+
   await db
     .update(checkpoints)
     .set({ status: "analyzing" })
     .where(eq(checkpoints.id, checkpointId));
 
-  try {
-    await analyzeCheckpoint(checkpointId);
-    await db
-      .update(checkpoints)
-      .set({ status: "complete" })
-      .where(eq(checkpoints.id, checkpointId));
-  } catch (error) {
-    console.error("Analysis failed:", error);
-    await db
-      .update(checkpoints)
-      .set({ status: "failed" })
-      .where(eq(checkpoints.id, checkpointId));
-  }
+  // Enqueue the analysis job — the worker will update status when done
+  await analysisQueue.add("analyze", { checkpointId, courseId });
 
   revalidatePath(`/courses/${courseId}/checkpoints/${checkpointId}`);
 }
@@ -97,12 +89,14 @@ export async function rerunGroupAnalysis(
   const session = await auth();
   if (!session?.user?.id) throw new Error("Unauthorized");
 
-  try {
-    await analyzeCheckpointForGroup(checkpointId, groupId);
-  } catch (error) {
-    console.error("Group re-analysis failed:", error);
-    throw error;
-  }
+  // Mark checkpoint as analyzing so the UI reflects in-progress state
+  await db
+    .update(checkpoints)
+    .set({ status: "analyzing" })
+    .where(eq(checkpoints.id, checkpointId));
+
+  // Enqueue a targeted job — the worker will restore status to complete/failed
+  await analysisQueue.add("analyze-group", { checkpointId, courseId, groupId });
 
   revalidatePath(
     `/courses/${courseId}/groups/${groupId}/checkpoints/${checkpointId}`

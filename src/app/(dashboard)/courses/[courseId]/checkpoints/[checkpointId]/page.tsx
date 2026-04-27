@@ -1,10 +1,22 @@
 import AppLink from "@/components/AppLink";
 import ConfirmDeleteButton from "@/components/ConfirmDeleteButton";
 import TabNav from "@/components/TabNav";
+import AnalysisLogsWithRefresh from "@/components/AnalysisLogsWithRefresh";
+import CheckpointGroupsPane, {
+  type GroupPaneData,
+} from "./CheckpointGroupsPane";
 import { db } from "@/lib/db";
-import { checkpoints, courses, studentGroups, students } from "@/lib/db/schema";
+import {
+  checkpoints,
+  courses,
+  studentGroups,
+  students,
+  repositories,
+  checkpointAnalyses,
+  checkpointRepoMeta,
+} from "@/lib/db/schema";
 import { auth } from "@/lib/auth";
-import { eq } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import {
   triggerAnalysis,
@@ -12,6 +24,10 @@ import {
   discardAnalysis,
 } from "@/lib/actions/checkpoints";
 import { CHECKPOINT_STATUS_COLOR } from "@/lib/constants";
+import type {
+  AnalysisRow,
+  RepoWarning,
+} from "../../groups/[groupId]/checkpoints/[checkpointId]/GroupAnalysisClient";
 import Typography from "@mui/material/Typography";
 import Breadcrumbs from "@mui/material/Breadcrumbs";
 import Button from "@mui/material/Button";
@@ -21,18 +37,11 @@ import Chip from "@mui/material/Chip";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
-import Divider from "@mui/material/Divider";
-import Table from "@mui/material/Table";
-import TableBody from "@mui/material/TableBody";
-import TableCell from "@mui/material/TableCell";
-import TableContainer from "@mui/material/TableContainer";
-import TableHead from "@mui/material/TableHead";
-import TableRow from "@mui/material/TableRow";
-import Paper from "@mui/material/Paper";
 import HomeRounded from "@mui/icons-material/HomeRounded";
 
 const TABS = [
   { label: "Overview", value: "overview" },
+  { label: "Logs", value: "logs" },
   { label: "Settings", value: "settings" },
 ];
 
@@ -69,15 +78,111 @@ export default async function CheckpointDetailPage({
     .from(studentGroups)
     .where(eq(studentGroups.courseId, courseId));
 
-  const groupsWithCounts = await Promise.all(
-    groups.map(async (group) => {
-      const studentList = await db
-        .select()
-        .from(students)
-        .where(eq(students.groupId, group.id));
-      return { ...group, studentCount: studentList.length };
-    })
-  );
+  // Build per-group analysis pane data when the checkpoint is complete
+  let groupPaneData: GroupPaneData[] = [];
+
+  if (checkpoint.status === "complete") {
+    groupPaneData = await Promise.all(
+      groups.map(async (group) => {
+        const studentList = await db
+          .select()
+          .from(students)
+          .where(eq(students.groupId, group.id));
+
+        const groupRepos = await db
+          .select()
+          .from(repositories)
+          .where(eq(repositories.groupId, group.id));
+
+        const repoIds = groupRepos.map((r) => r.id);
+
+        let analysisRows: AnalysisRow[] = [];
+        let repoWarnings: RepoWarning[] = [];
+
+        if (repoIds.length > 0) {
+          const analyses = await db
+            .select({
+              codeMetrics: checkpointAnalyses.codeMetrics,
+              testMetrics: checkpointAnalyses.testMetrics,
+              studentName: students.displayName,
+              repoId: repositories.id,
+              repoUrl: repositories.url,
+            })
+            .from(checkpointAnalyses)
+            .innerJoin(students, eq(students.id, checkpointAnalyses.studentId))
+            .innerJoin(
+              repositories,
+              eq(repositories.id, checkpointAnalyses.repositoryId)
+            )
+            .where(
+              and(
+                eq(checkpointAnalyses.checkpointId, checkpointId),
+                inArray(checkpointAnalyses.repositoryId, repoIds)
+              )
+            );
+
+          analysisRows = analyses.map((a) => ({
+            studentName: a.studentName,
+            repoId: a.repoId,
+            repoUrl: a.repoUrl,
+            codeMetrics: (a.codeMetrics as Record<string, number>) ?? {},
+            testMetrics: (a.testMetrics as Record<string, number>) ?? {},
+          }));
+
+          const metaRows = await db
+            .select({
+              repoId: repositories.id,
+              repoUrl: repositories.url,
+              unidentifiedAuthors: checkpointRepoMeta.unidentifiedAuthors,
+            })
+            .from(checkpointRepoMeta)
+            .innerJoin(
+              repositories,
+              eq(repositories.id, checkpointRepoMeta.repositoryId)
+            )
+            .where(
+              and(
+                eq(checkpointRepoMeta.checkpointId, checkpointId),
+                inArray(checkpointRepoMeta.repositoryId, repoIds)
+              )
+            );
+
+          repoWarnings = metaRows
+            .filter((m) => (m.unidentifiedAuthors as string[]).length > 0)
+            .map((m) => ({
+              repoId: m.repoId,
+              repoUrl: m.repoUrl,
+              unidentifiedAuthors: m.unidentifiedAuthors as string[],
+            }));
+        }
+
+        return {
+          groupId: group.id,
+          groupName: group.name,
+          studentCount: studentList.length,
+          analysisRows,
+          repoWarnings,
+        };
+      })
+    );
+  } else {
+    // For non-complete status we only need student counts
+    groupPaneData = await Promise.all(
+      groups.map(async (group) => {
+        const studentList = await db
+          .select()
+          .from(students)
+          .where(eq(students.groupId, group.id));
+        return {
+          groupId: group.id,
+          groupName: group.name,
+          studentCount: studentList.length,
+          analysisRows: [],
+          repoWarnings: [],
+        };
+      })
+    );
+  }
 
   const triggerAnalysisWithIds = triggerAnalysis.bind(
     null,
@@ -161,13 +266,26 @@ export default async function CheckpointDetailPage({
 
           {checkpoint.status === "analyzing" && (
             <Alert severity="info" sx={{ mb: 3 }}>
-              Analyzing…
+              Analysis is running in the background.{" "}
+              <AppLink
+                href={`/courses/${courseId}/checkpoints/${checkpointId}?tab=logs`}
+              >
+                View logs
+              </AppLink>
             </Alert>
           )}
 
           {checkpoint.status === "failed" && (
             <Stack spacing={2} sx={{ mb: 3 }}>
-              <Alert severity="error">Analysis failed. You can retry.</Alert>
+              <Alert severity="error">
+                Analysis failed.{" "}
+                <AppLink
+                  href={`/courses/${courseId}/checkpoints/${checkpointId}?tab=logs`}
+                >
+                  View logs
+                </AppLink>{" "}
+                or retry below.
+              </Alert>
               <form action={triggerAnalysisWithIds}>
                 <Button type="submit" variant="contained">
                   Retry Analysis
@@ -191,48 +309,22 @@ export default async function CheckpointDetailPage({
                 </form>
               </Box>
 
-              <TableContainer component={Paper} variant="outlined">
-                <Typography variant="h6" sx={{ p: 2 }}>
-                  Group Analysis
-                </Typography>
-                <Divider />
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Group</TableCell>
-                      <TableCell>Students</TableCell>
-                      <TableCell>Analysis</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {groupsWithCounts.map((group) => (
-                      <TableRow key={group.id}>
-                        <TableCell>
-                          <AppLink
-                            href={`/courses/${courseId}/groups/${group.id}`}
-                          >
-                            {group.name}
-                          </AppLink>
-                        </TableCell>
-                        <TableCell>
-                          {group.studentCount} student
-                          {group.studentCount !== 1 ? "s" : ""}
-                        </TableCell>
-                        <TableCell>
-                          <AppLink
-                            href={`/courses/${courseId}/groups/${group.id}/checkpoints/${checkpointId}`}
-                          >
-                            View Analysis
-                          </AppLink>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+              <CheckpointGroupsPane
+                groups={groupPaneData}
+                courseId={courseId}
+                checkpointId={checkpointId}
+              />
             </>
           )}
         </Box>
+      )}
+
+      {/* Logs tab */}
+      {tab === "logs" && (
+        <AnalysisLogsWithRefresh
+          checkpointId={checkpointId}
+          initialStatus={checkpoint.status}
+        />
       )}
 
       {/* Settings tab */}
