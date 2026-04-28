@@ -390,7 +390,7 @@ export default async function CourseDetailPage({
 
               <form action={addGradingCategoryWithId}>
                 <Stack spacing={2}>
-                  <Stack direction="row" spacing={1} alignItems="flex-end">
+                  <Stack direction="row" spacing={1} sx={{ alignItems: "flex-end" }}>
                     <FormControl sx={{ flex: 1 }}>
                       <FormLabel>Category Name</FormLabel>
                       <TextField
