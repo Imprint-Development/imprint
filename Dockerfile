@@ -10,6 +10,7 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV BUILD_STANDALONE=true
 # DATABASE_URL must be defined at build time only if pages use static generation
 # with DB access. For this app all data fetching is at runtime, so a stub suffices.
 ENV DATABASE_URL=postgresql://localhost/stub
