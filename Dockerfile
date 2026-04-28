@@ -10,6 +10,7 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV BUILD_STANDALONE=true
 # DATABASE_URL must be defined at build time only if pages use static generation
 # with DB access. For this app all data fetching is at runtime, so a stub suffices.
 ENV DATABASE_URL=postgresql://localhost/stub
@@ -22,13 +23,14 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN addgroup --system --gid 1001 nodejs \
-  && adduser --system --uid 1001 nextjs
+RUN apk add --no-cache su-exec tzdata shadow \
+  && addgroup --system --gid 1001 appgroup \
+  && adduser --system --uid 1001 -G appgroup appuser
 
 # Copy the standalone server output
 COPY --from=builder /app/.next/standalone ./
 # Copy static assets
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=appuser:appgroup /app/.next/static ./.next/static
 # Copy public assets
 COPY --from=builder /app/public ./public
 # Copy migration files and the migration runner script
@@ -39,11 +41,11 @@ COPY --from=builder /app/scripts/migrate.mjs ./scripts/migrate.mjs
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
-USER nextjs
+COPY --chmod=0755 docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 
 EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
-ENTRYPOINT ["docker-entrypoint.sh"]
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 CMD ["node", "server.js"]

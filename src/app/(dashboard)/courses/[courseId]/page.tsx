@@ -22,6 +22,8 @@ import {
   deleteCourse,
   addIgnoredGitEmail,
   removeIgnoredGitEmail,
+  addIgnoredGithubUsername,
+  removeIgnoredGithubUsername,
 } from "@/lib/actions/courses";
 import { CHECKPOINT_STATUS_COLOR } from "@/lib/constants";
 import Typography from "@mui/material/Typography";
@@ -31,7 +33,7 @@ import CardContent from "@mui/material/CardContent";
 import Chip from "@mui/material/Chip";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
-import Breadcrumbs from "@mui/material/Breadcrumbs";
+import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";
@@ -44,10 +46,8 @@ import Divider from "@mui/material/Divider";
 import FormControl from "@mui/material/FormControl";
 import FormLabel from "@mui/material/FormLabel";
 import Paper from "@mui/material/Paper";
-import HomeRounded from "@mui/icons-material/HomeRounded";
 import DeleteRounded from "@mui/icons-material/DeleteRounded";
 import AddRounded from "@mui/icons-material/AddRounded";
-
 const TABS = [
   { label: "Groups", value: "groups" },
   { label: "Checkpoints", value: "checkpoints" },
@@ -123,16 +123,19 @@ export default async function CourseDetailPage({
   const updateCourseWithId = updateCourse.bind(null, courseId);
   const deleteCourseWithId = deleteCourse.bind(null, courseId);
   const addIgnoredEmailWithId = addIgnoredGitEmail.bind(null, courseId);
+  const addIgnoredGithubUsernameWithId = addIgnoredGithubUsername.bind(
+    null,
+    courseId
+  );
 
   return (
     <Box sx={{ p: 3 }}>
-      <Breadcrumbs sx={{ mb: 2 }}>
-        <AppLink href="/">
-          <HomeRounded fontSize="small" />
-        </AppLink>
-        <AppLink href="/courses">Courses</AppLink>
-        <Typography>{course.name}</Typography>
-      </Breadcrumbs>
+      <PageBreadcrumbs
+        items={[
+          { label: "Course management", href: "/courses" },
+          { label: course.name },
+        ]}
+      />
 
       <Stack direction="row" sx={{ alignItems: "center", mb: 3 }} spacing={2}>
         <Typography variant="h5">{course.name}</Typography>
@@ -245,7 +248,8 @@ export default async function CourseDetailPage({
                     <TableCell>Name</TableCell>
                     <TableCell>Git Ref</TableCell>
                     <TableCell>Status</TableCell>
-                    <TableCell>Created</TableCell>
+                    <TableCell>Start Date</TableCell>
+                    <TableCell>End Date</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -285,8 +289,13 @@ export default async function CourseDetailPage({
                         />
                       </TableCell>
                       <TableCell>
-                        {cp.createdAt
-                          ? new Date(cp.createdAt).toLocaleDateString()
+                        {cp.startDate
+                          ? new Date(cp.startDate).toLocaleDateString()
+                          : "—"}
+                      </TableCell>
+                      <TableCell>
+                        {cp.endDate
+                          ? new Date(cp.endDate).toLocaleDateString()
                           : "—"}
                       </TableCell>
                     </TableRow>
@@ -444,6 +453,66 @@ export default async function CourseDetailPage({
                     type="email"
                     size="small"
                     sx={{ flex: 1 }}
+                  />
+                  <Button type="submit" size="small" variant="outlined">
+                    Add
+                  </Button>
+                </Stack>
+              </form>
+            </CardContent>
+          </Card>
+
+          <Card variant="outlined" sx={{ mb: 3 }}>
+            <CardContent>
+              <Typography variant="h6" sx={{ mb: 1 }}>
+                Ignored GitHub Usernames
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 2 }}>
+                Pull request activity from these GitHub accounts will be
+                silently ignored during analysis (e.g. bots, CI users).
+              </Typography>
+              {course.ignoredGithubUsernames.length > 0 && (
+                <Stack direction="row" sx={{ mb: 2, flexWrap: "wrap", gap: 1 }}>
+                  {course.ignoredGithubUsernames.map((username) => (
+                    <form
+                      key={username}
+                      action={removeIgnoredGithubUsername.bind(
+                        null,
+                        courseId,
+                        username
+                      )}
+                    >
+                      <Chip
+                        size="small"
+                        label={username}
+                        onDelete={undefined}
+                        deleteIcon={
+                          <IconButton
+                            type="submit"
+                            size="small"
+                            sx={{ borderRadius: "50%", p: 0 }}
+                          >
+                            <DeleteRounded fontSize="small" />
+                          </IconButton>
+                        }
+                        variant="outlined"
+                        sx={{ fontFamily: "monospace" }}
+                      />
+                    </form>
+                  ))}
+                </Stack>
+              )}
+              <Divider sx={{ my: 2 }} />
+              <form action={addIgnoredGithubUsernameWithId}>
+                <Stack direction="row" spacing={1}>
+                  <TextField
+                    name="ignoredGithubUsername"
+                    placeholder="github-login"
+                    size="small"
+                    sx={{ flex: 1 }}
+                    slotProps={{
+                      input: { sx: { fontFamily: "monospace" } },
+                    }}
                   />
                   <Button type="submit" size="small" variant="outlined">
                     Add

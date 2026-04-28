@@ -1,4 +1,3 @@
-import AppLink from "@/components/AppLink";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { courses, courseCollaborators } from "@/lib/db/schema";
@@ -14,8 +13,7 @@ import Stack from "@mui/material/Stack";
 import FormControl from "@mui/material/FormControl";
 import FormLabel from "@mui/material/FormLabel";
 import TextField from "@mui/material/TextField";
-import Breadcrumbs from "@mui/material/Breadcrumbs";
-import HomeRounded from "@mui/icons-material/HomeRounded";
+import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 
 export default async function NewGroupPage({
   params,
@@ -47,14 +45,12 @@ export default async function NewGroupPage({
 
   return (
     <Box sx={{ p: 3, maxWidth: 600 }}>
-      <Breadcrumbs sx={{ mb: 2 }}>
-        <AppLink href="/">
-          <HomeRounded fontSize="small" />
-        </AppLink>
-        <AppLink href="/courses">Courses</AppLink>
-        <AppLink href={`/courses/${courseId}`}>{course.name}</AppLink>
-        <Typography>New Group</Typography>
-      </Breadcrumbs>
+      <PageBreadcrumbs
+        items={[
+          { label: "Groups", href: `/courses/${courseId}/groups` },
+          { label: "New Group" },
+        ]}
+      />
 
       <Typography variant="h5" sx={{ mb: 3 }}>
         Create Group

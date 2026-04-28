@@ -1,38 +1,47 @@
 import AppLink from "@/components/AppLink";
 import ConfirmDeleteButton from "@/components/ConfirmDeleteButton";
+import RerunButton from "@/components/RerunButton";
 import TabNav from "@/components/TabNav";
+import AnalysisLogsWithRefresh from "@/components/AnalysisLogsWithRefresh";
+import CheckpointGroupsPane, {
+  type GroupPaneData,
+  type WarnLog,
+} from "./CheckpointGroupsPane";
+import RunAnalysisForm from "./RunAnalysisForm";
 import { db } from "@/lib/db";
-import { checkpoints, courses, studentGroups, students } from "@/lib/db/schema";
-import { auth } from "@/lib/auth";
-import { eq } from "drizzle-orm";
-import { redirect } from "next/navigation";
+import { ALL_PIPELINE_IDS } from "@/lib/analysis/pipelines/registry";
 import {
-  triggerAnalysis,
-  deleteCheckpoint,
-  discardAnalysis,
-} from "@/lib/actions/checkpoints";
+  checkpoints,
+  courses,
+  studentGroups,
+  students,
+  repositories,
+  checkpointAnalyses,
+  checkpointRepoMeta,
+  checkpointLogs,
+} from "@/lib/db/schema";
+import { auth } from "@/lib/auth";
+import { eq, and, inArray, or, gte, max, like } from "drizzle-orm";
+import { redirect } from "next/navigation";
+import { triggerAnalysis, deleteCheckpoint } from "@/lib/actions/checkpoints";
 import { CHECKPOINT_STATUS_COLOR } from "@/lib/constants";
+import type {
+  AnalysisRow,
+  RepoWarning,
+  ReviewWarning,
+} from "../../groups/[groupId]/checkpoints/[checkpointId]/GroupAnalysisClient";
 import Typography from "@mui/material/Typography";
-import Breadcrumbs from "@mui/material/Breadcrumbs";
-import Button from "@mui/material/Button";
+import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Chip from "@mui/material/Chip";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
-import Divider from "@mui/material/Divider";
-import Table from "@mui/material/Table";
-import TableBody from "@mui/material/TableBody";
-import TableCell from "@mui/material/TableCell";
-import TableContainer from "@mui/material/TableContainer";
-import TableHead from "@mui/material/TableHead";
-import TableRow from "@mui/material/TableRow";
-import Paper from "@mui/material/Paper";
-import HomeRounded from "@mui/icons-material/HomeRounded";
 
 const TABS = [
   { label: "Overview", value: "overview" },
+  { label: "Analysis", value: "analysis" },
   { label: "Settings", value: "settings" },
 ];
 
@@ -69,15 +78,218 @@ export default async function CheckpointDetailPage({
     .from(studentGroups)
     .where(eq(studentGroups.courseId, courseId));
 
-  const groupsWithCounts = await Promise.all(
-    groups.map(async (group) => {
-      const studentList = await db
-        .select()
-        .from(students)
-        .where(eq(students.groupId, group.id));
-      return { ...group, studentCount: studentList.length };
-    })
-  );
+  // Build per-group analysis pane data when the checkpoint is complete
+  let groupPaneData: GroupPaneData[] = [];
+
+  if (checkpoint.status === "complete") {
+    groupPaneData = await Promise.all(
+      groups.map(async (group) => {
+        const studentList = await db
+          .select()
+          .from(students)
+          .where(eq(students.groupId, group.id));
+
+        const groupRepos = await db
+          .select()
+          .from(repositories)
+          .where(eq(repositories.groupId, group.id));
+
+        const repoIds = groupRepos.map((r) => r.id);
+
+        let analysisRows: AnalysisRow[] = [];
+        let repoWarnings: RepoWarning[] = [];
+        let analysedAt: Date | null = null;
+
+        // Fetch distinct pipelines that produced logs for this group
+        const logRows = await db
+          .selectDistinct({ pipeline: checkpointLogs.pipeline })
+          .from(checkpointLogs)
+          .where(
+            and(
+              eq(checkpointLogs.checkpointId, checkpointId),
+              eq(checkpointLogs.groupId, group.id)
+            )
+          );
+        const executedPipelines = logRows.map((r) => r.pipeline);
+
+        // Find the start of the latest run for this group (most recent "Starting" info log)
+        const runStartRow = await db
+          .select({ runStart: max(checkpointLogs.createdAt) })
+          .from(checkpointLogs)
+          .where(
+            and(
+              eq(checkpointLogs.checkpointId, checkpointId),
+              eq(checkpointLogs.groupId, group.id),
+              eq(checkpointLogs.level, "info"),
+              like(checkpointLogs.message, "Starting%")
+            )
+          );
+        const runStart = runStartRow[0]?.runStart ?? null;
+
+        // Fetch warn/error log entries scoped to the latest run only
+        const warnLogRows = await db
+          .select({
+            pipeline: checkpointLogs.pipeline,
+            level: checkpointLogs.level,
+            message: checkpointLogs.message,
+            repoUrl: repositories.url,
+          })
+          .from(checkpointLogs)
+          .leftJoin(
+            repositories,
+            eq(repositories.id, checkpointLogs.repositoryId)
+          )
+          .where(
+            and(
+              eq(checkpointLogs.checkpointId, checkpointId),
+              eq(checkpointLogs.groupId, group.id),
+              or(
+                eq(checkpointLogs.level, "warn"),
+                eq(checkpointLogs.level, "error")
+              ),
+              runStart ? gte(checkpointLogs.createdAt, runStart) : undefined
+            )
+          );
+        const warnLogs: WarnLog[] = warnLogRows.map((r) => ({
+          pipeline: r.pipeline,
+          level: r.level,
+          message: r.message,
+          repoUrl: r.repoUrl ?? null,
+        }));
+        const logWarningCount = warnLogs.length;
+
+        if (repoIds.length > 0) {
+          const analyses = await db
+            .select({
+              codeMetrics: checkpointAnalyses.codeMetrics,
+              testMetrics: checkpointAnalyses.testMetrics,
+              reviewMetrics: checkpointAnalyses.reviewMetrics,
+              studentName: students.displayName,
+              repoId: repositories.id,
+              repoUrl: repositories.url,
+              createdAt: checkpointAnalyses.createdAt,
+            })
+            .from(checkpointAnalyses)
+            .innerJoin(students, eq(students.id, checkpointAnalyses.studentId))
+            .innerJoin(
+              repositories,
+              eq(repositories.id, checkpointAnalyses.repositoryId)
+            )
+            .where(
+              and(
+                eq(checkpointAnalyses.checkpointId, checkpointId),
+                inArray(checkpointAnalyses.repositoryId, repoIds)
+              )
+            );
+
+          analysedAt = analyses.reduce<Date | null>((max, a) => {
+            if (!a.createdAt) return max;
+            if (!max || a.createdAt > max) return a.createdAt;
+            return max;
+          }, null);
+
+          analysisRows = analyses.map((a) => ({
+            studentName: a.studentName,
+            repoId: a.repoId,
+            repoUrl: a.repoUrl,
+            codeMetrics: (a.codeMetrics as Record<string, number>) ?? {},
+            testMetrics: (a.testMetrics as Record<string, number>) ?? {},
+            reviewMetrics: (a.reviewMetrics as Record<string, number>) ?? {},
+          }));
+
+          const metaRows = await db
+            .select({
+              repoId: repositories.id,
+              repoUrl: repositories.url,
+              unidentifiedAuthors: checkpointRepoMeta.unidentifiedAuthors,
+            })
+            .from(checkpointRepoMeta)
+            .innerJoin(
+              repositories,
+              eq(repositories.id, checkpointRepoMeta.repositoryId)
+            )
+            .where(
+              and(
+                eq(checkpointRepoMeta.checkpointId, checkpointId),
+                inArray(checkpointRepoMeta.repositoryId, repoIds)
+              )
+            );
+
+          repoWarnings = metaRows
+            .filter((m) => (m.unidentifiedAuthors as string[]).length > 0)
+            .map((m) => ({
+              repoId: m.repoId,
+              repoUrl: m.repoUrl,
+              unidentifiedAuthors: m.unidentifiedAuthors as string[],
+            }));
+        }
+
+        // Fetch review pipeline warn-level logs per repo for this group
+        const reviewWarnLogs = await db
+          .select({
+            message: checkpointLogs.message,
+            repoId: repositories.id,
+            repoUrl: repositories.url,
+          })
+          .from(checkpointLogs)
+          .innerJoin(
+            repositories,
+            eq(repositories.id, checkpointLogs.repositoryId)
+          )
+          .where(
+            and(
+              eq(checkpointLogs.checkpointId, checkpointId),
+              eq(checkpointLogs.groupId, group.id),
+              eq(checkpointLogs.pipeline, "review"),
+              eq(checkpointLogs.level, "warn"),
+              repoIds.length > 0
+                ? inArray(checkpointLogs.repositoryId, repoIds)
+                : undefined
+            )
+          );
+        const reviewWarnings: ReviewWarning[] = reviewWarnLogs.map((r) => ({
+          repoId: r.repoId,
+          repoUrl: r.repoUrl,
+          message: r.message,
+        }));
+
+        return {
+          groupId: group.id,
+          groupName: group.name,
+          studentCount: studentList.length,
+          analysedAt,
+          executedPipelines,
+          analysisRows,
+          repoWarnings,
+          reviewWarnings,
+          logWarningCount,
+          warnLogs,
+        };
+      })
+    );
+  } else {
+    // For non-complete status we only need student counts
+    groupPaneData = await Promise.all(
+      groups.map(async (group) => {
+        const studentList = await db
+          .select()
+          .from(students)
+          .where(eq(students.groupId, group.id));
+        return {
+          groupId: group.id,
+          groupName: group.name,
+          studentCount: studentList.length,
+          analysedAt: null,
+          executedPipelines: [],
+          analysisRows: [],
+          repoWarnings: [],
+          reviewWarnings: [] as ReviewWarning[],
+          logWarningCount: 0,
+          warnLogs: [],
+        };
+      })
+    );
+  }
 
   const triggerAnalysisWithIds = triggerAnalysis.bind(
     null,
@@ -89,25 +301,30 @@ export default async function CheckpointDetailPage({
     checkpointId,
     courseId
   );
-  const discardAnalysisWithIds = discardAnalysis.bind(
-    null,
-    checkpointId,
-    courseId
-  );
+
+  // Most recent analysis run across all groups
+  const lastRunAt = groupPaneData.reduce<Date | null>((max, g) => {
+    if (!g.analysedAt) return max;
+    if (!max || g.analysedAt > max) return g.analysedAt;
+    return max;
+  }, null);
+
+  // Distinct pipelines executed across all groups in the last run
+  const executedPipelines = [
+    ...new Set(groupPaneData.flatMap((g) => g.executedPipelines)),
+  ];
 
   return (
     <Box sx={{ p: 3 }}>
-      <Breadcrumbs sx={{ mb: 2 }}>
-        <AppLink href="/">
-          <HomeRounded fontSize="small" />
-        </AppLink>
-        <AppLink href="/courses">Courses</AppLink>
-        <AppLink href={`/courses/${courseId}`}>{course.name}</AppLink>
-        <AppLink href={`/courses/${courseId}?tab=checkpoints`}>
-          Checkpoints
-        </AppLink>
-        <Typography>{checkpoint.name}</Typography>
-      </Breadcrumbs>
+      <PageBreadcrumbs
+        items={[
+          {
+            label: "Checkpoints",
+            href: `/courses/${courseId}/checkpoints`,
+          },
+          { label: checkpoint.name },
+        ]}
+      />
 
       <Stack direction="row" sx={{ alignItems: "center", mb: 3 }} spacing={2}>
         <Typography variant="h5">{checkpoint.name}</Typography>
@@ -119,11 +336,18 @@ export default async function CheckpointDetailPage({
           }
           label={checkpoint.status}
         />
+        {checkpoint.status !== "analyzing" && (
+          <RerunButton
+            action={triggerAnalysisWithIds}
+            enabledPipelines={checkpoint.enabledPipelines}
+            isPending={checkpoint.status === "pending"}
+          />
+        )}
       </Stack>
 
       <TabNav tabs={TABS} defaultTab="overview" />
 
-      {/* Overview tab */}
+      {/* Overview tab — details + last run timestamp + logs */}
       {tab === "overview" && (
         <Box>
           <Card variant="outlined" sx={{ mb: 3 }}>
@@ -136,97 +360,89 @@ export default async function CheckpointDetailPage({
                   </Typography>
                 </Typography>
                 <Typography variant="body2">
-                  <strong>Timestamp:</strong>{" "}
-                  {checkpoint.timestamp?.toLocaleString() ?? "—"}
+                  <strong>Start Date:</strong>{" "}
+                  {checkpoint.startDate?.toLocaleString() ?? "—"}
                 </Typography>
                 <Typography variant="body2">
-                  <strong>Created:</strong>{" "}
-                  {checkpoint.createdAt?.toLocaleString() ?? "—"}
+                  <strong>End Date:</strong>{" "}
+                  {checkpoint.endDate?.toLocaleString() ?? "—"}
                 </Typography>
+                <Typography variant="body2">
+                  <strong>Last Run:</strong>{" "}
+                  {lastRunAt ? lastRunAt.toLocaleString() : "—"}
+                </Typography>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <Typography variant="body2">
+                    <strong>Pipelines run:</strong>
+                  </Typography>
+                  {executedPipelines.length > 0 ? (
+                    executedPipelines.map((p) => (
+                      <Chip key={p} label={p} size="small" variant="outlined" />
+                    ))
+                  ) : (
+                    <Typography variant="body2">—</Typography>
+                  )}
+                </Box>
               </Stack>
             </CardContent>
           </Card>
 
+          <AnalysisLogsWithRefresh
+            checkpointId={checkpointId}
+            groups={groups.map((g) => ({ id: g.id, name: g.name }))}
+            pipelines={ALL_PIPELINE_IDS}
+            initialStatus={checkpoint.status}
+          />
+        </Box>
+      )}
+
+      {/* Analysis tab — action buttons + groups pane */}
+      {tab === "analysis" && (
+        <Box>
           {checkpoint.status === "pending" && (
-            <form action={triggerAnalysisWithIds}>
-              <Button type="submit" variant="contained" sx={{ mb: 3 }}>
-                Run Analysis
-              </Button>
-            </form>
+            <RunAnalysisForm
+              action={triggerAnalysisWithIds}
+              enabledPipelines={checkpoint.enabledPipelines}
+              submitLabel="Run Analysis"
+            />
           )}
 
           {checkpoint.status === "analyzing" && (
             <Alert severity="info" sx={{ mb: 3 }}>
-              Analyzing…
+              Analysis is running in the background.{" "}
+              <AppLink
+                href={`/courses/${courseId}/checkpoints/${checkpointId}?tab=overview`}
+              >
+                View logs
+              </AppLink>
             </Alert>
           )}
 
           {checkpoint.status === "failed" && (
             <Stack spacing={2} sx={{ mb: 3 }}>
-              <Alert severity="error">Analysis failed. You can retry.</Alert>
-              <form action={triggerAnalysisWithIds}>
-                <Button type="submit" variant="contained">
-                  Retry Analysis
-                </Button>
-              </form>
+              <Alert severity="error">
+                Analysis failed.{" "}
+                <AppLink
+                  href={`/courses/${courseId}/checkpoints/${checkpointId}?tab=overview`}
+                >
+                  View logs
+                </AppLink>{" "}
+                or retry below.
+              </Alert>
+              <RunAnalysisForm
+                action={triggerAnalysisWithIds}
+                enabledPipelines={checkpoint.enabledPipelines}
+                submitLabel="Retry Analysis"
+              />
             </Stack>
           )}
 
           {checkpoint.status === "complete" && (
-            <>
-              <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
-                <form action={discardAnalysisWithIds}>
-                  <Button
-                    type="submit"
-                    color="warning"
-                    variant="outlined"
-                    size="small"
-                  >
-                    Discard Analysis
-                  </Button>
-                </form>
-              </Box>
-
-              <TableContainer component={Paper} variant="outlined">
-                <Typography variant="h6" sx={{ p: 2 }}>
-                  Group Analysis
-                </Typography>
-                <Divider />
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Group</TableCell>
-                      <TableCell>Students</TableCell>
-                      <TableCell>Analysis</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {groupsWithCounts.map((group) => (
-                      <TableRow key={group.id}>
-                        <TableCell>
-                          <AppLink
-                            href={`/courses/${courseId}/groups/${group.id}`}
-                          >
-                            {group.name}
-                          </AppLink>
-                        </TableCell>
-                        <TableCell>
-                          {group.studentCount} student
-                          {group.studentCount !== 1 ? "s" : ""}
-                        </TableCell>
-                        <TableCell>
-                          <AppLink
-                            href={`/courses/${courseId}/groups/${group.id}/checkpoints/${checkpointId}`}
-                          >
-                            View Analysis
-                          </AppLink>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </>
+            <CheckpointGroupsPane
+              groups={groupPaneData}
+              courseId={courseId}
+              checkpointId={checkpointId}
+            />
           )}
         </Box>
       )}

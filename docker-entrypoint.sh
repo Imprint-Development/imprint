@@ -7,4 +7,4 @@ if ! node /app/scripts/migrate.mjs; then
   exit 1
 fi
 
-exec "$@"
+exec /usr/local/bin/entrypoint.sh "$@"

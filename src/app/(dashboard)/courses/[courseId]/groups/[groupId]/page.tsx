@@ -22,6 +22,7 @@ import {
   renameGroup,
   addStudentGitEmail,
   removeStudentGitEmail,
+  setStudentGithubUsername,
 } from "@/lib/actions/groups";
 import { CHECKPOINT_STATUS_COLOR } from "@/lib/constants";
 import Typography from "@mui/material/Typography";
@@ -30,7 +31,7 @@ import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
-import Breadcrumbs from "@mui/material/Breadcrumbs";
+import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 import MuiLink from "@mui/material/Link";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
@@ -45,10 +46,10 @@ import Chip from "@mui/material/Chip";
 import Paper from "@mui/material/Paper";
 import FormControl from "@mui/material/FormControl";
 import FormLabel from "@mui/material/FormLabel";
-import HomeRounded from "@mui/icons-material/HomeRounded";
 import DeleteRounded from "@mui/icons-material/DeleteRounded";
 import CheckCircleRounded from "@mui/icons-material/CheckCircleRounded";
 import ErrorRounded from "@mui/icons-material/ErrorRounded";
+import MembersTab from "./MembersTab";
 
 function HealthCheck({
   pass,
@@ -149,14 +150,12 @@ export default async function GroupDetailPage({
 
   return (
     <Box sx={{ p: 3 }}>
-      <Breadcrumbs sx={{ mb: 2 }}>
-        <AppLink href="/">
-          <HomeRounded fontSize="small" />
-        </AppLink>
-        <AppLink href="/courses">Courses</AppLink>
-        <AppLink href={`/courses/${courseId}`}>{course.name}</AppLink>
-        <Typography>{group.name}</Typography>
-      </Breadcrumbs>
+      <PageBreadcrumbs
+        items={[
+          { label: "Groups", href: `/courses/${courseId}/groups` },
+          { label: group.name },
+        ]}
+      />
 
       <Typography variant="h5" sx={{ mb: 3 }}>
         {group.name}
@@ -212,6 +211,14 @@ export default async function GroupDetailPage({
                   label="At least one checkpoint analysis completed"
                   hint="Run an analysis from the Checkpoints page"
                 />
+                <HealthCheck
+                  pass={
+                    studentList.length > 0 &&
+                    studentList.every((s) => s.githubUsername)
+                  }
+                  label="All members have a GitHub username"
+                  hint="Set GitHub usernames in the Members tab or use the mapper"
+                />
               </Stack>
             </CardContent>
           </Card>
@@ -220,127 +227,16 @@ export default async function GroupDetailPage({
 
       {/* Members tab */}
       {tab === "members" && (
-        <Box>
-          <Typography variant="h6" sx={{ mb: 2 }}>
-            Students
-          </Typography>
-          {studentList.length > 0 && (
-            <TableContainer component={Paper} variant="outlined" sx={{ mb: 2 }}>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Display Name</TableCell>
-                    <TableCell>Email</TableCell>
-                    <TableCell>Git Email Aliases</TableCell>
-                    <TableCell sx={{ width: 60 }} />
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {studentList.map((student) => (
-                    <TableRow key={student.id}>
-                      <TableCell>{student.displayName}</TableCell>
-                      <TableCell>{student.email}</TableCell>
-                      <TableCell>
-                        <Stack spacing={0.5}>
-                          <Stack
-                            direction="row"
-                            sx={{ flexWrap: "wrap", gap: 0.5 }}
-                          >
-                            {student.gitEmails.map((alias) => (
-                              <form
-                                key={alias}
-                                action={removeStudentGitEmail.bind(
-                                  null,
-                                  student.id,
-                                  courseId,
-                                  alias
-                                )}
-                              >
-                                <Chip
-                                  size="small"
-                                  label={alias}
-                                  onDelete={undefined}
-                                  deleteIcon={
-                                    <IconButton
-                                      type="submit"
-                                      size="small"
-                                      sx={{ borderRadius: "50%", p: 0 }}
-                                    >
-                                      ×
-                                    </IconButton>
-                                  }
-                                  variant="outlined"
-                                />
-                              </form>
-                            ))}
-                          </Stack>
-                          <form
-                            action={addStudentGitEmail.bind(
-                              null,
-                              student.id,
-                              courseId
-                            )}
-                          >
-                            <Stack direction="row" spacing={0.5}>
-                              <TextField
-                                name="gitEmail"
-                                placeholder="Add git email"
-                                size="small"
-                                type="email"
-                                sx={{ flex: 1, minWidth: 180 }}
-                              />
-                              <Button
-                                type="submit"
-                                size="small"
-                                variant="outlined"
-                              >
-                                Add
-                              </Button>
-                            </Stack>
-                          </form>
-                        </Stack>
-                      </TableCell>
-                      <TableCell>
-                        <form
-                          action={removeStudent.bind(
-                            null,
-                            student.id,
-                            courseId
-                          )}
-                        >
-                          <IconButton type="submit" size="small" color="error">
-                            <DeleteRounded />
-                          </IconButton>
-                        </form>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          )}
-          <Divider sx={{ my: 2 }} />
-          <form action={addStudentWithIds}>
-            <Stack direction="row" spacing={1}>
-              <TextField
-                name="displayName"
-                placeholder="Display name"
-                size="small"
-                sx={{ flex: 1 }}
-              />
-              <TextField
-                name="email"
-                placeholder="Email"
-                type="email"
-                size="small"
-                sx={{ flex: 1 }}
-              />
-              <Button type="submit" size="small" variant="contained">
-                Add Student
-              </Button>
-            </Stack>
-          </form>
-        </Box>
+        <MembersTab
+          groupId={groupId}
+          courseId={courseId}
+          students={studentList}
+          addStudentAction={addStudentWithIds}
+          removeStudentAction={removeStudent}
+          setGithubUsernameAction={setStudentGithubUsername}
+          addGitEmailAction={addStudentGitEmail}
+          removeGitEmailAction={removeStudentGitEmail}
+        />
       )}
 
       {/* Repositories tab */}

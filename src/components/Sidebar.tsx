@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import NextLink from "next/link";
+import NextImage from "next/image";
 import { usePathname } from "next/navigation";
 import Box from "@mui/material/Box";
 import Drawer from "@mui/material/Drawer";
@@ -23,6 +24,7 @@ import GradingRounded from "@mui/icons-material/GradingRounded";
 import LogoutRounded from "@mui/icons-material/LogoutRounded";
 import GroupsRounded from "@mui/icons-material/GroupsRounded";
 import FlagRounded from "@mui/icons-material/FlagRounded";
+import AdminPanelSettingsRounded from "@mui/icons-material/AdminPanelSettingsRounded";
 import { useCourse } from "./CourseProvider";
 
 const SIDEBAR_WIDTH = 240;
@@ -33,11 +35,15 @@ interface NavItem {
   icon: React.ReactNode;
   /** If true, requires a selected course and href is a suffix after /courses/[id] */
   courseScoped?: boolean;
+  /**
+   * Override the resolved href entirely (receives the selectedCourseId).
+   * Used when the target URL doesn't follow the /courses/[id] prefix pattern.
+   */
+  buildHref?: (selectedCourseId: string | null) => string | null;
 }
 
 const navItems: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: <HomeRounded /> },
-  { label: "Courses", href: "/courses", icon: <SchoolRounded /> },
   {
     label: "Groups",
     href: "/groups",
@@ -50,12 +56,62 @@ const navItems: NavItem[] = [
     icon: <FlagRounded />,
     courseScoped: true,
   },
-  { label: "Grading", href: "/grading", icon: <GradingRounded /> },
+  {
+    label: "Grading",
+    href: "/grading",
+    icon: <GradingRounded />,
+    buildHref: (id) => (id ? `/grading/${id}` : null),
+  },
 ];
+
+/** Shown at the bottom of the nav list, above the user footer. */
+const bottomNavItems: NavItem[] = [
+  {
+    label: "Course management",
+    href: "/courses",
+    icon: <SchoolRounded />,
+  },
+];
+
+function NavItemRow({
+  item,
+  href,
+  active,
+  disabled,
+}: {
+  item: NavItem;
+  href: string | null;
+  active: boolean;
+  disabled: boolean;
+}) {
+  return (
+    <ListItem disablePadding sx={{ px: 1, pb: 0.5 }}>
+      <ListItemButton
+        component={disabled || !href ? "div" : NextLink}
+        href={disabled || !href ? undefined : href}
+        selected={active}
+        disabled={disabled}
+        sx={{ borderRadius: 2 }}
+      >
+        <ListItemIcon sx={{ minWidth: 36 }}>{item.icon}</ListItemIcon>
+        <ListItemText
+          primary={item.label}
+          slotProps={{
+            primary: {
+              variant: "body2",
+              sx: { fontWeight: active ? 600 : undefined },
+            },
+          }}
+        />
+      </ListItemButton>
+    </ListItem>
+  );
+}
 
 interface SidebarProps {
   user: { name: string; email: string };
   signOutAction: () => Promise<void>;
+  isAdmin?: boolean;
   open?: boolean;
   onClose?: () => void;
 }
@@ -63,10 +119,39 @@ interface SidebarProps {
 function SidebarContent({
   user,
   signOutAction,
-}: Pick<SidebarProps, "user" | "signOutAction">) {
+  isAdmin,
+}: Pick<SidebarProps, "user" | "signOutAction" | "isAdmin">) {
   const pathname = usePathname();
   const { courses, selectedCourseId, selectedCourse, selectCourse } =
     useCourse();
+
+  function resolveItem(item: NavItem): {
+    href: string | null;
+    active: boolean;
+    disabled: boolean;
+  } {
+    if (item.buildHref) {
+      const href = item.buildHref(selectedCourseId);
+      const active =
+        pathname === item.href ||
+        pathname.startsWith(item.href + "/") ||
+        (href !== null &&
+          (pathname === href || pathname.startsWith(href + "/")));
+      return { href, active, disabled: href === null };
+    }
+    if (item.courseScoped) {
+      const href = selectedCourseId
+        ? `/courses/${selectedCourseId}${item.href}`
+        : null;
+      const active =
+        !!selectedCourseId &&
+        pathname.includes(`/courses/${selectedCourseId}${item.href}`);
+      return { href, active, disabled: !selectedCourseId };
+    }
+    const active =
+      pathname === item.href || pathname.startsWith(item.href + "/");
+    return { href: item.href, active, disabled: false };
+  }
 
   return (
     <Box
@@ -80,10 +165,22 @@ function SidebarContent({
         width: SIDEBAR_WIDTH,
       }}
     >
-      <Box sx={{ p: 2, display: "flex", alignItems: "center" }}>
-        <Typography variant="h6" sx={{ fontWeight: 700 }}>
-          Imprint
-        </Typography>
+      <Box
+        sx={{
+          p: 2,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <NextImage
+          src="/header-logo.png"
+          alt="Imprint"
+          width={160}
+          height={48}
+          style={{ objectFit: "contain" }}
+          priority
+        />
       </Box>
       <Divider />
 
@@ -116,53 +213,31 @@ function SidebarContent({
       <Divider />
       <List sx={{ flex: 1, pt: 1 }}>
         {navItems.map((item) => {
-          const resolvedHref = item.courseScoped
-            ? selectedCourseId
-              ? `/courses/${selectedCourseId}${item.href}`
-              : "#"
-            : item.href;
-
-          const active = item.courseScoped
-            ? pathname.includes(
-                `/courses/${selectedCourseId ?? ""}${item.href}`
-              )
-            : item.href === "/courses"
-              ? pathname === "/courses" ||
-                (pathname.startsWith("/courses/") &&
-                  !navItems.some(
-                    (n) =>
-                      n.courseScoped &&
-                      selectedCourseId &&
-                      pathname.includes(`/courses/${selectedCourseId}${n.href}`)
-                  ))
-              : pathname === item.href || pathname.startsWith(item.href + "/");
-
-          const disabled = item.courseScoped && !selectedCourseId;
-
-          return (
-            <ListItem key={item.label} disablePadding sx={{ px: 1, pb: 0.5 }}>
-              <ListItemButton
-                component={disabled ? "div" : NextLink}
-                href={disabled ? undefined : resolvedHref}
-                selected={active}
-                disabled={disabled}
-                sx={{ borderRadius: 2 }}
-              >
-                <ListItemIcon sx={{ minWidth: 36 }}>{item.icon}</ListItemIcon>
-                <ListItemText
-                  primary={item.label}
-                  slotProps={{
-                    primary: {
-                      variant: "body2",
-                      sx: { fontWeight: active ? 600 : undefined },
-                    },
-                  }}
-                />
-              </ListItemButton>
-            </ListItem>
-          );
+          const resolved = resolveItem(item);
+          return <NavItemRow key={item.label} item={item} {...resolved} />;
         })}
       </List>
+
+      <Divider />
+      <List sx={{ pt: 0.5, pb: 0.5 }}>
+        {bottomNavItems.map((item) => {
+          const resolved = resolveItem(item);
+          return <NavItemRow key={item.label} item={item} {...resolved} />;
+        })}
+        {isAdmin && (
+          <NavItemRow
+            item={{
+              label: "Admin",
+              href: "/admin",
+              icon: <AdminPanelSettingsRounded />,
+            }}
+            href="/admin"
+            active={pathname === "/admin" || pathname.startsWith("/admin/")}
+            disabled={false}
+          />
+        )}
+      </List>
+
       <Divider />
       <Box sx={{ display: "flex", alignItems: "center", gap: 1, p: 2 }}>
         <Box sx={{ minWidth: 0, flex: 1 }}>
@@ -188,6 +263,7 @@ function SidebarContent({
 export default function Sidebar({
   user,
   signOutAction,
+  isAdmin,
   open,
   onClose,
 }: SidebarProps) {
@@ -201,7 +277,11 @@ export default function Sidebar({
           flexShrink: 0,
         }}
       >
-        <SidebarContent user={user} signOutAction={signOutAction} />
+        <SidebarContent
+          user={user}
+          signOutAction={signOutAction}
+          isAdmin={isAdmin}
+        />
       </Box>
 
       {/* Mobile drawer */}
@@ -211,7 +291,11 @@ export default function Sidebar({
         sx={{ display: { xs: "block", md: "none" } }}
         slotProps={{ paper: { sx: { width: SIDEBAR_WIDTH } } }}
       >
-        <SidebarContent user={user} signOutAction={signOutAction} />
+        <SidebarContent
+          user={user}
+          signOutAction={signOutAction}
+          isAdmin={isAdmin}
+        />
       </Drawer>
     </>
   );

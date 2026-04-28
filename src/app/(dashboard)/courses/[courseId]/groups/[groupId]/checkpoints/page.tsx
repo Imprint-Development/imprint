@@ -10,7 +10,7 @@ import { auth } from "@/lib/auth";
 import { eq, and } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import Typography from "@mui/material/Typography";
-import Breadcrumbs from "@mui/material/Breadcrumbs";
+import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
 import Card from "@mui/material/Card";
@@ -64,15 +64,16 @@ export default async function GroupCheckpointsPage({
 
   return (
     <Box sx={{ p: 3 }}>
-      <Breadcrumbs sx={{ mb: 2 }}>
-        <AppLink href="/">Home</AppLink>
-        <AppLink href="/courses">Courses</AppLink>
-        <AppLink href={`/courses/${courseId}`}>{course.name}</AppLink>
-        <AppLink href={`/courses/${courseId}/groups/${groupId}`}>
-          {group.name}
-        </AppLink>
-        <Typography>Checkpoints</Typography>
-      </Breadcrumbs>
+      <PageBreadcrumbs
+        items={[
+          { label: "Groups", href: `/courses/${courseId}/groups` },
+          {
+            label: group.name,
+            href: `/courses/${courseId}/groups/${groupId}`,
+          },
+          { label: "Checkpoints" },
+        ]}
+      />
 
       <Typography variant="h5" sx={{ mb: 3 }}>
         {group.name} — Checkpoints

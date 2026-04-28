@@ -1,9 +1,12 @@
 import AppLink from "@/components/AppLink";
+import GroupAnalysisLogs from "@/components/GroupAnalysisLogs";
+import { ALL_PIPELINE_IDS } from "@/lib/analysis/pipelines/registry";
 import { db } from "@/lib/db";
 import {
   checkpoints,
   checkpointAnalyses,
   checkpointRepoMeta,
+  checkpointLogs,
   students,
   repositories,
   studentGroups,
@@ -17,9 +20,10 @@ import {
   GroupAnalysisClient,
   type AnalysisRow,
   type RepoWarning,
+  type ReviewWarning,
 } from "./GroupAnalysisClient";
 import Typography from "@mui/material/Typography";
-import Breadcrumbs from "@mui/material/Breadcrumbs";
+import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
@@ -83,12 +87,15 @@ export default async function GroupCheckpointAnalysisPage({
 
   let analysisRows: AnalysisRow[] = [];
   let repoWarnings: RepoWarning[] = [];
+  let reviewWarnings: ReviewWarning[] = [];
+  let executedPipelines: string[] = [];
 
   if (checkpoint.status === "complete" && repoIds.length > 0) {
     const analyses = await db
       .select({
         codeMetrics: checkpointAnalyses.codeMetrics,
         testMetrics: checkpointAnalyses.testMetrics,
+        reviewMetrics: checkpointAnalyses.reviewMetrics,
         studentName: students.displayName,
         repoId: repositories.id,
         repoUrl: repositories.url,
@@ -112,6 +119,7 @@ export default async function GroupCheckpointAnalysisPage({
       repoUrl: a.repoUrl,
       codeMetrics: (a.codeMetrics as Record<string, number>) ?? {},
       testMetrics: (a.testMetrics as Record<string, number>) ?? {},
+      reviewMetrics: (a.reviewMetrics as Record<string, number>) ?? {},
     }));
 
     const metaRows = await db
@@ -139,6 +147,40 @@ export default async function GroupCheckpointAnalysisPage({
         repoUrl: m.repoUrl,
         unidentifiedAuthors: m.unidentifiedAuthors as string[],
       }));
+
+    const logRows = await db
+      .selectDistinct({ pipeline: checkpointLogs.pipeline })
+      .from(checkpointLogs)
+      .where(
+        and(
+          eq(checkpointLogs.checkpointId, checkpointId),
+          eq(checkpointLogs.groupId, groupId)
+        )
+      );
+    executedPipelines = logRows.map((r) => r.pipeline);
+
+    const reviewWarnLogs = await db
+      .select({
+        message: checkpointLogs.message,
+        repoId: repositories.id,
+        repoUrl: repositories.url,
+      })
+      .from(checkpointLogs)
+      .innerJoin(repositories, eq(repositories.id, checkpointLogs.repositoryId))
+      .where(
+        and(
+          eq(checkpointLogs.checkpointId, checkpointId),
+          eq(checkpointLogs.groupId, groupId),
+          eq(checkpointLogs.pipeline, "review"),
+          eq(checkpointLogs.level, "warn"),
+          inArray(checkpointLogs.repositoryId, repoIds)
+        )
+      );
+    reviewWarnings = reviewWarnLogs.map((r) => ({
+      repoId: r.repoId,
+      repoUrl: r.repoUrl,
+      message: r.message,
+    }));
   }
 
   const rerunWithIds = rerunGroupAnalysis.bind(
@@ -150,18 +192,20 @@ export default async function GroupCheckpointAnalysisPage({
 
   return (
     <Box sx={{ p: 3 }}>
-      <Breadcrumbs sx={{ mb: 2 }}>
-        <AppLink href="/">Home</AppLink>
-        <AppLink href="/courses">Courses</AppLink>
-        <AppLink href={`/courses/${courseId}`}>{course.name}</AppLink>
-        <AppLink href={`/courses/${courseId}/groups/${groupId}`}>
-          {group.name}
-        </AppLink>
-        <AppLink href={`/courses/${courseId}/groups/${groupId}/checkpoints`}>
-          Checkpoints
-        </AppLink>
-        <Typography>{checkpoint.name}</Typography>
-      </Breadcrumbs>
+      <PageBreadcrumbs
+        items={[
+          { label: "Groups", href: `/courses/${courseId}/groups` },
+          {
+            label: group.name,
+            href: `/courses/${courseId}/groups/${groupId}`,
+          },
+          {
+            label: "Checkpoints",
+            href: `/courses/${courseId}/groups/${groupId}/checkpoints`,
+          },
+          { label: checkpoint.name },
+        ]}
+      />
 
       <Stack direction="row" sx={{ alignItems: "center", mb: 3 }} spacing={2}>
         <Typography variant="h5">
@@ -186,16 +230,38 @@ export default async function GroupCheckpointAnalysisPage({
               </Typography>
             </Typography>
             <Typography variant="body2">
-              <strong>Timestamp:</strong>{" "}
-              {checkpoint.timestamp?.toLocaleString() ?? "—"}
+              <strong>Start Date:</strong>{" "}
+              {checkpoint.startDate?.toLocaleString() ?? "—"}
+            </Typography>
+            <Typography variant="body2">
+              <strong>End Date:</strong>{" "}
+              {checkpoint.endDate?.toLocaleString() ?? "—"}
             </Typography>
           </Stack>
         </CardContent>
       </Card>
 
-      {checkpoint.status !== "complete" && (
+      {checkpoint.status === "analyzing" && (
         <Alert severity="info" sx={{ mb: 3 }}>
-          Analysis is not complete yet.{" "}
+          Analysis is running in the background.{" "}
+          <AppLink href={`/courses/${courseId}/checkpoints/${checkpointId}`}>
+            Manage checkpoint
+          </AppLink>
+        </Alert>
+      )}
+
+      {checkpoint.status === "pending" && (
+        <Alert severity="warning" sx={{ mb: 3 }}>
+          Analysis has not been run yet.{" "}
+          <AppLink href={`/courses/${courseId}/checkpoints/${checkpointId}`}>
+            Manage checkpoint
+          </AppLink>
+        </Alert>
+      )}
+
+      {checkpoint.status === "failed" && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          Analysis failed.{" "}
           <AppLink href={`/courses/${courseId}/checkpoints/${checkpointId}`}>
             Manage checkpoint
           </AppLink>
@@ -207,7 +273,12 @@ export default async function GroupCheckpointAnalysisPage({
       )}
 
       {checkpoint.status === "complete" && analysisRows.length > 0 && (
-        <GroupAnalysisClient rows={analysisRows} warnings={repoWarnings} />
+        <GroupAnalysisClient
+          rows={analysisRows}
+          warnings={repoWarnings}
+          reviewWarnings={reviewWarnings}
+          executedPipelines={executedPipelines}
+        />
       )}
 
       {checkpoint.status === "complete" && (
@@ -223,6 +294,16 @@ export default async function GroupCheckpointAnalysisPage({
             </Button>
           </form>
         </Box>
+      )}
+
+      {checkpoint.status !== "pending" && (
+        <GroupAnalysisLogs
+          checkpointId={checkpointId}
+          groupId={groupId}
+          groupName={group.name}
+          pipelines={ALL_PIPELINE_IDS}
+          initialStatus={checkpoint.status}
+        />
       )}
     </Box>
   );

@@ -4,6 +4,7 @@ import ThemeRegistry from "./ThemeRegistry";
 export const metadata: Metadata = {
   title: "Imprint",
   description: "Analyze student contributions in Software Engineering courses",
+  icons: { icon: "/thumnail.png" },
 };
 
 export default function RootLayout({

@@ -8,7 +8,7 @@ import { CourseProvider, type CourseOption } from "@/components/CourseProvider";
 import CourseSelectModal from "@/components/CourseSelectModal";
 
 interface DashboardShellProps {
-  user: { name: string; email: string };
+  user: { name: string; email: string; isAdmin: boolean };
   signOutAction: () => Promise<void>;
   courses: CourseOption[];
   children: React.ReactNode;
@@ -24,10 +24,11 @@ export default function DashboardShell({
 
   return (
     <CourseProvider courses={courses}>
-      <Box sx={{ display: "flex", minHeight: "100dvh" }}>
+      <Box sx={{ display: "flex", height: "100dvh", overflow: "hidden" }}>
         <Sidebar
           user={user}
           signOutAction={signOutAction}
+          isAdmin={user.isAdmin}
           open={drawerOpen}
           onClose={() => setDrawerOpen(false)}
         />
