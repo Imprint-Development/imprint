@@ -1,6 +1,5 @@
 .git
 .next
 node_modules
-drizzle
 .env*
 *.md
