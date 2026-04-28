@@ -247,3 +247,34 @@ export async function removeGradeThreshold(
   );
   await setGradingConfig(courseId, config);
 }
+
+export async function setCheckpointCategoryMaxPoints(
+  courseId: string,
+  checkpointId: string,
+  categoryId: string,
+  formData: FormData
+) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  const raw = (formData.get("maxPoints") as string).trim();
+  const maxPoints = raw === "" ? null : parseFloat(raw);
+
+  const config = await getGradingConfig(courseId);
+  config.checkpointOverrides ??= {};
+
+  if (maxPoints === null || isNaN(maxPoints)) {
+    // Clear override
+    if (config.checkpointOverrides[checkpointId]) {
+      delete config.checkpointOverrides[checkpointId][categoryId];
+      if (Object.keys(config.checkpointOverrides[checkpointId]).length === 0) {
+        delete config.checkpointOverrides[checkpointId];
+      }
+    }
+  } else {
+    config.checkpointOverrides[checkpointId] ??= {};
+    config.checkpointOverrides[checkpointId][categoryId] = { maxPoints };
+  }
+
+  await setGradingConfig(courseId, config);
+}

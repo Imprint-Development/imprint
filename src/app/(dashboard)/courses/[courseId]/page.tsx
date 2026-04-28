@@ -29,6 +29,7 @@ import {
   removeGradingCategory,
   addGradeThreshold,
   removeGradeThreshold,
+  setCheckpointCategoryMaxPoints,
 } from "@/lib/actions/courses";
 import { CHECKPOINT_STATUS_COLOR } from "@/lib/constants";
 import Typography from "@mui/material/Typography";
@@ -55,6 +56,7 @@ import Select from "@mui/material/Select";
 import MenuItem from "@mui/material/MenuItem";
 import DeleteRounded from "@mui/icons-material/DeleteRounded";
 import AddRounded from "@mui/icons-material/AddRounded";
+import Save from "@mui/icons-material/Save";
 
 const TABS = [
   { label: "Groups", value: "groups" },
@@ -129,6 +131,7 @@ export default async function CourseDetailPage({
     .where(eq(courseCollaborators.courseId, courseId));
 
   const config: GradingConfig = course.gradingConfig;
+  const perCheckpointCategories = config.categories.filter((c) => c.perCheckpoint);
 
   const addCollaboratorWithId = addCollaborator.bind(null, courseId);
   const updateCourseWithId = updateCourse.bind(null, courseId);
@@ -525,6 +528,102 @@ export default async function CourseDetailPage({
               </form>
             </CardContent>
           </Card>
+
+          {/* Checkpoint Max Point Overrides */}
+          {perCheckpointCategories.length > 0 && courseCheckpoints.length > 0 && (
+            <Card variant="outlined" sx={{ mb: 3 }}>
+              <CardContent>
+                <Typography variant="h6" sx={{ mb: 1 }}>
+                  Checkpoint Max Point Overrides
+                </Typography>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mb: 2 }}
+                >
+                  Override the max points for a specific category on a specific
+                  checkpoint. Leave blank to use the category default. Overridden
+                  values are highlighted in the grading view.
+                </Typography>
+                <TableContainer component={Paper} variant="outlined">
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell sx={{ fontWeight: 700 }}>Checkpoint</TableCell>
+                        {perCheckpointCategories.map((cat) => (
+                          <TableCell key={cat.id} sx={{ fontWeight: 700 }}>
+                            {cat.name}
+                            <Typography
+                              component="span"
+                              variant="caption"
+                              sx={{ display: "block", color: "text.secondary" }}
+                            >
+                              default: {cat.maxPoints}
+                            </Typography>
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {courseCheckpoints.map((cp) => (
+                        <TableRow key={cp.id}>
+                          <TableCell>
+                            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                              {cp.name}
+                            </Typography>
+                          </TableCell>
+                          {perCheckpointCategories.map((cat) => {
+                            const override =
+                              config.checkpointOverrides?.[cp.id]?.[cat.id];
+                            return (
+                              <TableCell key={cat.id}>
+                                <form
+                                  action={setCheckpointCategoryMaxPoints.bind(
+                                    null,
+                                    courseId,
+                                    cp.id,
+                                    cat.id
+                                  )}
+                                >
+                                  <Box
+                                    sx={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: 0.5,
+                                    }}
+                                  >
+                                    <TextField
+                                      name="maxPoints"
+                                      type="number"
+                                      size="small"
+                                      defaultValue={override?.maxPoints ?? ""}
+                                      placeholder={String(cat.maxPoints)}
+                                      slotProps={{
+                                        htmlInput: { min: 0, step: 0.5 },
+                                      }}
+                                      sx={{
+                                        width: 88,
+                                        "& input": override
+                                          ? { color: "warning.main", fontWeight: 600 }
+                                          : undefined,
+                                      }}
+                                    />
+                                    <IconButton type="submit" size="small">
+                                      <Save fontSize="small" />
+                                    </IconButton>
+                                  </Box>
+                                </form>
+                              </TableCell>
+                            );
+                          })}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </CardContent>
+            </Card>
+          )}
         </Box>
       )}
 

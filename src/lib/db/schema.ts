@@ -25,6 +25,8 @@ export type GradeThreshold = {
 export type GradingConfig = {
   categories: GradingCategory[];
   gradeThresholds: GradeThreshold[];
+  // checkpointId -> categoryId -> override max points
+  checkpointOverrides: Record<string, Record<string, { maxPoints: number }>>;
 };
 
 export const users = pgTable("users", {
@@ -79,7 +81,7 @@ export const courses = pgTable("courses", {
   gradingConfig: jsonb("grading_config")
     .$type<GradingConfig>()
     .notNull()
-    .default({ categories: [], gradeThresholds: [] }),
+    .default({ categories: [], gradeThresholds: [], checkpointOverrides: {} }),
   createdBy: uuid("created_by")
     .references(() => users.id)
     .notNull(),

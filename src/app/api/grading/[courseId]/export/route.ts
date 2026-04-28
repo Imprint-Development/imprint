@@ -90,10 +90,21 @@ export async function GET(
 
   const groupMap = new Map(groups.map((g) => [g.id, g.name]));
 
+  const overrides = config.checkpointOverrides ?? {};
+  const effMax = (catId: string, cpId: string, def: number) =>
+    overrides[cpId]?.[catId]?.maxPoints ?? def;
+
   const maxPossible =
     standaloneCategories.reduce((s, c) => s + c.maxPoints, 0) +
-    perCpCategories.reduce((s, c) => s + c.maxPoints, 0) *
-      courseCheckpoints.length;
+    courseCheckpoints.reduce(
+      (cpSum, cp) =>
+        cpSum +
+        perCpCategories.reduce(
+          (catSum, cat) => catSum + effMax(cat.id, cp.id, cat.maxPoints),
+          0
+        ),
+      0
+    );
 
   // Build CSV header
   const headers = ["Student", "Group"];
@@ -102,7 +113,8 @@ export async function GET(
   }
   for (const cp of courseCheckpoints) {
     for (const cat of perCpCategories) {
-      headers.push(`${cp.name} - ${cat.name} (/${cat.maxPoints})`);
+      const max = effMax(cat.id, cp.id, cat.maxPoints);
+      headers.push(`${cp.name} - ${cat.name} (/${max})`);
     }
   }
   headers.push("Total Points", "Max Points", "Percentage", "Grade");

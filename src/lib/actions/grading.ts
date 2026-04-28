@@ -84,6 +84,10 @@ export async function exportGradesCSV(courseId: string): Promise<string> {
   const standaloneCategories = categories.filter((c) => !c.perCheckpoint);
   const perCheckpointCategories = categories.filter((c) => c.perCheckpoint);
 
+  const overrides = config.checkpointOverrides ?? {};
+  const effMax = (catId: string, cpId: string, def: number) =>
+    overrides[cpId]?.[catId]?.maxPoints ?? def;
+
   // Build header
   const headers = ["Student", "Group"];
   for (const cat of standaloneCategories) {
@@ -91,7 +95,8 @@ export async function exportGradesCSV(courseId: string): Promise<string> {
   }
   for (const cp of courseCheckpoints) {
     for (const cat of perCheckpointCategories) {
-      headers.push(`${cp.name} - ${cat.name} (/${cat.maxPoints})`);
+      const max = effMax(cat.id, cp.id, cat.maxPoints);
+      headers.push(`${cp.name} - ${cat.name} (/${max})`);
     }
   }
   headers.push("Total Points", "Max Points", "Percentage", "Grade");
@@ -100,8 +105,15 @@ export async function exportGradesCSV(courseId: string): Promise<string> {
 
   const maxPossible =
     standaloneCategories.reduce((s, c) => s + c.maxPoints, 0) +
-    perCheckpointCategories.reduce((s, c) => s + c.maxPoints, 0) *
-      courseCheckpoints.length;
+    courseCheckpoints.reduce(
+      (cpSum, cp) =>
+        cpSum +
+        perCheckpointCategories.reduce(
+          (catSum, cat) => catSum + effMax(cat.id, cp.id, cat.maxPoints),
+          0
+        ),
+      0
+    );
 
   const thresholds = [...config.gradeThresholds].sort(
     (a, b) => b.minPercentage - a.minPercentage

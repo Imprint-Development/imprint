@@ -1,5 +1,5 @@
 -- Add grading configuration column to courses
-ALTER TABLE "courses" ADD COLUMN "grading_config" jsonb NOT NULL DEFAULT '{"categories":[],"gradeThresholds":[]}'::jsonb;
+ALTER TABLE "courses" ADD COLUMN "grading_config" jsonb NOT NULL DEFAULT '{"categories":[],"gradeThresholds":[],"checkpointOverrides":{}}'::jsonb;
 
 -- Drop old group-based grades table
 DROP TABLE "grades";

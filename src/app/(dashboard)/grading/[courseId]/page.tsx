@@ -75,6 +75,10 @@ export default async function CourseGradingPage({
   const standaloneCategories = config.categories.filter((c) => !c.perCheckpoint);
   const perCpCategories = config.categories.filter((c) => c.perCheckpoint);
 
+  const overrides = config.checkpointOverrides ?? {};
+  const effMax = (catId: string, cpId: string, def: number) =>
+    overrides[cpId]?.[catId]?.maxPoints ?? def;
+
   const courseCheckpoints = await db
     .select()
     .from(checkpoints)
@@ -114,8 +118,15 @@ export default async function CourseGradingPage({
 
   const maxPerStudent =
     standaloneCategories.reduce((s, c) => s + c.maxPoints, 0) +
-    perCpCategories.reduce((s, c) => s + c.maxPoints, 0) *
-      courseCheckpoints.length;
+    courseCheckpoints.reduce(
+      (cpSum, cp) =>
+        cpSum +
+        perCpCategories.reduce(
+          (catSum, cat) => catSum + effMax(cat.id, cp.id, cat.maxPoints),
+          0
+        ),
+      0
+    );
 
   const hasCategories = config.categories.length > 0;
   const hasStudents = allStudents.length > 0;
@@ -209,28 +220,43 @@ export default async function CourseGradingPage({
                   </TableCell>
                 )}
               </TableRow>
-              {/* Row 2: per-checkpoint category names */}
+              {/* Row 2: per-checkpoint category names with effective max */}
               {perCpColSpan > 0 && (
                 <TableRow>
                   {courseCheckpoints.map((cp) =>
-                    perCpCategories.map((cat) => (
-                      <TableCell
-                        key={`${cp.id}:${cat.id}`}
-                        sx={{
-                          borderLeft: cat === perCpCategories[0] ? "1px solid" : undefined,
-                          borderColor: "divider",
-                        }}
-                      >
-                        {cat.name}
-                        <Typography
-                          component="span"
-                          variant="caption"
-                          sx={{ display: "block", color: "text.secondary" }}
+                    perCpCategories.map((cat) => {
+                      const max = effMax(cat.id, cp.id, cat.maxPoints);
+                      const isOverridden =
+                        overrides[cp.id]?.[cat.id] !== undefined;
+                      return (
+                        <TableCell
+                          key={`${cp.id}:${cat.id}`}
+                          sx={{
+                            borderLeft:
+                              cat === perCpCategories[0]
+                                ? "1px solid"
+                                : undefined,
+                            borderColor: "divider",
+                          }}
                         >
-                          /{cat.maxPoints}
-                        </Typography>
-                      </TableCell>
-                    ))
+                          {cat.name}
+                          <Typography
+                            component="span"
+                            variant="caption"
+                            sx={{
+                              display: "block",
+                              color: isOverridden
+                                ? "warning.main"
+                                : "text.secondary",
+                              fontWeight: isOverridden ? 600 : undefined,
+                            }}
+                          >
+                            /{max}
+                            {isOverridden && " *"}
+                          </Typography>
+                        </TableCell>
+                      );
+                    })
                   )}
                 </TableRow>
               )}
@@ -274,6 +300,7 @@ export default async function CourseGradingPage({
 
                 const perCpCells = courseCheckpoints.flatMap((cp) =>
                   perCpCategories.map((cat, catIdx) => {
+                    const max = effMax(cat.id, cp.id, cat.maxPoints);
                     const existing = gradeMap.get(
                       `${student.id}:${cat.id}:${cp.id}`
                     );
@@ -296,10 +323,10 @@ export default async function CourseGradingPage({
                               type="number"
                               name="points"
                               slotProps={{
-                                htmlInput: { step: 0.5, min: 0, max: cat.maxPoints },
+                                htmlInput: { step: 0.5, min: 0, max },
                               }}
                               defaultValue={existing?.points ?? ""}
-                              placeholder={`/${cat.maxPoints}`}
+                              placeholder={`/${max}`}
                               required
                               sx={{ width: 72 }}
                             />
