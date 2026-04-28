@@ -18,7 +18,9 @@ function calcGrade(
 ): string {
   if (maxPoints === 0) return "—";
   const pct = (points / maxPoints) * 100;
-  const sorted = [...thresholds].sort((a, b) => b.minPercentage - a.minPercentage);
+  const sorted = [...thresholds].sort(
+    (a, b) => b.minPercentage - a.minPercentage
+  );
   for (const t of sorted) {
     if (pct >= t.minPercentage) return t.grade;
   }
@@ -57,7 +59,9 @@ export async function GET(
   }
 
   const config: GradingConfig = course.gradingConfig;
-  const standaloneCategories = config.categories.filter((c) => !c.perCheckpoint);
+  const standaloneCategories = config.categories.filter(
+    (c) => !c.perCheckpoint
+  );
   const perCpCategories = config.categories.filter((c) => c.perCheckpoint);
 
   const courseCheckpoints = await db
@@ -119,12 +123,17 @@ export async function GET(
   }
   headers.push("Total Points", "Max Points", "Percentage", "Grade");
 
-  const rows: string[] = [headers.map((h) => `"${h.replace(/"/g, '""')}"`).join(",")];
+  const rows: string[] = [
+    headers.map((h) => `"${h.replace(/"/g, '""')}"`).join(","),
+  ];
 
   for (const student of allStudents) {
     const studentGrades = allGrades.filter((g) => g.studentId === student.id);
     const displayName = String(student.displayName).replace(/"/g, '""');
-    const groupName = String(groupMap.get(student.groupId) ?? "").replace(/"/g, '""');
+    const groupName = String(groupMap.get(student.groupId) ?? "").replace(
+      /"/g,
+      '""'
+    );
     const row: string[] = [`"${displayName}"`, `"${groupName}"`];
 
     let totalPoints = 0;

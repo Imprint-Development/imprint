@@ -135,7 +135,9 @@ export default async function CourseDetailPage({
     .where(eq(courseCollaborators.courseId, courseId));
 
   const config: GradingConfig = course.gradingConfig;
-  const perCheckpointCategories = config.categories.filter((c) => c.perCheckpoint);
+  const perCheckpointCategories = config.categories.filter(
+    (c) => c.perCheckpoint
+  );
 
   const addCollaboratorWithId = addCollaborator.bind(null, courseId);
   const updateCourseWithId = updateCourse.bind(null, courseId);
@@ -349,11 +351,19 @@ export default async function CourseDetailPage({
                     <form
                       key={`rename-${cat.id}`}
                       id={`rename-cat-${cat.id}`}
-                      action={renameGradingCategory.bind(null, courseId, cat.id)}
+                      action={renameGradingCategory.bind(
+                        null,
+                        courseId,
+                        cat.id
+                      )}
                       style={{ display: "none" }}
                     />
                   ))}
-                  <TableContainer component={Paper} variant="outlined" sx={{ mb: 2 }}>
+                  <TableContainer
+                    component={Paper}
+                    variant="outlined"
+                    sx={{ mb: 2 }}
+                  >
                     <Table size="small">
                       <TableHead>
                         <TableRow>
@@ -404,7 +414,9 @@ export default async function CourseDetailPage({
                                     : "Standalone"
                                 }
                                 variant="outlined"
-                                color={cat.perCheckpoint ? "primary" : "default"}
+                                color={
+                                  cat.perCheckpoint ? "primary" : "default"
+                                }
                               />
                             </TableCell>
                             <TableCell>
@@ -487,7 +499,11 @@ export default async function CourseDetailPage({
 
               <form action={addGradingCategoryWithId}>
                 <Stack spacing={2}>
-                  <Stack direction="row" spacing={1} sx={{ alignItems: "flex-end" }}>
+                  <Stack
+                    direction="row"
+                    spacing={1}
+                    sx={{ alignItems: "flex-end" }}
+                  >
                     <FormControl sx={{ flex: 1 }}>
                       <FormLabel>Category Name</FormLabel>
                       <TextField
@@ -545,7 +561,11 @@ export default async function CourseDetailPage({
               </Typography>
 
               {config.gradeThresholds.length > 0 && (
-                <TableContainer component={Paper} variant="outlined" sx={{ mb: 2 }}>
+                <TableContainer
+                  component={Paper}
+                  variant="outlined"
+                  sx={{ mb: 2 }}
+                >
                   <Table size="small">
                     <TableHead>
                       <TableRow>
@@ -560,7 +580,10 @@ export default async function CourseDetailPage({
                         .map((t) => (
                           <TableRow key={t.grade}>
                             <TableCell>
-                              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                              <Typography
+                                variant="body2"
+                                sx={{ fontWeight: 600 }}
+                              >
                                 {t.grade}
                               </Typography>
                             </TableCell>
@@ -627,100 +650,113 @@ export default async function CourseDetailPage({
           </Card>
 
           {/* Checkpoint Max Point Overrides */}
-          {perCheckpointCategories.length > 0 && courseCheckpoints.length > 0 && (
-            <Card variant="outlined" sx={{ mb: 3 }}>
-              <CardContent>
-                <Typography variant="h6" sx={{ mb: 1 }}>
-                  Checkpoint Max Point Overrides
-                </Typography>
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ mb: 2 }}
-                >
-                  Override the max points for a specific category on a specific
-                  checkpoint. Leave blank to use the category default. Overridden
-                  values are highlighted in the grading view.
-                </Typography>
-                <TableContainer component={Paper} variant="outlined">
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow>
-                        <TableCell sx={{ fontWeight: 700 }}>Checkpoint</TableCell>
-                        {perCheckpointCategories.map((cat) => (
-                          <TableCell key={cat.id} sx={{ fontWeight: 700 }}>
-                            {cat.name}
-                            <Typography
-                              component="span"
-                              variant="caption"
-                              sx={{ display: "block", color: "text.secondary" }}
-                            >
-                              default: {cat.maxPoints}
-                            </Typography>
+          {perCheckpointCategories.length > 0 &&
+            courseCheckpoints.length > 0 && (
+              <Card variant="outlined" sx={{ mb: 3 }}>
+                <CardContent>
+                  <Typography variant="h6" sx={{ mb: 1 }}>
+                    Checkpoint Max Point Overrides
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mb: 2 }}
+                  >
+                    Override the max points for a specific category on a
+                    specific checkpoint. Leave blank to use the category
+                    default. Overridden values are highlighted in the grading
+                    view.
+                  </Typography>
+                  <TableContainer component={Paper} variant="outlined">
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow>
+                          <TableCell sx={{ fontWeight: 700 }}>
+                            Checkpoint
                           </TableCell>
-                        ))}
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {courseCheckpoints.map((cp) => (
-                        <TableRow key={cp.id}>
-                          <TableCell>
-                            <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                              {cp.name}
-                            </Typography>
-                          </TableCell>
-                          {perCheckpointCategories.map((cat) => {
-                            const override =
-                              config.checkpointOverrides?.[cp.id]?.[cat.id];
-                            return (
-                              <TableCell key={cat.id}>
-                                <form
-                                  action={setCheckpointCategoryMaxPoints.bind(
-                                    null,
-                                    courseId,
-                                    cp.id,
-                                    cat.id
-                                  )}
-                                >
-                                  <Box
-                                    sx={{
-                                      display: "flex",
-                                      alignItems: "center",
-                                      gap: 0.5,
-                                    }}
-                                  >
-                                    <TextField
-                                      name="maxPoints"
-                                      type="number"
-                                      size="small"
-                                      defaultValue={override?.maxPoints ?? ""}
-                                      placeholder={String(cat.maxPoints)}
-                                      slotProps={{
-                                        htmlInput: { min: 0, step: 0.5 },
-                                      }}
-                                      sx={{
-                                        width: 88,
-                                        "& input": override
-                                          ? { color: "warning.main", fontWeight: 600 }
-                                          : undefined,
-                                      }}
-                                    />
-                                    <IconButton type="submit" size="small">
-                                      <Save fontSize="small" />
-                                    </IconButton>
-                                  </Box>
-                                </form>
-                              </TableCell>
-                            );
-                          })}
+                          {perCheckpointCategories.map((cat) => (
+                            <TableCell key={cat.id} sx={{ fontWeight: 700 }}>
+                              {cat.name}
+                              <Typography
+                                component="span"
+                                variant="caption"
+                                sx={{
+                                  display: "block",
+                                  color: "text.secondary",
+                                }}
+                              >
+                                default: {cat.maxPoints}
+                              </Typography>
+                            </TableCell>
+                          ))}
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              </CardContent>
-            </Card>
-          )}
+                      </TableHead>
+                      <TableBody>
+                        {courseCheckpoints.map((cp) => (
+                          <TableRow key={cp.id}>
+                            <TableCell>
+                              <Typography
+                                variant="body2"
+                                sx={{ fontWeight: 600 }}
+                              >
+                                {cp.name}
+                              </Typography>
+                            </TableCell>
+                            {perCheckpointCategories.map((cat) => {
+                              const override =
+                                config.checkpointOverrides?.[cp.id]?.[cat.id];
+                              return (
+                                <TableCell key={cat.id}>
+                                  <form
+                                    action={setCheckpointCategoryMaxPoints.bind(
+                                      null,
+                                      courseId,
+                                      cp.id,
+                                      cat.id
+                                    )}
+                                  >
+                                    <Box
+                                      sx={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: 0.5,
+                                      }}
+                                    >
+                                      <TextField
+                                        name="maxPoints"
+                                        type="number"
+                                        size="small"
+                                        defaultValue={override?.maxPoints ?? ""}
+                                        placeholder={String(cat.maxPoints)}
+                                        slotProps={{
+                                          htmlInput: { min: 0, step: 0.5 },
+                                        }}
+                                        sx={{
+                                          width: 88,
+                                          "& input": override
+                                            ? {
+                                                color: "warning.main",
+                                                fontWeight: 600,
+                                              }
+                                            : undefined,
+                                        }}
+                                      />
+                                      <IconButton type="submit" size="small">
+                                        <Save fontSize="small" />
+                                      </IconButton>
+                                    </Box>
+                                  </form>
+                                </TableCell>
+                              );
+                            })}
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </CardContent>
+              </Card>
+            )}
         </Box>
       )}
 
