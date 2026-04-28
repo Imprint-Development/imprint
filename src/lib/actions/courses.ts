@@ -2,7 +2,11 @@
 
 import { db } from "@/lib/db";
 import { courses, courseCollaborators, users } from "@/lib/db/schema";
-import type { GradingConfig, GradingCategory, GradeThreshold } from "@/lib/db/schema";
+import type {
+  GradingConfig,
+  GradingCategory,
+  GradeThreshold,
+} from "@/lib/db/schema";
 import { auth } from "@/lib/auth";
 import { eq, sql } from "drizzle-orm";
 import { redirect } from "next/navigation";
@@ -162,7 +166,13 @@ async function getGradingConfig(courseId: string): Promise<GradingConfig> {
     .select({ gradingConfig: courses.gradingConfig })
     .from(courses)
     .where(eq(courses.id, courseId));
-  return course?.gradingConfig ?? { categories: [], gradeThresholds: [] };
+  return (
+    course?.gradingConfig ?? {
+      categories: [],
+      gradeThresholds: [],
+      checkpointOverrides: {},
+    }
+  );
 }
 
 async function setGradingConfig(courseId: string, config: GradingConfig) {
@@ -173,10 +183,7 @@ async function setGradingConfig(courseId: string, config: GradingConfig) {
   revalidatePath(`/courses/${courseId}`);
 }
 
-export async function addGradingCategory(
-  courseId: string,
-  formData: FormData
-) {
+export async function addGradingCategory(courseId: string, formData: FormData) {
   const session = await auth();
   if (!session?.user?.id) throw new Error("Unauthorized");
 
@@ -250,17 +257,19 @@ export async function moveGradingCategory(
   await setGradingConfig(courseId, config);
 }
 
-export async function addGradeThreshold(
-  courseId: string,
-  formData: FormData
-) {
+export async function addGradeThreshold(courseId: string, formData: FormData) {
   const session = await auth();
   if (!session?.user?.id) throw new Error("Unauthorized");
 
   const grade = (formData.get("grade") as string).trim();
   const minPercentage = parseFloat(formData.get("minPercentage") as string);
 
-  if (!grade || isNaN(minPercentage) || minPercentage < 0 || minPercentage > 100)
+  if (
+    !grade ||
+    isNaN(minPercentage) ||
+    minPercentage < 0 ||
+    minPercentage > 100
+  )
     return;
 
   const config = await getGradingConfig(courseId);
@@ -275,10 +284,7 @@ export async function addGradeThreshold(
   await setGradingConfig(courseId, config);
 }
 
-export async function removeGradeThreshold(
-  courseId: string,
-  grade: string
-) {
+export async function removeGradeThreshold(courseId: string, grade: string) {
   const session = await auth();
   if (!session?.user?.id) throw new Error("Unauthorized");
 

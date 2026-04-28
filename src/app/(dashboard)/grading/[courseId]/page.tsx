@@ -37,7 +37,9 @@ function calcGrade(
 ): string {
   if (maxPoints === 0) return "—";
   const pct = (points / maxPoints) * 100;
-  const sorted = [...thresholds].sort((a, b) => b.minPercentage - a.minPercentage);
+  const sorted = [...thresholds].sort(
+    (a, b) => b.minPercentage - a.minPercentage
+  );
   for (const t of sorted) {
     if (pct >= t.minPercentage) return t.grade;
   }
@@ -72,7 +74,9 @@ export default async function CourseGradingPage({
   if (!course) redirect("/grading");
 
   const config: GradingConfig = course.gradingConfig;
-  const standaloneCategories = config.categories.filter((c) => !c.perCheckpoint);
+  const standaloneCategories = config.categories.filter(
+    (c) => !c.perCheckpoint
+  );
   const perCpCategories = config.categories.filter((c) => c.perCheckpoint);
 
   const overrides = config.checkpointOverrides ?? {};
@@ -186,11 +190,7 @@ export default async function CourseGradingPage({
                   Group
                 </TableCell>
                 {standaloneCategories.map((cat) => (
-                  <TableCell
-                    key={cat.id}
-                    rowSpan={2}
-                    sx={{ fontWeight: 700 }}
-                  >
+                  <TableCell key={cat.id} rowSpan={2} sx={{ fontWeight: 700 }}>
                     {cat.name}
                     <Typography
                       component="span"
@@ -206,7 +206,11 @@ export default async function CourseGradingPage({
                     <TableCell
                       key={cp.id}
                       colSpan={perCpColSpan}
-                      sx={{ fontWeight: 700, borderLeft: "1px solid", borderColor: "divider" }}
+                      sx={{
+                        fontWeight: 700,
+                        borderLeft: "1px solid",
+                        borderColor: "divider",
+                      }}
                     >
                       {cp.name}
                     </TableCell>
@@ -266,23 +270,35 @@ export default async function CourseGradingPage({
                 let totalPoints = 0;
 
                 const standaloneCells = standaloneCategories.map((cat) => {
-                  const existing = gradeMap.get(
-                    `${student.id}:${cat.id}:`
-                  );
+                  const existing = gradeMap.get(`${student.id}:${cat.id}:`);
                   if (existing) totalPoints += existing.points;
                   return (
                     <TableCell key={cat.id}>
                       <form action={saveGrade}>
-                        <input type="hidden" name="studentId" value={student.id} />
+                        <input
+                          type="hidden"
+                          name="studentId"
+                          value={student.id}
+                        />
                         <input type="hidden" name="categoryId" value={cat.id} />
                         <input type="hidden" name="checkpointId" value="" />
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                        <Box
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 0.5,
+                          }}
+                        >
                           <TextField
                             size="small"
                             type="number"
                             name="points"
                             slotProps={{
-                              htmlInput: { step: 0.5, min: 0, max: cat.maxPoints },
+                              htmlInput: {
+                                step: 0.5,
+                                min: 0,
+                                max: cat.maxPoints,
+                              },
                             }}
                             defaultValue={existing?.points ?? ""}
                             placeholder={`/${cat.maxPoints}`}
@@ -314,10 +330,28 @@ export default async function CourseGradingPage({
                         }}
                       >
                         <form action={saveGrade}>
-                          <input type="hidden" name="studentId" value={student.id} />
-                          <input type="hidden" name="categoryId" value={cat.id} />
-                          <input type="hidden" name="checkpointId" value={cp.id} />
-                          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                          <input
+                            type="hidden"
+                            name="studentId"
+                            value={student.id}
+                          />
+                          <input
+                            type="hidden"
+                            name="categoryId"
+                            value={cat.id}
+                          />
+                          <input
+                            type="hidden"
+                            name="checkpointId"
+                            value={cp.id}
+                          />
+                          <Box
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 0.5,
+                            }}
+                          >
                             <TextField
                               size="small"
                               type="number"
@@ -377,7 +411,11 @@ export default async function CourseGradingPage({
                     {config.gradeThresholds.length > 0 && (
                       <TableCell>
                         <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                          {calcGrade(totalPoints, maxPerStudent, config.gradeThresholds)}
+                          {calcGrade(
+                            totalPoints,
+                            maxPerStudent,
+                            config.gradeThresholds
+                          )}
                         </Typography>
                       </TableCell>
                     )}

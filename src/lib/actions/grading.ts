@@ -1,11 +1,16 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { grades, checkpoints, studentGroups, students, courses } from "@/lib/db/schema";
+import {
+  grades,
+  checkpoints,
+  studentGroups,
+  students,
+  courses,
+} from "@/lib/db/schema";
 import type { GradingConfig } from "@/lib/db/schema";
 import { auth } from "@/lib/auth";
-import { eq, inArray } from "drizzle-orm";
-import { sql } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 export async function saveGrade(formData: FormData) {
@@ -162,7 +167,12 @@ export async function exportGradesCSV(courseId: string): Promise<string> {
       }
     }
 
-    row.push(String(totalPoints), String(maxPossible), `${percentage}%`, `"${grade}"`);
+    row.push(
+      String(totalPoints),
+      String(maxPossible),
+      `${percentage}%`,
+      `"${grade}"`
+    );
     rows.push(row.join(","));
   }
 
