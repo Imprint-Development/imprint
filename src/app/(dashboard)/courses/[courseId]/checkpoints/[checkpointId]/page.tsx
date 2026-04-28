@@ -1,9 +1,11 @@
 import AppLink from "@/components/AppLink";
 import ConfirmDeleteButton from "@/components/ConfirmDeleteButton";
+import RerunButton from "@/components/RerunButton";
 import TabNav from "@/components/TabNav";
 import AnalysisLogsWithRefresh from "@/components/AnalysisLogsWithRefresh";
 import CheckpointGroupsPane, {
   type GroupPaneData,
+  type WarnLog,
 } from "./CheckpointGroupsPane";
 import RunAnalysisForm from "./RunAnalysisForm";
 import { db } from "@/lib/db";
@@ -19,13 +21,14 @@ import {
   checkpointLogs,
 } from "@/lib/db/schema";
 import { auth } from "@/lib/auth";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, or, gte, max, like } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { triggerAnalysis, deleteCheckpoint } from "@/lib/actions/checkpoints";
 import { CHECKPOINT_STATUS_COLOR } from "@/lib/constants";
 import type {
   AnalysisRow,
   RepoWarning,
+  ReviewWarning,
 } from "../../groups/[groupId]/checkpoints/[checkpointId]/GroupAnalysisClient";
 import Typography from "@mui/material/Typography";
 import PageBreadcrumbs from "@/components/PageBreadcrumbs";
@@ -109,6 +112,52 @@ export default async function CheckpointDetailPage({
           );
         const executedPipelines = logRows.map((r) => r.pipeline);
 
+        // Find the start of the latest run for this group (most recent "Starting" info log)
+        const runStartRow = await db
+          .select({ runStart: max(checkpointLogs.createdAt) })
+          .from(checkpointLogs)
+          .where(
+            and(
+              eq(checkpointLogs.checkpointId, checkpointId),
+              eq(checkpointLogs.groupId, group.id),
+              eq(checkpointLogs.level, "info"),
+              like(checkpointLogs.message, "Starting%")
+            )
+          );
+        const runStart = runStartRow[0]?.runStart ?? null;
+
+        // Fetch warn/error log entries scoped to the latest run only
+        const warnLogRows = await db
+          .select({
+            pipeline: checkpointLogs.pipeline,
+            level: checkpointLogs.level,
+            message: checkpointLogs.message,
+            repoUrl: repositories.url,
+          })
+          .from(checkpointLogs)
+          .leftJoin(
+            repositories,
+            eq(repositories.id, checkpointLogs.repositoryId)
+          )
+          .where(
+            and(
+              eq(checkpointLogs.checkpointId, checkpointId),
+              eq(checkpointLogs.groupId, group.id),
+              or(
+                eq(checkpointLogs.level, "warn"),
+                eq(checkpointLogs.level, "error")
+              ),
+              runStart ? gte(checkpointLogs.createdAt, runStart) : undefined
+            )
+          );
+        const warnLogs: WarnLog[] = warnLogRows.map((r) => ({
+          pipeline: r.pipeline,
+          level: r.level,
+          message: r.message,
+          repoUrl: r.repoUrl ?? null,
+        }));
+        const logWarningCount = warnLogs.length;
+
         if (repoIds.length > 0) {
           const analyses = await db
             .select({
@@ -175,6 +224,35 @@ export default async function CheckpointDetailPage({
             }));
         }
 
+        // Fetch review pipeline warn-level logs per repo for this group
+        const reviewWarnLogs = await db
+          .select({
+            message: checkpointLogs.message,
+            repoId: repositories.id,
+            repoUrl: repositories.url,
+          })
+          .from(checkpointLogs)
+          .innerJoin(
+            repositories,
+            eq(repositories.id, checkpointLogs.repositoryId)
+          )
+          .where(
+            and(
+              eq(checkpointLogs.checkpointId, checkpointId),
+              eq(checkpointLogs.groupId, group.id),
+              eq(checkpointLogs.pipeline, "review"),
+              eq(checkpointLogs.level, "warn"),
+              repoIds.length > 0
+                ? inArray(checkpointLogs.repositoryId, repoIds)
+                : undefined
+            )
+          );
+        const reviewWarnings: ReviewWarning[] = reviewWarnLogs.map((r) => ({
+          repoId: r.repoId,
+          repoUrl: r.repoUrl,
+          message: r.message,
+        }));
+
         return {
           groupId: group.id,
           groupName: group.name,
@@ -183,6 +261,9 @@ export default async function CheckpointDetailPage({
           executedPipelines,
           analysisRows,
           repoWarnings,
+          reviewWarnings,
+          logWarningCount,
+          warnLogs,
         };
       })
     );
@@ -202,6 +283,9 @@ export default async function CheckpointDetailPage({
           executedPipelines: [],
           analysisRows: [],
           repoWarnings: [],
+          reviewWarnings: [] as ReviewWarning[],
+          logWarningCount: 0,
+          warnLogs: [],
         };
       })
     );
@@ -252,6 +336,13 @@ export default async function CheckpointDetailPage({
           }
           label={checkpoint.status}
         />
+        {checkpoint.status !== "analyzing" && (
+          <RerunButton
+            action={triggerAnalysisWithIds}
+            enabledPipelines={checkpoint.enabledPipelines}
+            isPending={checkpoint.status === "pending"}
+          />
+        )}
       </Stack>
 
       <TabNav tabs={TABS} defaultTab="overview" />

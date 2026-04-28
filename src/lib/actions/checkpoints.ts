@@ -8,7 +8,7 @@ import {
   checkpointLogs,
 } from "@/lib/db/schema";
 import { auth } from "@/lib/auth";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { analysisQueue } from "@/lib/queue";
@@ -96,6 +96,16 @@ export async function rerunGroupAnalysis(
 ) {
   const session = await auth();
   if (!session?.user?.id) throw new Error("Unauthorized");
+
+  // Clear previous logs for this group so the modal only shows latest-run warnings
+  await db
+    .delete(checkpointLogs)
+    .where(
+      and(
+        eq(checkpointLogs.checkpointId, checkpointId),
+        eq(checkpointLogs.groupId, groupId)
+      )
+    );
 
   // Mark checkpoint as analyzing so the UI reflects in-progress state
   await db

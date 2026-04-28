@@ -15,6 +15,11 @@ import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import Alert from "@mui/material/Alert";
 import AlertTitle from "@mui/material/AlertTitle";
+import Button from "@mui/material/Button";
+import Collapse from "@mui/material/Collapse";
+import Stack from "@mui/material/Stack";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import { AnalysisCharts } from "./AnalysisCharts";
 
 export interface AnalysisRow {
@@ -71,6 +76,33 @@ function aggregateRows(rows: AnalysisRow[]): AnalysisRow[] {
   return [...byStudent.values()];
 }
 
+function CollapsibleWarnings({
+  children,
+  count,
+}: {
+  children: React.ReactNode;
+  count: number;
+}) {
+  const [open, setOpen] = useState(false);
+  if (count === 0) return null;
+  return (
+    <Box sx={{ mb: 2 }}>
+      <Button
+        size="small"
+        color="warning"
+        startIcon={open ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+        onClick={() => setOpen((v) => !v)}
+        sx={{ mb: 0.5 }}
+      >
+        {count} warning{count !== 1 ? "s" : ""}
+      </Button>
+      <Collapse in={open}>
+        <Stack spacing={1}>{children}</Stack>
+      </Collapse>
+    </Box>
+  );
+}
+
 function SummaryPanel({
   rows,
   warnings,
@@ -80,15 +112,17 @@ function SummaryPanel({
 }) {
   return (
     <>
-      {warnings.map((w) => (
-        <Alert key={w.repoId} severity="warning" sx={{ mb: 2 }}>
-          <AlertTitle>
-            Unidentified authors in {shortRepoLabel(w.repoUrl)}
-          </AlertTitle>
-          The following git emails are not registered as students:{" "}
-          {w.unidentifiedAuthors.join(", ")}
-        </Alert>
-      ))}
+      <CollapsibleWarnings count={warnings.length}>
+        {warnings.map((w) => (
+          <Alert key={w.repoId} severity="warning">
+            <AlertTitle>
+              Unidentified authors in {shortRepoLabel(w.repoUrl)}
+            </AlertTitle>
+            The following git emails are not registered as students:{" "}
+            {w.unidentifiedAuthors.join(", ")}
+          </Alert>
+        ))}
+      </CollapsibleWarnings>
 
       <AnalysisCharts data={rows} />
 

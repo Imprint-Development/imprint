@@ -11,26 +11,32 @@ import FormControlLabel from "@mui/material/FormControlLabel";
 import Checkbox from "@mui/material/Checkbox";
 import Typography from "@mui/material/Typography";
 import ReplayRounded from "@mui/icons-material/ReplayRounded";
+import PlayArrowRounded from "@mui/icons-material/PlayArrowRounded";
 import { PIPELINE_REGISTRY } from "@/lib/analysis/pipelines/registry";
 
 interface Props {
   action: (formData: FormData) => void | Promise<void>;
   enabledPipelines: string[];
+  isPending?: boolean;
 }
 
-export default function RerunButton({ action, enabledPipelines }: Props) {
+export default function RerunButton({
+  action,
+  enabledPipelines,
+  isPending = false,
+}: Props) {
   const [open, setOpen] = useState(false);
 
   return (
     <>
       <Button
         size="small"
-        variant="outlined"
-        color="warning"
-        startIcon={<ReplayRounded />}
+        variant={isPending ? "contained" : "outlined"}
+        color={isPending ? "primary" : "warning"}
+        startIcon={isPending ? <PlayArrowRounded /> : <ReplayRounded />}
         onClick={() => setOpen(true)}
       >
-        Re-run
+        {isPending ? "Run" : "Re-run"}
       </Button>
 
       <Dialog
@@ -39,7 +45,9 @@ export default function RerunButton({ action, enabledPipelines }: Props) {
         maxWidth="xs"
         fullWidth
       >
-        <DialogTitle>Re-run Analysis</DialogTitle>
+        <DialogTitle>
+          {isPending ? "Run Analysis" : "Re-run Analysis"}
+        </DialogTitle>
         <form
           action={(formData) => {
             setOpen(false);

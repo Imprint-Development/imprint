@@ -23,6 +23,10 @@ import CardContent from "@mui/material/CardContent";
 import TextField from "@mui/material/TextField";
 import Button from "@mui/material/Button";
 import Stack from "@mui/material/Stack";
+import Collapse from "@mui/material/Collapse";
+import IconButton from "@mui/material/IconButton";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import MuiTooltip from "@mui/material/Tooltip";
 import {
   BarChart,
@@ -49,9 +53,16 @@ export interface RepoWarning {
   unidentifiedAuthors: string[];
 }
 
+export interface ReviewWarning {
+  repoId: string;
+  repoUrl: string;
+  message: string;
+}
+
 interface Props {
   rows: AnalysisRow[];
   warnings: RepoWarning[];
+  reviewWarnings: ReviewWarning[];
   executedPipelines: string[];
 }
 
@@ -121,6 +132,33 @@ function getUniqueRepos(rows: AnalysisRow[]): { id: string; url: string }[] {
 
 /* ---------- Contributions Tab ---------- */
 
+function CollapsibleWarnings({
+  children,
+  count,
+}: {
+  children: React.ReactNode;
+  count: number;
+}) {
+  const [open, setOpen] = useState(false);
+  if (count === 0) return null;
+  return (
+    <Box sx={{ mb: 2 }}>
+      <Button
+        size="small"
+        color="warning"
+        startIcon={open ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+        onClick={() => setOpen((v) => !v)}
+        sx={{ mb: 0.5 }}
+      >
+        {count} warning{count !== 1 ? "s" : ""}
+      </Button>
+      <Collapse in={open}>
+        <Stack spacing={1}>{children}</Stack>
+      </Collapse>
+    </Box>
+  );
+}
+
 function ContributionsTab({
   rows,
   warnings,
@@ -138,15 +176,17 @@ function ContributionsTab({
 
   return (
     <>
-      {warnings.map((w) => (
-        <Alert key={w.repoId} severity="warning" sx={{ mb: 2 }}>
-          <AlertTitle>
-            Unidentified authors in {shortRepoLabel(w.repoUrl)}
-          </AlertTitle>
-          The following git emails are not registered as students:{" "}
-          {w.unidentifiedAuthors.join(", ")}
-        </Alert>
-      ))}
+      <CollapsibleWarnings count={warnings.length}>
+        {warnings.map((w) => (
+          <Alert key={w.repoId} severity="warning">
+            <AlertTitle>
+              Unidentified authors in {shortRepoLabel(w.repoUrl)}
+            </AlertTitle>
+            The following git emails are not registered as students:{" "}
+            {w.unidentifiedAuthors.join(", ")}
+          </Alert>
+        ))}
+      </CollapsibleWarnings>
 
       <Card sx={{ mb: 3 }}>
         <CardContent>
@@ -279,17 +319,14 @@ function FilesTab({ rows }: { rows: AnalysisRow[] }) {
 
 /* ---------- Review Tab ---------- */
 
-function ReviewTab({ rows }: { rows: AnalysisRow[] }) {
+function ReviewTab({
+  rows,
+  reviewWarnings,
+}: {
+  rows: AnalysisRow[];
+  reviewWarnings: ReviewWarning[];
+}) {
   const hasData = rows.some((r) => Object.keys(r.reviewMetrics).length > 0);
-
-  if (!hasData) {
-    return (
-      <Alert severity="info">
-        No review data available. Run the <strong>review</strong> pipeline to
-        see PR review activity.
-      </Alert>
-    );
-  }
 
   const barData = rows.map((d) => ({
     name: d.studentName,
@@ -302,63 +339,83 @@ function ReviewTab({ rows }: { rows: AnalysisRow[] }) {
 
   return (
     <>
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Typography variant="h6" sx={{ mb: 2 }}>
-            PR Review Activity
-          </Typography>
-          <ResponsiveContainer width="100%" height={350}>
-            <BarChart data={barData}>
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="PRs Reviewed" fill="#1976d2" />
-              <Bar dataKey="Approvals" fill="#388e3c" />
-              <Bar dataKey="Changes Requested" fill="#f57c00" />
-              <Bar dataKey="Review Comments" fill="#7b1fa2" />
-              <Bar dataKey="Issue Comments" fill="#0097a7" />
-            </BarChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
+      <CollapsibleWarnings count={reviewWarnings.length}>
+        {reviewWarnings.map((w, i) => (
+          <Alert key={i} severity="warning">
+            <AlertTitle>
+              Unmatched GitHub users in {shortRepoLabel(w.repoUrl)}
+            </AlertTitle>
+            {w.message}
+          </Alert>
+        ))}
+      </CollapsibleWarnings>
 
-      <TableContainer component={Paper} variant="outlined">
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell>Student</TableCell>
-              <TableCell align="right">PRs Reviewed</TableCell>
-              <TableCell align="right">Approvals</TableCell>
-              <TableCell align="right">Changes Requested</TableCell>
-              <TableCell align="right">Review Comments</TableCell>
-              <TableCell align="right">Issue Comments</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {rows.map((a, i) => (
-              <TableRow key={i}>
-                <TableCell>{a.studentName}</TableCell>
-                <TableCell align="right">
-                  {a.reviewMetrics.prsReviewed ?? 0}
-                </TableCell>
-                <TableCell align="right">
-                  {a.reviewMetrics.approvals ?? 0}
-                </TableCell>
-                <TableCell align="right">
-                  {a.reviewMetrics.changesRequested ?? 0}
-                </TableCell>
-                <TableCell align="right">
-                  {a.reviewMetrics.reviewComments ?? 0}
-                </TableCell>
-                <TableCell align="right">
-                  {a.reviewMetrics.issueComments ?? 0}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+      {!hasData ? (
+        <Alert severity="info">
+          No review data available. Run the <strong>review</strong> pipeline to
+          see PR review activity.
+        </Alert>
+      ) : (
+        <>
+          <Card sx={{ mb: 3 }}>
+            <CardContent>
+              <Typography variant="h6" sx={{ mb: 2 }}>
+                PR Review Activity
+              </Typography>
+              <ResponsiveContainer width="100%" height={350}>
+                <BarChart data={barData}>
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="PRs Reviewed" fill="#1976d2" />
+                  <Bar dataKey="Approvals" fill="#388e3c" />
+                  <Bar dataKey="Changes Requested" fill="#f57c00" />
+                  <Bar dataKey="Review Comments" fill="#7b1fa2" />
+                  <Bar dataKey="Issue Comments" fill="#0097a7" />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          <TableContainer component={Paper} variant="outlined">
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Student</TableCell>
+                  <TableCell align="right">PRs Reviewed</TableCell>
+                  <TableCell align="right">Approvals</TableCell>
+                  <TableCell align="right">Changes Requested</TableCell>
+                  <TableCell align="right">Review Comments</TableCell>
+                  <TableCell align="right">Issue Comments</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {rows.map((a, i) => (
+                  <TableRow key={i}>
+                    <TableCell>{a.studentName}</TableCell>
+                    <TableCell align="right">
+                      {a.reviewMetrics.prsReviewed ?? 0}
+                    </TableCell>
+                    <TableCell align="right">
+                      {a.reviewMetrics.approvals ?? 0}
+                    </TableCell>
+                    <TableCell align="right">
+                      {a.reviewMetrics.changesRequested ?? 0}
+                    </TableCell>
+                    <TableCell align="right">
+                      {a.reviewMetrics.reviewComments ?? 0}
+                    </TableCell>
+                    <TableCell align="right">
+                      {a.reviewMetrics.issueComments ?? 0}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </>
+      )}
     </>
   );
 }
@@ -458,6 +515,7 @@ function AiChatTab() {
 export function GroupAnalysisClient({
   rows,
   warnings,
+  reviewWarnings,
   executedPipelines,
 }: Props) {
   const repos = getUniqueRepos(rows);
@@ -473,6 +531,11 @@ export function GroupAnalysisClient({
     selectedRepo === "all"
       ? warnings
       : warnings.filter((w) => w.repoId === selectedRepo);
+
+  const filteredReviewWarnings =
+    selectedRepo === "all"
+      ? reviewWarnings
+      : reviewWarnings.filter((w) => w.repoId === selectedRepo);
 
   return (
     <Box>
@@ -522,7 +585,12 @@ export function GroupAnalysisClient({
         <ContributionsTab rows={filteredRows} warnings={filteredWarnings} />
       )}
       {tab === 1 && <FilesTab rows={filteredRows} />}
-      {tab === 2 && <ReviewTab rows={filteredRows} />}
+      {tab === 2 && (
+        <ReviewTab
+          rows={filteredRows}
+          reviewWarnings={filteredReviewWarnings}
+        />
+      )}
       {tab === 3 && <AiChatTab />}
     </Box>
   );
