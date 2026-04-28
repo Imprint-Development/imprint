@@ -27,6 +27,8 @@ import {
   removeIgnoredGithubUsername,
   addGradingCategory,
   removeGradingCategory,
+  renameGradingCategory,
+  moveGradingCategory,
   addGradeThreshold,
   removeGradeThreshold,
   setCheckpointCategoryMaxPoints,
@@ -57,6 +59,8 @@ import MenuItem from "@mui/material/MenuItem";
 import DeleteRounded from "@mui/icons-material/DeleteRounded";
 import AddRounded from "@mui/icons-material/AddRounded";
 import Save from "@mui/icons-material/Save";
+import ArrowUpward from "@mui/icons-material/ArrowUpward";
+import ArrowDownward from "@mui/icons-material/ArrowDownward";
 
 const TABS = [
   { label: "Groups", value: "groups" },
@@ -339,51 +343,144 @@ export default async function CourseDetailPage({
               </Typography>
 
               {config.categories.length > 0 && (
-                <TableContainer component={Paper} variant="outlined" sx={{ mb: 2 }}>
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>Name</TableCell>
-                        <TableCell>Max Points</TableCell>
-                        <TableCell>Scope</TableCell>
-                        <TableCell sx={{ width: 48 }} />
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {config.categories.map((cat) => (
-                        <TableRow key={cat.id}>
-                          <TableCell>{cat.name}</TableCell>
-                          <TableCell>{cat.maxPoints}</TableCell>
-                          <TableCell>
-                            <Chip
-                              size="small"
-                              label={cat.perCheckpoint ? "Per checkpoint" : "Standalone"}
-                              variant="outlined"
-                              color={cat.perCheckpoint ? "primary" : "default"}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <form
-                              action={removeGradingCategory.bind(
-                                null,
-                                courseId,
-                                cat.id
-                              )}
-                            >
-                              <IconButton
-                                type="submit"
-                                size="small"
-                                color="error"
-                              >
-                                <DeleteRounded fontSize="small" />
-                              </IconButton>
-                            </form>
-                          </TableCell>
+                <>
+                  {/* Off-screen rename forms — inputs reference these via the form= attribute */}
+                  {config.categories.map((cat) => (
+                    <form
+                      key={`rename-${cat.id}`}
+                      id={`rename-cat-${cat.id}`}
+                      action={renameGradingCategory.bind(null, courseId, cat.id)}
+                      style={{ display: "none" }}
+                    />
+                  ))}
+                  <TableContainer component={Paper} variant="outlined" sx={{ mb: 2 }}>
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>Name</TableCell>
+                          <TableCell sx={{ width: 100 }}>Max Pts</TableCell>
+                          <TableCell>Scope</TableCell>
+                          <TableCell sx={{ width: 148 }} />
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
+                      </TableHead>
+                      <TableBody>
+                        {config.categories.map((cat, idx) => (
+                          <TableRow key={cat.id}>
+                            <TableCell>
+                              <TextField
+                                name="name"
+                                defaultValue={cat.name}
+                                size="small"
+                                required
+                                slotProps={{
+                                  htmlInput: { form: `rename-cat-${cat.id}` },
+                                }}
+                                sx={{ width: "100%", minWidth: 120 }}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <TextField
+                                name="maxPoints"
+                                type="number"
+                                defaultValue={cat.maxPoints}
+                                size="small"
+                                required
+                                slotProps={{
+                                  htmlInput: {
+                                    form: `rename-cat-${cat.id}`,
+                                    min: 0,
+                                    step: 0.5,
+                                  },
+                                }}
+                                sx={{ width: 80 }}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Chip
+                                size="small"
+                                label={
+                                  cat.perCheckpoint
+                                    ? "Per checkpoint"
+                                    : "Standalone"
+                                }
+                                variant="outlined"
+                                color={cat.perCheckpoint ? "primary" : "default"}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Box sx={{ display: "flex", gap: 0.25 }}>
+                                {/* Save rename */}
+                                <IconButton
+                                  type="submit"
+                                  form={`rename-cat-${cat.id}`}
+                                  size="small"
+                                  title="Save"
+                                >
+                                  <Save fontSize="small" />
+                                </IconButton>
+                                {/* Move up */}
+                                <form
+                                  action={moveGradingCategory.bind(
+                                    null,
+                                    courseId,
+                                    cat.id,
+                                    "up"
+                                  )}
+                                >
+                                  <IconButton
+                                    type="submit"
+                                    size="small"
+                                    disabled={idx === 0}
+                                    title="Move up"
+                                  >
+                                    <ArrowUpward fontSize="small" />
+                                  </IconButton>
+                                </form>
+                                {/* Move down */}
+                                <form
+                                  action={moveGradingCategory.bind(
+                                    null,
+                                    courseId,
+                                    cat.id,
+                                    "down"
+                                  )}
+                                >
+                                  <IconButton
+                                    type="submit"
+                                    size="small"
+                                    disabled={
+                                      idx === config.categories.length - 1
+                                    }
+                                    title="Move down"
+                                  >
+                                    <ArrowDownward fontSize="small" />
+                                  </IconButton>
+                                </form>
+                                {/* Delete */}
+                                <form
+                                  action={removeGradingCategory.bind(
+                                    null,
+                                    courseId,
+                                    cat.id
+                                  )}
+                                >
+                                  <IconButton
+                                    type="submit"
+                                    size="small"
+                                    color="error"
+                                    title="Delete"
+                                  >
+                                    <DeleteRounded fontSize="small" />
+                                  </IconButton>
+                                </form>
+                              </Box>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </>
               )}
 
               <Divider sx={{ my: 2 }} />
