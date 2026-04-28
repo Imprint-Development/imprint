@@ -209,6 +209,47 @@ export async function removeGradingCategory(
   await setGradingConfig(courseId, config);
 }
 
+export async function renameGradingCategory(
+  courseId: string,
+  categoryId: string,
+  formData: FormData
+) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  const name = (formData.get("name") as string).trim();
+  const maxPoints = parseFloat(formData.get("maxPoints") as string);
+  if (!name || isNaN(maxPoints) || maxPoints < 0) return;
+
+  const config = await getGradingConfig(courseId);
+  const cat = config.categories.find((c) => c.id === categoryId);
+  if (cat) {
+    cat.name = name;
+    cat.maxPoints = maxPoints;
+  }
+  await setGradingConfig(courseId, config);
+}
+
+export async function moveGradingCategory(
+  courseId: string,
+  categoryId: string,
+  direction: "up" | "down"
+) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  const config = await getGradingConfig(courseId);
+  const idx = config.categories.findIndex((c) => c.id === categoryId);
+  if (idx === -1) return;
+
+  const newIdx = direction === "up" ? idx - 1 : idx + 1;
+  if (newIdx < 0 || newIdx >= config.categories.length) return;
+
+  const cats = config.categories;
+  [cats[idx], cats[newIdx]] = [cats[newIdx], cats[idx]];
+  await setGradingConfig(courseId, config);
+}
+
 export async function addGradeThreshold(
   courseId: string,
   formData: FormData
