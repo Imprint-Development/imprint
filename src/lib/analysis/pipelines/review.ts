@@ -12,6 +12,11 @@ export interface ReviewMetrics {
   issueComments: number;
 }
 
+export interface ReviewWarnings {
+  /** Students who were never matched from any GitHub login */
+  unmatchedStudents: string[];
+}
+
 function emptyReviewMetrics(): ReviewMetrics {
   return {
     prsReviewed: 0,
@@ -56,13 +61,15 @@ async function getGitHubEmail(
   }
 }
 
-export async function runReviewPipeline(ctx: PipelineContext): Promise<void> {
-  const { checkpoint, group, ignoredEmails, log } = ctx;
+export async function runReviewPipeline(
+  ctx: PipelineContext
+): Promise<ReviewWarnings> {
+  const { checkpoint, group, ignoredEmails, ignoredGithubUsernames, log } = ctx;
 
   const token = process.env.GITHUB_TOKEN;
   if (!token) {
     await log("warn", "GITHUB_TOKEN is not set — review pipeline skipped");
-    return;
+    return { unmatchedStudents: [] };
   }
 
   const octokit = new Octokit({ auth: token });
@@ -79,15 +86,23 @@ export async function runReviewPipeline(ctx: PipelineContext): Promise<void> {
 
   if (groupRepos.length === 0) {
     await log("warn", "No repositories found for this group");
-    return;
+    return { unmatchedStudents: [] };
   }
 
   // Build a map of known student emails → studentId for matching
   const emailToStudentId = new Map<string, string>();
+  // Build a map of known github usernames → studentId for direct login matching
+  const githubUsernameToStudentId = new Map<string, string>();
   for (const student of groupStudents) {
     emailToStudentId.set(student.email.toLowerCase(), student.id);
     for (const e of student.gitEmails) {
       emailToStudentId.set(e.toLowerCase(), student.id);
+    }
+    if (student.githubUsername) {
+      githubUsernameToStudentId.set(
+        student.githubUsername.toLowerCase(),
+        student.id
+      );
     }
   }
 
@@ -100,15 +115,27 @@ export async function runReviewPipeline(ctx: PipelineContext): Promise<void> {
   // Cache GitHub login → resolved studentId to avoid redundant API calls
   const loginToStudentId = new Map<string, string | null>();
 
-  // Track which students were matched from at least one GitHub login
+  // Track which students were matched from at least one GitHub login (across all repos)
   const resolvedStudentIds = new Set<string>();
-  // Track GitHub logins that appeared on PRs but couldn't be matched to any student
-  const unmappedLogins = new Set<string>();
 
   async function resolveLogin(login: string): Promise<string | null> {
     if (loginToStudentId.has(login)) return loginToStudentId.get(login)!;
 
-    // Try matching by public profile email
+    // Skip logins that are globally ignored for this course
+    if (ignoredGithubUsernames.has(login.toLowerCase())) {
+      loginToStudentId.set(login, null);
+      return null;
+    }
+
+    // Try direct GitHub username match first (no API call needed)
+    const byUsername = githubUsernameToStudentId.get(login.toLowerCase());
+    if (byUsername) {
+      loginToStudentId.set(login, byUsername);
+      resolvedStudentIds.add(byUsername);
+      return byUsername;
+    }
+
+    // Fall back to matching by public profile email
     const email = await getGitHubEmail(octokit, login);
     if (email) {
       const normalised = email.toLowerCase();
@@ -121,19 +148,25 @@ export async function runReviewPipeline(ctx: PipelineContext): Promise<void> {
     }
 
     loginToStudentId.set(login, null);
-    unmappedLogins.add(login);
     return null;
   }
 
   for (const repo of groupRepos) {
     const parsed = parseGitHubUrl(repo.url);
     if (!parsed) {
-      await log("warn", `Cannot parse GitHub URL: ${repo.url} — skipping`);
+      await log(
+        "warn",
+        `Cannot parse GitHub URL: ${repo.url} — skipping`,
+        repo.id
+      );
       continue;
     }
 
     const { owner, repo: repoName } = parsed;
-    await log("info", `Fetching PRs for ${owner}/${repoName}`);
+    await log("info", `Fetching PRs for ${owner}/${repoName}`, repo.id);
+
+    // Track unmapped logins per repo
+    const repoUnmappedLogins = new Set<string>();
 
     // Fetch all closed/merged PRs (GitHub only returns merged PRs as closed)
     let page = 1;
@@ -156,7 +189,6 @@ export async function runReviewPipeline(ctx: PipelineContext): Promise<void> {
       // Stop paginating once PRs are older than the start date
       const oldestUpdated = new Date(prs[prs.length - 1].updated_at);
       if (since && oldestUpdated < since) {
-        // Filter this page to PRs within range then stop
         const inRange = prs.filter((pr) => {
           const updated = new Date(pr.updated_at);
           return (!since || updated >= since) && (!until || updated <= until);
@@ -173,11 +205,20 @@ export async function runReviewPipeline(ctx: PipelineContext): Promise<void> {
       page++;
     }
 
+    // Emit per-repo warnings for unmapped logins
+    if (repoUnmappedLogins.size > 0) {
+      await log(
+        "warn",
+        `The following GitHub users interacted on PRs but could not be matched to any student in this group: ${[...repoUnmappedLogins].join(", ")}.`,
+        repo.id
+      );
+    }
+
     async function processPrs(
       prs: Awaited<ReturnType<typeof octokit.pulls.list>>["data"]
     ) {
       for (const pr of prs) {
-        await log("info", `Processing PR #${pr.number}: ${pr.title}`);
+        await log("info", `Processing PR #${pr.number}: ${pr.title}`, repo.id);
 
         // Fetch formal reviews (approvals / change requests)
         const { data: reviews } = await octokit.pulls.listReviews({
@@ -200,7 +241,14 @@ export async function runReviewPipeline(ctx: PipelineContext): Promise<void> {
           if (until && submittedAt && submittedAt > until) continue;
 
           const studentId = await resolveLogin(login);
-          if (!studentId) continue;
+          if (!studentId) {
+            if (
+              loginToStudentId.get(login) === null &&
+              !ignoredGithubUsernames.has(login.toLowerCase())
+            )
+              repoUnmappedLogins.add(login);
+            continue;
+          }
 
           const m = metricsMap.get(studentId)!;
           reviewedBy.add(studentId);
@@ -236,7 +284,14 @@ export async function runReviewPipeline(ctx: PipelineContext): Promise<void> {
           if (until && createdAt > until) continue;
 
           const studentId = await resolveLogin(login);
-          if (!studentId) continue;
+          if (!studentId) {
+            if (
+              loginToStudentId.get(login) === null &&
+              !ignoredGithubUsernames.has(login.toLowerCase())
+            )
+              repoUnmappedLogins.add(login);
+            continue;
+          }
 
           metricsMap.get(studentId)!.reviewComments++;
         }
@@ -258,7 +313,14 @@ export async function runReviewPipeline(ctx: PipelineContext): Promise<void> {
           if (until && createdAt > until) continue;
 
           const studentId = await resolveLogin(login);
-          if (!studentId) continue;
+          if (!studentId) {
+            if (
+              loginToStudentId.get(login) === null &&
+              !ignoredGithubUsernames.has(login.toLowerCase())
+            )
+              repoUnmappedLogins.add(login);
+            continue;
+          }
 
           metricsMap.get(studentId)!.issueComments++;
         }
@@ -275,15 +337,7 @@ export async function runReviewPipeline(ctx: PipelineContext): Promise<void> {
     await log(
       "warn",
       `The following students could not be matched to a GitHub account and their review activity may be missing: ${unmatchedStudents.map((s) => s.displayName).join(", ")}. ` +
-        `Ensure each student has a public GitHub email that matches their registered email or git emails.`
-    );
-  }
-
-  // Warn about GitHub users who interacted on PRs but are not in this group.
-  if (unmappedLogins.size > 0) {
-    await log(
-      "warn",
-      `The following GitHub users interacted on PRs but could not be matched to any student in this group: ${[...unmappedLogins].join(", ")}.`
+        `Ensure each student has a GitHub username set, a public GitHub email that matches their registered email, or add git email aliases.`
     );
   }
 
@@ -335,4 +389,8 @@ export async function runReviewPipeline(ctx: PipelineContext): Promise<void> {
   }
 
   await log("info", "Review pipeline complete");
+
+  return {
+    unmatchedStudents: unmatchedStudents.map((s) => s.displayName),
+  };
 }

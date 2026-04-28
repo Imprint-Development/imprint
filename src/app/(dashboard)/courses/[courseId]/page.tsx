@@ -22,6 +22,8 @@ import {
   deleteCourse,
   addIgnoredGitEmail,
   removeIgnoredGitEmail,
+  addIgnoredGithubUsername,
+  removeIgnoredGithubUsername,
 } from "@/lib/actions/courses";
 import { CHECKPOINT_STATUS_COLOR } from "@/lib/constants";
 import Typography from "@mui/material/Typography";
@@ -121,6 +123,10 @@ export default async function CourseDetailPage({
   const updateCourseWithId = updateCourse.bind(null, courseId);
   const deleteCourseWithId = deleteCourse.bind(null, courseId);
   const addIgnoredEmailWithId = addIgnoredGitEmail.bind(null, courseId);
+  const addIgnoredGithubUsernameWithId = addIgnoredGithubUsername.bind(
+    null,
+    courseId
+  );
 
   return (
     <Box sx={{ p: 3 }}>
@@ -447,6 +453,66 @@ export default async function CourseDetailPage({
                     type="email"
                     size="small"
                     sx={{ flex: 1 }}
+                  />
+                  <Button type="submit" size="small" variant="outlined">
+                    Add
+                  </Button>
+                </Stack>
+              </form>
+            </CardContent>
+          </Card>
+
+          <Card variant="outlined" sx={{ mb: 3 }}>
+            <CardContent>
+              <Typography variant="h6" sx={{ mb: 1 }}>
+                Ignored GitHub Usernames
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 2 }}>
+                Pull request activity from these GitHub accounts will be
+                silently ignored during analysis (e.g. bots, CI users).
+              </Typography>
+              {course.ignoredGithubUsernames.length > 0 && (
+                <Stack direction="row" sx={{ mb: 2, flexWrap: "wrap", gap: 1 }}>
+                  {course.ignoredGithubUsernames.map((username) => (
+                    <form
+                      key={username}
+                      action={removeIgnoredGithubUsername.bind(
+                        null,
+                        courseId,
+                        username
+                      )}
+                    >
+                      <Chip
+                        size="small"
+                        label={username}
+                        onDelete={undefined}
+                        deleteIcon={
+                          <IconButton
+                            type="submit"
+                            size="small"
+                            sx={{ borderRadius: "50%", p: 0 }}
+                          >
+                            <DeleteRounded fontSize="small" />
+                          </IconButton>
+                        }
+                        variant="outlined"
+                        sx={{ fontFamily: "monospace" }}
+                      />
+                    </form>
+                  ))}
+                </Stack>
+              )}
+              <Divider sx={{ my: 2 }} />
+              <form action={addIgnoredGithubUsernameWithId}>
+                <Stack direction="row" spacing={1}>
+                  <TextField
+                    name="ignoredGithubUsername"
+                    placeholder="github-login"
+                    size="small"
+                    sx={{ flex: 1 }}
+                    slotProps={{
+                      input: { sx: { fontFamily: "monospace" } },
+                    }}
                   />
                   <Button type="submit" size="small" variant="outlined">
                     Add

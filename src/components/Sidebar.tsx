@@ -24,6 +24,7 @@ import GradingRounded from "@mui/icons-material/GradingRounded";
 import LogoutRounded from "@mui/icons-material/LogoutRounded";
 import GroupsRounded from "@mui/icons-material/GroupsRounded";
 import FlagRounded from "@mui/icons-material/FlagRounded";
+import AdminPanelSettingsRounded from "@mui/icons-material/AdminPanelSettingsRounded";
 import { useCourse } from "./CourseProvider";
 
 const SIDEBAR_WIDTH = 240;
@@ -72,9 +73,45 @@ const bottomNavItems: NavItem[] = [
   },
 ];
 
+function NavItemRow({
+  item,
+  href,
+  active,
+  disabled,
+}: {
+  item: NavItem;
+  href: string | null;
+  active: boolean;
+  disabled: boolean;
+}) {
+  return (
+    <ListItem disablePadding sx={{ px: 1, pb: 0.5 }}>
+      <ListItemButton
+        component={disabled || !href ? "div" : NextLink}
+        href={disabled || !href ? undefined : href}
+        selected={active}
+        disabled={disabled}
+        sx={{ borderRadius: 2 }}
+      >
+        <ListItemIcon sx={{ minWidth: 36 }}>{item.icon}</ListItemIcon>
+        <ListItemText
+          primary={item.label}
+          slotProps={{
+            primary: {
+              variant: "body2",
+              sx: { fontWeight: active ? 600 : undefined },
+            },
+          }}
+        />
+      </ListItemButton>
+    </ListItem>
+  );
+}
+
 interface SidebarProps {
   user: { name: string; email: string };
   signOutAction: () => Promise<void>;
+  isAdmin?: boolean;
   open?: boolean;
   onClose?: () => void;
 }
@@ -82,7 +119,8 @@ interface SidebarProps {
 function SidebarContent({
   user,
   signOutAction,
-}: Pick<SidebarProps, "user" | "signOutAction">) {
+  isAdmin,
+}: Pick<SidebarProps, "user" | "signOutAction" | "isAdmin">) {
   const pathname = usePathname();
   const { courses, selectedCourseId, selectedCourse, selectCourse } =
     useCourse();
@@ -113,32 +151,6 @@ function SidebarContent({
     const active =
       pathname === item.href || pathname.startsWith(item.href + "/");
     return { href: item.href, active, disabled: false };
-  }
-
-  function NavItemRow({ item }: { item: NavItem }) {
-    const { href, active, disabled } = resolveItem(item);
-    return (
-      <ListItem disablePadding sx={{ px: 1, pb: 0.5 }}>
-        <ListItemButton
-          component={disabled || !href ? "div" : NextLink}
-          href={disabled || !href ? undefined : href}
-          selected={active}
-          disabled={disabled}
-          sx={{ borderRadius: 2 }}
-        >
-          <ListItemIcon sx={{ minWidth: 36 }}>{item.icon}</ListItemIcon>
-          <ListItemText
-            primary={item.label}
-            slotProps={{
-              primary: {
-                variant: "body2",
-                sx: { fontWeight: active ? 600 : undefined },
-              },
-            }}
-          />
-        </ListItemButton>
-      </ListItem>
-    );
   }
 
   return (
@@ -200,16 +212,30 @@ function SidebarContent({
 
       <Divider />
       <List sx={{ flex: 1, pt: 1 }}>
-        {navItems.map((item) => (
-          <NavItemRow key={item.label} item={item} />
-        ))}
+        {navItems.map((item) => {
+          const resolved = resolveItem(item);
+          return <NavItemRow key={item.label} item={item} {...resolved} />;
+        })}
       </List>
 
       <Divider />
       <List sx={{ pt: 0.5, pb: 0.5 }}>
-        {bottomNavItems.map((item) => (
-          <NavItemRow key={item.label} item={item} />
-        ))}
+        {bottomNavItems.map((item) => {
+          const resolved = resolveItem(item);
+          return <NavItemRow key={item.label} item={item} {...resolved} />;
+        })}
+        {isAdmin && (
+          <NavItemRow
+            item={{
+              label: "Admin",
+              href: "/admin",
+              icon: <AdminPanelSettingsRounded />,
+            }}
+            href="/admin"
+            active={pathname === "/admin" || pathname.startsWith("/admin/")}
+            disabled={false}
+          />
+        )}
       </List>
 
       <Divider />
@@ -237,6 +263,7 @@ function SidebarContent({
 export default function Sidebar({
   user,
   signOutAction,
+  isAdmin,
   open,
   onClose,
 }: SidebarProps) {
@@ -250,7 +277,11 @@ export default function Sidebar({
           flexShrink: 0,
         }}
       >
-        <SidebarContent user={user} signOutAction={signOutAction} />
+        <SidebarContent
+          user={user}
+          signOutAction={signOutAction}
+          isAdmin={isAdmin}
+        />
       </Box>
 
       {/* Mobile drawer */}
@@ -260,7 +291,11 @@ export default function Sidebar({
         sx={{ display: { xs: "block", md: "none" } }}
         slotProps={{ paper: { sx: { width: SIDEBAR_WIDTH } } }}
       >
-        <SidebarContent user={user} signOutAction={signOutAction} />
+        <SidebarContent
+          user={user}
+          signOutAction={signOutAction}
+          isAdmin={isAdmin}
+        />
       </Drawer>
     </>
   );

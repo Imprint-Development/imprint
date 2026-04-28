@@ -20,6 +20,7 @@ import {
   GroupAnalysisClient,
   type AnalysisRow,
   type RepoWarning,
+  type ReviewWarning,
 } from "./GroupAnalysisClient";
 import Typography from "@mui/material/Typography";
 import PageBreadcrumbs from "@/components/PageBreadcrumbs";
@@ -86,6 +87,7 @@ export default async function GroupCheckpointAnalysisPage({
 
   let analysisRows: AnalysisRow[] = [];
   let repoWarnings: RepoWarning[] = [];
+  let reviewWarnings: ReviewWarning[] = [];
   let executedPipelines: string[] = [];
 
   if (checkpoint.status === "complete" && repoIds.length > 0) {
@@ -156,6 +158,29 @@ export default async function GroupCheckpointAnalysisPage({
         )
       );
     executedPipelines = logRows.map((r) => r.pipeline);
+
+    const reviewWarnLogs = await db
+      .select({
+        message: checkpointLogs.message,
+        repoId: repositories.id,
+        repoUrl: repositories.url,
+      })
+      .from(checkpointLogs)
+      .innerJoin(repositories, eq(repositories.id, checkpointLogs.repositoryId))
+      .where(
+        and(
+          eq(checkpointLogs.checkpointId, checkpointId),
+          eq(checkpointLogs.groupId, groupId),
+          eq(checkpointLogs.pipeline, "review"),
+          eq(checkpointLogs.level, "warn"),
+          inArray(checkpointLogs.repositoryId, repoIds)
+        )
+      );
+    reviewWarnings = reviewWarnLogs.map((r) => ({
+      repoId: r.repoId,
+      repoUrl: r.repoUrl,
+      message: r.message,
+    }));
   }
 
   const rerunWithIds = rerunGroupAnalysis.bind(
@@ -251,6 +276,7 @@ export default async function GroupCheckpointAnalysisPage({
         <GroupAnalysisClient
           rows={analysisRows}
           warnings={repoWarnings}
+          reviewWarnings={reviewWarnings}
           executedPipelines={executedPipelines}
         />
       )}

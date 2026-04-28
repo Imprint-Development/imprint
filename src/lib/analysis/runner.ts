@@ -15,9 +15,11 @@ import { ALL_PIPELINE_IDS } from "./pipelines/registry";
  * Runs all enabled analysis pipelines for a checkpoint in parallel — both
  * across groups and across pipelines within each group.
  *
- * Progress and errors are written to checkpointLogs.
- * Status is always set to "complete" or "failed" in a finally block so the
- * checkpoint never gets stuck in "analyzing".
+ * A failed pipeline is logged and recorded but does NOT abort other pipelines
+ * or groups — partial results are preserved. The checkpoint is marked
+ * "complete" as long as the run finishes (even with pipeline-level errors).
+ * It is only marked "failed" when an unexpected error prevents the run from
+ * completing at all (e.g. the checkpoint record cannot be loaded).
  */
 export async function runAnalysis(
   checkpointId: string,
@@ -42,6 +44,10 @@ export async function runAnalysis(
       (course?.ignoredGitEmails ?? []).map((e) => e.toLowerCase())
     );
 
+    const ignoredGithubUsernames = new Set(
+      (course?.ignoredGithubUsernames ?? []).map((u) => u.toLowerCase())
+    );
+
     const allGroups = await db
       .select()
       .from(studentGroups)
@@ -64,10 +70,15 @@ export async function runAnalysis(
       allGroups.map(async (group) => {
         const makeLogger =
           (pipeline: string) =>
-          async (level: LogLevel, message: string): Promise<void> => {
+          async (
+            level: LogLevel,
+            message: string,
+            repositoryId?: string
+          ): Promise<void> => {
             await db.insert(checkpointLogs).values({
               checkpointId,
               groupId: group.id,
+              repositoryId: repositoryId ?? null,
               pipeline,
               level,
               message,
@@ -89,6 +100,7 @@ export async function runAnalysis(
                   checkpoint,
                   group,
                   ignoredEmails,
+                  ignoredGithubUsernames,
                   log,
                 });
                 break;
@@ -97,6 +109,7 @@ export async function runAnalysis(
                   checkpoint,
                   group,
                   ignoredEmails,
+                  ignoredGithubUsernames,
                   log,
                 });
                 break;
@@ -112,26 +125,39 @@ export async function runAnalysis(
           })
         );
 
-        for (const result of pipelineResults) {
+        // Log pipeline-level failures but do NOT re-throw — other pipelines
+        // and groups should still produce their partial results.
+        for (const [i, result] of pipelineResults.entries()) {
           if (result.status === "rejected") {
-            const pipelineLog = makeLogger("runner");
+            const pipelineId = enabledPipelines[i] ?? "unknown";
+            const runnerLog = makeLogger("runner");
             const msg =
               result.reason instanceof Error
                 ? result.reason.message
                 : String(result.reason);
-            await pipelineLog(
+            await runnerLog(
               "error",
-              `Pipeline failed for group "${group.name}": ${msg}`
+              `Pipeline "${pipelineId}" failed for group "${group.name}": ${msg}`
             );
-            throw new Error(msg);
+            console.error(
+              `[runner][${pipelineId}][${group.name}] pipeline failed:`,
+              result.reason
+            );
           }
         }
       })
     );
 
+    // Group-level rejections would only happen from unexpected errors (e.g.
+    // DB failures in makeLogger). Pipeline errors are handled above and do
+    // not propagate here.
     for (const result of groupResults) {
       if (result.status === "rejected") {
         failed = true;
+        console.error(
+          `[runner] Unexpected group-level error for checkpoint ${checkpointId}:`,
+          result.reason
+        );
       }
     }
   } catch (err) {

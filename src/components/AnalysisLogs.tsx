@@ -73,21 +73,20 @@ export default function AnalysisLogs({
     onStatusChangeRef.current = onStatusChange;
   });
 
-  // Both group and pipeline must be selected before we fetch anything
-  const canFetch = selectedGroupId !== "" && selectedPipeline !== "";
+  const logsUrl = (() => {
+    if (typeof window === "undefined") return null;
+    const url = new URL(
+      `/api/checkpoints/${checkpointId}/logs`,
+      window.location.origin
+    );
+    if (selectedGroupId) url.searchParams.set("groupId", selectedGroupId);
+    if (selectedPipeline) url.searchParams.set("pipeline", selectedPipeline);
+    if (selectedLevel) url.searchParams.set("level", selectedLevel);
+    return url.toString();
+  })();
 
-  const logsUrl = canFetch
-    ? (() => {
-        const url = new URL(
-          `/api/checkpoints/${checkpointId}/logs`,
-          window.location.origin
-        );
-        url.searchParams.set("groupId", selectedGroupId);
-        url.searchParams.set("pipeline", selectedPipeline);
-        if (selectedLevel) url.searchParams.set("level", selectedLevel);
-        return url.toString();
-      })()
-    : null;
+  // Group name lookup for log line prefixes when not filtered to a single group
+  const groupNameById = new Map(groups.map((g) => [g.id, g.name]));
 
   const applyResponse = useCallback(
     (data: { status: string; logs: LogEntry[] }) => {
@@ -128,7 +127,7 @@ export default function AnalysisLogs({
     };
   }, [logsUrl, applyResponse]);
 
-  // Polling — only while analyzing and a filter is selected
+  // Polling — only while analyzing
   useEffect(() => {
     if (status !== "analyzing" || !logsUrl) return;
 
@@ -162,8 +161,8 @@ export default function AnalysisLogs({
     }
   }, [logs]);
 
-  // Don't show stale logs from a previous selection when filters are cleared
-  const displayLogs = canFetch ? logs : [];
+  // Don't show stale logs when URL isn't ready (SSR)
+  const displayLogs = logsUrl ? logs : [];
 
   return (
     <Box>
@@ -176,6 +175,7 @@ export default function AnalysisLogs({
             label="Group"
             onChange={(e) => setSelectedGroupId(e.target.value)}
           >
+            <MenuItem value="">All groups</MenuItem>
             {groups.map((g) => (
               <MenuItem key={g.id} value={g.id}>
                 {g.name}
@@ -191,6 +191,7 @@ export default function AnalysisLogs({
             label="Pipeline"
             onChange={(e) => setSelectedPipeline(e.target.value)}
           >
+            <MenuItem value="">All pipelines</MenuItem>
             {pipelines.map((p) => (
               <MenuItem key={p} value={p}>
                 {p}
@@ -204,7 +205,6 @@ export default function AnalysisLogs({
           <Select
             value={selectedLevel}
             label="Level"
-            displayEmpty
             onChange={(e) => setSelectedLevel(e.target.value)}
           >
             <MenuItem value="">All levels</MenuItem>
@@ -222,9 +222,7 @@ export default function AnalysisLogs({
         <Typography variant="subtitle2" sx={{ color: "text.secondary" }}>
           Analysis Logs
         </Typography>
-        {(status === "analyzing" || fetching) && canFetch && (
-          <CircularProgress size={14} />
-        )}
+        {(status === "analyzing" || fetching) && <CircularProgress size={14} />}
       </Stack>
 
       {/* Log output */}
@@ -244,44 +242,50 @@ export default function AnalysisLogs({
           wordBreak: "break-all",
         }}
       >
-        {!canFetch && (
-          <Typography variant="caption" sx={{ color: "grey.500" }}>
-            Select a group and pipeline to view logs.
-          </Typography>
-        )}
-        {canFetch && fetching && displayLogs.length === 0 && (
+        {fetching && displayLogs.length === 0 && (
           <Typography variant="caption" sx={{ color: "grey.500" }}>
             Loading…
           </Typography>
         )}
-        {canFetch &&
-          !fetching &&
-          displayLogs.length === 0 &&
-          status === "analyzing" && (
-            <Typography variant="caption" sx={{ color: "grey.500" }}>
-              Waiting for worker…
-            </Typography>
-          )}
-        {canFetch &&
-          !fetching &&
-          displayLogs.length === 0 &&
-          status !== "analyzing" && (
-            <Typography variant="caption" sx={{ color: "grey.500" }}>
-              No logs available for this selection.
-            </Typography>
-          )}
-        {displayLogs.map((entry) => (
-          <Box
-            key={entry.id}
-            component="div"
-            sx={{ color: LEVEL_COLOR[entry.level] ?? "grey.100", mb: 0.25 }}
-          >
-            <Box component="span" sx={{ color: "grey.500", mr: 1 }}>
-              {new Date(entry.createdAt).toLocaleTimeString()}
+        {!fetching && displayLogs.length === 0 && status === "analyzing" && (
+          <Typography variant="caption" sx={{ color: "grey.500" }}>
+            Waiting for worker…
+          </Typography>
+        )}
+        {!fetching && displayLogs.length === 0 && status !== "analyzing" && (
+          <Typography variant="caption" sx={{ color: "grey.500" }}>
+            No logs available for this selection.
+          </Typography>
+        )}
+        {displayLogs.map((entry) => {
+          // Build prefix for context that isn't already locked in by a filter
+          const parts: string[] = [];
+          if (!selectedGroupId && entry.groupId) {
+            parts.push(groupNameById.get(entry.groupId) ?? entry.groupId);
+          }
+          if (!selectedPipeline) {
+            parts.push(entry.pipeline);
+          }
+          const prefix = parts.length > 0 ? `[${parts.join("][")}] ` : "";
+
+          return (
+            <Box
+              key={entry.id}
+              component="div"
+              sx={{ color: LEVEL_COLOR[entry.level] ?? "grey.100", mb: 0.25 }}
+            >
+              <Box component="span" sx={{ color: "grey.500", mr: 1 }}>
+                {new Date(entry.createdAt).toLocaleTimeString()}
+              </Box>
+              {prefix && (
+                <Box component="span" sx={{ color: "grey.400", mr: 0.5 }}>
+                  {prefix}
+                </Box>
+              )}
+              {entry.message}
             </Box>
-            {entry.message}
-          </Box>
-        ))}
+          );
+        })}
       </Box>
     </Box>
   );

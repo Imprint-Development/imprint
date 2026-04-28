@@ -8,7 +8,7 @@ import { CourseProvider, type CourseOption } from "@/components/CourseProvider";
 import CourseSelectModal from "@/components/CourseSelectModal";
 
 interface DashboardShellProps {
-  user: { name: string; email: string };
+  user: { name: string; email: string; isAdmin: boolean };
   signOutAction: () => Promise<void>;
   courses: CourseOption[];
   children: React.ReactNode;
@@ -28,6 +28,7 @@ export default function DashboardShell({
         <Sidebar
           user={user}
           signOutAction={signOutAction}
+          isAdmin={user.isAdmin}
           open={drawerOpen}
           onClose={() => setDrawerOpen(false)}
         />
