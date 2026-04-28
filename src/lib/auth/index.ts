@@ -8,6 +8,18 @@ import { eq } from "drizzle-orm";
 
 import type { Provider } from "next-auth/providers";
 
+declare module "next-auth" {
+  interface Session {
+    user: {
+      id: string;
+      name?: string | null;
+      email?: string | null;
+      image?: string | null;
+      role?: string | null;
+    };
+  }
+}
+
 const isLocalDev = process.env.NODE_ENV === "development";
 
 const providers: Provider[] = [
@@ -78,14 +90,31 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
+        // Fetch role from DB on first sign-in
+        if (user.id) {
+          const [dbUser] = await db
+            .select({ role: users.role })
+            .from(users)
+            .where(eq(users.id, user.id))
+            .limit(1);
+          token.role = dbUser?.role ?? "lecturer";
+        }
       }
       return token;
     },
     async session({ session, token, user }) {
       if (token?.id) {
         session.user.id = token.id as string;
+        session.user.role = token.role as string | undefined;
       } else if (user) {
         session.user.id = user.id;
+        // Fetch role from DB for database sessions
+        const [dbUser] = await db
+          .select({ role: users.role })
+          .from(users)
+          .where(eq(users.id, user.id))
+          .limit(1);
+        session.user.role = dbUser?.role ?? "lecturer";
       }
       return session;
     },

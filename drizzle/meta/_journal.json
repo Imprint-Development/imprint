@@ -33,29 +33,36 @@
     {
       "idx": 4,
       "version": "7",
-      "when": 1776800000000,
-      "tag": "0004_checkpoint_date_range",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1745712000000,
-      "tag": "0005_checkpoint_logs",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "7",
       "when": 1777317664340,
       "tag": "0006_absent_wolfpack",
       "breakpoints": true
     },
     {
-      "idx": 7,
+      "idx": 5,
       "version": "7",
       "when": 1777325238105,
       "tag": "0007_mean_photon",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1777400000000,
+      "tag": "0008_student_github_username",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1777500000000,
+      "tag": "0009_ignored_github_usernames",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1777600000000,
+      "tag": "0010_checkpoint_log_repository",
       "breakpoints": true
     }
   ]

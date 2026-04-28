@@ -2,11 +2,13 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback } from "react";
-import AnalysisLogs from "./AnalysisLogs";
+import AnalysisLogs, { type LogGroup } from "./AnalysisLogs";
 
 interface Props {
   checkpointId: string;
-  groupId?: string;
+  groups: LogGroup[];
+  pipelines: string[];
+  defaultGroupId?: string;
   initialStatus: string;
 }
 
@@ -17,7 +19,9 @@ interface Props {
  */
 export default function AnalysisLogsWithRefresh({
   checkpointId,
-  groupId,
+  groups,
+  pipelines,
+  defaultGroupId,
   initialStatus,
 }: Props) {
   const router = useRouter();
@@ -29,7 +33,9 @@ export default function AnalysisLogsWithRefresh({
   return (
     <AnalysisLogs
       checkpointId={checkpointId}
-      groupId={groupId}
+      groups={groups}
+      pipelines={pipelines}
+      defaultGroupId={defaultGroupId}
       initialStatus={initialStatus}
       onStatusChange={handleStatusChange}
     />

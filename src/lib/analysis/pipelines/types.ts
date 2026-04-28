@@ -2,7 +2,8 @@ export type LogLevel = "info" | "warn" | "error";
 
 export type PipelineLogger = (
   level: LogLevel,
-  message: string
+  message: string,
+  repositoryId?: string
 ) => Promise<void>;
 
 export interface CheckpointRecord {
@@ -21,5 +22,6 @@ export interface PipelineContext {
   checkpoint: CheckpointRecord;
   group: GroupRecord;
   ignoredEmails: Set<string>;
+  ignoredGithubUsernames: Set<string>;
   log: PipelineLogger;
 }

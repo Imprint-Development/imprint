@@ -5,6 +5,10 @@ import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import CircularProgress from "@mui/material/CircularProgress";
 import Stack from "@mui/material/Stack";
+import FormControl from "@mui/material/FormControl";
+import InputLabel from "@mui/material/InputLabel";
+import Select from "@mui/material/Select";
+import MenuItem from "@mui/material/MenuItem";
 
 interface LogEntry {
   id: string;
@@ -15,10 +19,19 @@ interface LogEntry {
   createdAt: string;
 }
 
+export interface LogGroup {
+  id: string;
+  name: string;
+}
+
 interface Props {
   checkpointId: string;
-  /** When set, only logs for this group are shown */
-  groupId?: string;
+  /** Available groups for the filter dropdown */
+  groups: LogGroup[];
+  /** Available pipeline IDs for the filter dropdown */
+  pipelines: string[];
+  /** Pre-select a group (e.g. when rendered on a group-scoped page) */
+  defaultGroupId?: string;
   /** Initial status from server render; component will poll for updates */
   initialStatus: string;
   /** Called when status transitions out of "analyzing" */
@@ -31,17 +44,28 @@ export const LEVEL_COLOR: Record<string, string> = {
   error: "#f87171",
 };
 
+const LOG_LEVELS = ["info", "warn", "error"] as const;
+
 const POLL_INTERVAL_MS = 2000;
 
 export default function AnalysisLogs({
   checkpointId,
-  groupId,
+  groups,
+  pipelines,
+  defaultGroupId,
   initialStatus,
   onStatusChange,
 }: Props) {
+  const [selectedGroupId, setSelectedGroupId] = useState<string>(
+    defaultGroupId ?? ""
+  );
+  const [selectedPipeline, setSelectedPipeline] = useState<string>("");
+  const [selectedLevel, setSelectedLevel] = useState<string>("");
+
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [status, setStatus] = useState(initialStatus);
-  const [loading, setLoading] = useState(true);
+  // fetching: true while a fetch is in-flight; toggled only inside async callbacks
+  const [fetching, setFetching] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const onStatusChangeRef = useRef(onStatusChange);
 
@@ -49,9 +73,20 @@ export default function AnalysisLogs({
     onStatusChangeRef.current = onStatusChange;
   });
 
-  const logsUrl = groupId
-    ? `/api/checkpoints/${checkpointId}/logs?groupId=${groupId}`
-    : `/api/checkpoints/${checkpointId}/logs`;
+  const logsUrl = (() => {
+    if (typeof window === "undefined") return null;
+    const url = new URL(
+      `/api/checkpoints/${checkpointId}/logs`,
+      window.location.origin
+    );
+    if (selectedGroupId) url.searchParams.set("groupId", selectedGroupId);
+    if (selectedPipeline) url.searchParams.set("pipeline", selectedPipeline);
+    if (selectedLevel) url.searchParams.set("level", selectedLevel);
+    return url.toString();
+  })();
+
+  // Group name lookup for log line prefixes when not filtered to a single group
+  const groupNameById = new Map(groups.map((g) => [g.id, g.name]));
 
   const applyResponse = useCallback(
     (data: { status: string; logs: LogEntry[] }) => {
@@ -68,9 +103,15 @@ export default function AnalysisLogs({
     [logsUrl]
   );
 
-  // One-time fetch on mount (and whenever the URL changes) to load existing logs
+  // Fetch whenever the URL changes (i.e. any filter changes).
+  // setFetching(true) is called inside the microtask (Promise callback) to
+  // avoid the react-hooks/set-state-in-effect synchronous setState restriction.
   useEffect(() => {
+    if (!logsUrl) return;
     let active = true;
+    Promise.resolve().then(() => {
+      if (active) setFetching(true);
+    });
     fetch(logsUrl)
       .then((r) => r.json())
       .then((data: { status: string; logs: LogEntry[] }) => {
@@ -79,16 +120,16 @@ export default function AnalysisLogs({
       })
       .catch(() => {})
       .finally(() => {
-        if (active) setLoading(false);
+        if (active) setFetching(false);
       });
     return () => {
       active = false;
     };
   }, [logsUrl, applyResponse]);
 
-  // Polling interval — only runs while analyzing
+  // Polling — only while analyzing
   useEffect(() => {
-    if (status !== "analyzing") return;
+    if (status !== "analyzing" || !logsUrl) return;
 
     let active = true;
     const id = setInterval(async () => {
@@ -120,14 +161,71 @@ export default function AnalysisLogs({
     }
   }, [logs]);
 
+  // Don't show stale logs when URL isn't ready (SSR)
+  const displayLogs = logsUrl ? logs : [];
+
   return (
     <Box>
+      {/* Filter controls */}
+      <Stack direction="row" spacing={2} sx={{ mb: 2, flexWrap: "wrap" }}>
+        <FormControl size="small" sx={{ minWidth: 180 }}>
+          <InputLabel>Group</InputLabel>
+          <Select
+            value={selectedGroupId}
+            label="Group"
+            onChange={(e) => setSelectedGroupId(e.target.value)}
+          >
+            <MenuItem value="">All groups</MenuItem>
+            {groups.map((g) => (
+              <MenuItem key={g.id} value={g.id}>
+                {g.name}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
+        <FormControl size="small" sx={{ minWidth: 160 }}>
+          <InputLabel>Pipeline</InputLabel>
+          <Select
+            value={selectedPipeline}
+            label="Pipeline"
+            onChange={(e) => setSelectedPipeline(e.target.value)}
+          >
+            <MenuItem value="">All pipelines</MenuItem>
+            {pipelines.map((p) => (
+              <MenuItem key={p} value={p}>
+                {p}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
+        <FormControl size="small" sx={{ minWidth: 130 }}>
+          <InputLabel>Level</InputLabel>
+          <Select
+            value={selectedLevel}
+            label="Level"
+            onChange={(e) => setSelectedLevel(e.target.value)}
+          >
+            <MenuItem value="">All levels</MenuItem>
+            {LOG_LEVELS.map((l) => (
+              <MenuItem key={l} value={l}>
+                {l}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Stack>
+
+      {/* Log header */}
       <Stack direction="row" spacing={1} sx={{ mb: 1, alignItems: "center" }}>
         <Typography variant="subtitle2" sx={{ color: "text.secondary" }}>
           Analysis Logs
         </Typography>
-        {(status === "analyzing" || loading) && <CircularProgress size={14} />}
+        {(status === "analyzing" || fetching) && <CircularProgress size={14} />}
       </Stack>
+
+      {/* Log output */}
       <Box
         ref={scrollRef}
         sx={{
@@ -144,31 +242,50 @@ export default function AnalysisLogs({
           wordBreak: "break-all",
         }}
       >
-        {logs.map((entry) => (
-          <Box
-            key={entry.id}
-            component="div"
-            sx={{ color: LEVEL_COLOR[entry.level] ?? "text.primary", mb: 0.25 }}
-          >
-            <Box component="span" sx={{ color: "grey.500", mr: 1 }}>
-              {new Date(entry.createdAt).toLocaleTimeString()}
-            </Box>
-            <Box component="span" sx={{ color: "info.light", mr: 1 }}>
-              [{entry.pipeline}]
-            </Box>
-            {entry.message}
-          </Box>
-        ))}
-        {!loading && logs.length === 0 && status === "analyzing" && (
+        {fetching && displayLogs.length === 0 && (
+          <Typography variant="caption" sx={{ color: "grey.500" }}>
+            Loading…
+          </Typography>
+        )}
+        {!fetching && displayLogs.length === 0 && status === "analyzing" && (
           <Typography variant="caption" sx={{ color: "grey.500" }}>
             Waiting for worker…
           </Typography>
         )}
-        {!loading && logs.length === 0 && status !== "analyzing" && (
+        {!fetching && displayLogs.length === 0 && status !== "analyzing" && (
           <Typography variant="caption" sx={{ color: "grey.500" }}>
-            No logs available.
+            No logs available for this selection.
           </Typography>
         )}
+        {displayLogs.map((entry) => {
+          // Build prefix for context that isn't already locked in by a filter
+          const parts: string[] = [];
+          if (!selectedGroupId && entry.groupId) {
+            parts.push(groupNameById.get(entry.groupId) ?? entry.groupId);
+          }
+          if (!selectedPipeline) {
+            parts.push(entry.pipeline);
+          }
+          const prefix = parts.length > 0 ? `[${parts.join("][")}] ` : "";
+
+          return (
+            <Box
+              key={entry.id}
+              component="div"
+              sx={{ color: LEVEL_COLOR[entry.level] ?? "grey.100", mb: 0.25 }}
+            >
+              <Box component="span" sx={{ color: "grey.500", mr: 1 }}>
+                {new Date(entry.createdAt).toLocaleTimeString()}
+              </Box>
+              {prefix && (
+                <Box component="span" sx={{ color: "grey.400", mr: 0.5 }}>
+                  {prefix}
+                </Box>
+              )}
+              {entry.message}
+            </Box>
+          );
+        })}
       </Box>
     </Box>
   );

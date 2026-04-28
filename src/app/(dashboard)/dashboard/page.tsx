@@ -15,6 +15,8 @@ import { redirect } from "next/navigation";
 import AppLink from "@/components/AppLink";
 import TabNav from "@/components/TabNav";
 import DashboardCourseSyncer from "./DashboardCourseSyncer";
+import RerunButton from "@/components/RerunButton";
+import { triggerAnalysis } from "@/lib/actions/checkpoints";
 import Typography from "@mui/material/Typography";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
@@ -351,6 +353,7 @@ export default async function DashboardPage({
                       <TableCell>Start Date</TableCell>
                       <TableCell>End Date</TableCell>
                       <TableCell>Status</TableCell>
+                      <TableCell>Actions</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -400,6 +403,19 @@ export default async function DashboardPage({
                                       : "default"
                               }
                             />
+                          </TableCell>
+                          <TableCell>
+                            {cp.status !== "analyzing" && (
+                              <RerunButton
+                                action={triggerAnalysis.bind(
+                                  null,
+                                  cp.id,
+                                  course.id
+                                )}
+                                enabledPipelines={cp.enabledPipelines}
+                                isPending={cp.status === "pending"}
+                              />
+                            )}
                           </TableCell>
                         </TableRow>
                       ))}

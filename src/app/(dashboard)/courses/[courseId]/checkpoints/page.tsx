@@ -138,6 +138,7 @@ export default async function CheckpointsPage({
                         <RerunButton
                           action={triggerAnalysis.bind(null, cp.id, courseId)}
                           enabledPipelines={cp.enabledPipelines}
+                          isPending={cp.status === "pending"}
                         />
                       )}
                     </Stack>

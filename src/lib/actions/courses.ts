@@ -116,3 +116,42 @@ export async function removeIgnoredGitEmail(courseId: string, email: string) {
 
   revalidatePath(`/courses/${courseId}/edit`);
 }
+
+export async function addIgnoredGithubUsername(
+  courseId: string,
+  formData: FormData
+) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  const username = (formData.get("ignoredGithubUsername") as string)
+    .trim()
+    .toLowerCase();
+  if (!username) return;
+
+  await db
+    .update(courses)
+    .set({
+      ignoredGithubUsernames: sql`array_append(${courses.ignoredGithubUsernames}, ${username})`,
+    })
+    .where(eq(courses.id, courseId));
+
+  revalidatePath(`/courses/${courseId}`);
+}
+
+export async function removeIgnoredGithubUsername(
+  courseId: string,
+  username: string
+) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  await db
+    .update(courses)
+    .set({
+      ignoredGithubUsernames: sql`array_remove(${courses.ignoredGithubUsernames}, ${username})`,
+    })
+    .where(eq(courses.id, courseId));
+
+  revalidatePath(`/courses/${courseId}`);
+}

@@ -23,6 +23,10 @@ import CardContent from "@mui/material/CardContent";
 import TextField from "@mui/material/TextField";
 import Button from "@mui/material/Button";
 import Stack from "@mui/material/Stack";
+import Collapse from "@mui/material/Collapse";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import ExpandLessIcon from "@mui/icons-material/ExpandLess";
+import MuiTooltip from "@mui/material/Tooltip";
 import {
   BarChart,
   Bar,
@@ -39,6 +43,7 @@ export interface AnalysisRow {
   repoUrl: string;
   codeMetrics: Record<string, number>;
   testMetrics: Record<string, number>;
+  reviewMetrics: Record<string, number>;
 }
 
 export interface RepoWarning {
@@ -47,10 +52,30 @@ export interface RepoWarning {
   unidentifiedAuthors: string[];
 }
 
+export interface ReviewWarning {
+  repoId: string;
+  repoUrl: string;
+  message: string;
+}
+
 interface Props {
   rows: AnalysisRow[];
   warnings: RepoWarning[];
+  reviewWarnings: ReviewWarning[];
+  executedPipelines: string[];
 }
+
+interface TabConfig {
+  label: string;
+  requiredPipeline: string | null;
+}
+
+const TABS: TabConfig[] = [
+  { label: "Contributions", requiredPipeline: "contributions" },
+  { label: "Files", requiredPipeline: "contributions" },
+  { label: "Review", requiredPipeline: "review" },
+  { label: "AI Chat", requiredPipeline: null },
+];
 
 function shortRepoLabel(url: string): string {
   try {
@@ -72,6 +97,7 @@ function aggregateRows(rows: AnalysisRow[]): AnalysisRow[] {
         repoUrl: "all",
         codeMetrics: { ...row.codeMetrics },
         testMetrics: { ...row.testMetrics },
+        reviewMetrics: { ...row.reviewMetrics },
       });
     } else {
       for (const key of Object.keys(row.codeMetrics)) {
@@ -81,6 +107,10 @@ function aggregateRows(rows: AnalysisRow[]): AnalysisRow[] {
       for (const key of Object.keys(row.testMetrics)) {
         existing.testMetrics[key] =
           (existing.testMetrics[key] ?? 0) + (row.testMetrics[key] ?? 0);
+      }
+      for (const key of Object.keys(row.reviewMetrics)) {
+        existing.reviewMetrics[key] =
+          (existing.reviewMetrics[key] ?? 0) + (row.reviewMetrics[key] ?? 0);
       }
     }
   }
@@ -101,6 +131,33 @@ function getUniqueRepos(rows: AnalysisRow[]): { id: string; url: string }[] {
 
 /* ---------- Contributions Tab ---------- */
 
+function CollapsibleWarnings({
+  children,
+  count,
+}: {
+  children: React.ReactNode;
+  count: number;
+}) {
+  const [open, setOpen] = useState(false);
+  if (count === 0) return null;
+  return (
+    <Box sx={{ mb: 2 }}>
+      <Button
+        size="small"
+        color="warning"
+        startIcon={open ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+        onClick={() => setOpen((v) => !v)}
+        sx={{ mb: 0.5 }}
+      >
+        {count} warning{count !== 1 ? "s" : ""}
+      </Button>
+      <Collapse in={open}>
+        <Stack spacing={1}>{children}</Stack>
+      </Collapse>
+    </Box>
+  );
+}
+
 function ContributionsTab({
   rows,
   warnings,
@@ -118,15 +175,17 @@ function ContributionsTab({
 
   return (
     <>
-      {warnings.map((w) => (
-        <Alert key={w.repoId} severity="warning" sx={{ mb: 2 }}>
-          <AlertTitle>
-            Unidentified authors in {shortRepoLabel(w.repoUrl)}
-          </AlertTitle>
-          The following git emails are not registered as students:{" "}
-          {w.unidentifiedAuthors.join(", ")}
-        </Alert>
-      ))}
+      <CollapsibleWarnings count={warnings.length}>
+        {warnings.map((w) => (
+          <Alert key={w.repoId} severity="warning">
+            <AlertTitle>
+              Unidentified authors in {shortRepoLabel(w.repoUrl)}
+            </AlertTitle>
+            The following git emails are not registered as students:{" "}
+            {w.unidentifiedAuthors.join(", ")}
+          </Alert>
+        ))}
+      </CollapsibleWarnings>
 
       <Card sx={{ mb: 3 }}>
         <CardContent>
@@ -257,6 +316,109 @@ function FilesTab({ rows }: { rows: AnalysisRow[] }) {
   );
 }
 
+/* ---------- Review Tab ---------- */
+
+function ReviewTab({
+  rows,
+  reviewWarnings,
+}: {
+  rows: AnalysisRow[];
+  reviewWarnings: ReviewWarning[];
+}) {
+  const hasData = rows.some((r) => Object.keys(r.reviewMetrics).length > 0);
+
+  const barData = rows.map((d) => ({
+    name: d.studentName,
+    "PRs Reviewed": d.reviewMetrics.prsReviewed ?? 0,
+    Approvals: d.reviewMetrics.approvals ?? 0,
+    "Changes Requested": d.reviewMetrics.changesRequested ?? 0,
+    "Review Comments": d.reviewMetrics.reviewComments ?? 0,
+    "Issue Comments": d.reviewMetrics.issueComments ?? 0,
+  }));
+
+  return (
+    <>
+      <CollapsibleWarnings count={reviewWarnings.length}>
+        {reviewWarnings.map((w, i) => (
+          <Alert key={i} severity="warning">
+            <AlertTitle>
+              Unmatched GitHub users in {shortRepoLabel(w.repoUrl)}
+            </AlertTitle>
+            {w.message}
+          </Alert>
+        ))}
+      </CollapsibleWarnings>
+
+      {!hasData ? (
+        <Alert severity="info">
+          No review data available. Run the <strong>review</strong> pipeline to
+          see PR review activity.
+        </Alert>
+      ) : (
+        <>
+          <Card sx={{ mb: 3 }}>
+            <CardContent>
+              <Typography variant="h6" sx={{ mb: 2 }}>
+                PR Review Activity
+              </Typography>
+              <ResponsiveContainer width="100%" height={350}>
+                <BarChart data={barData}>
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="PRs Reviewed" fill="#1976d2" />
+                  <Bar dataKey="Approvals" fill="#388e3c" />
+                  <Bar dataKey="Changes Requested" fill="#f57c00" />
+                  <Bar dataKey="Review Comments" fill="#7b1fa2" />
+                  <Bar dataKey="Issue Comments" fill="#0097a7" />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          <TableContainer component={Paper} variant="outlined">
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Student</TableCell>
+                  <TableCell align="right">PRs Reviewed</TableCell>
+                  <TableCell align="right">Approvals</TableCell>
+                  <TableCell align="right">Changes Requested</TableCell>
+                  <TableCell align="right">Review Comments</TableCell>
+                  <TableCell align="right">Issue Comments</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {rows.map((a, i) => (
+                  <TableRow key={i}>
+                    <TableCell>{a.studentName}</TableCell>
+                    <TableCell align="right">
+                      {a.reviewMetrics.prsReviewed ?? 0}
+                    </TableCell>
+                    <TableCell align="right">
+                      {a.reviewMetrics.approvals ?? 0}
+                    </TableCell>
+                    <TableCell align="right">
+                      {a.reviewMetrics.changesRequested ?? 0}
+                    </TableCell>
+                    <TableCell align="right">
+                      {a.reviewMetrics.reviewComments ?? 0}
+                    </TableCell>
+                    <TableCell align="right">
+                      {a.reviewMetrics.issueComments ?? 0}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </>
+      )}
+    </>
+  );
+}
+
 /* ---------- AI Chat Tab ---------- */
 
 function AiChatTab() {
@@ -349,7 +511,12 @@ function AiChatTab() {
 
 /* ---------- Main Component ---------- */
 
-export function GroupAnalysisClient({ rows, warnings }: Props) {
+export function GroupAnalysisClient({
+  rows,
+  warnings,
+  reviewWarnings,
+  executedPipelines,
+}: Props) {
   const repos = getUniqueRepos(rows);
   const [selectedRepo, setSelectedRepo] = useState<string>("all");
   const [tab, setTab] = useState(0);
@@ -363,6 +530,11 @@ export function GroupAnalysisClient({ rows, warnings }: Props) {
     selectedRepo === "all"
       ? warnings
       : warnings.filter((w) => w.repoId === selectedRepo);
+
+  const filteredReviewWarnings =
+    selectedRepo === "all"
+      ? reviewWarnings
+      : reviewWarnings.filter((w) => w.repoId === selectedRepo);
 
   return (
     <Box>
@@ -389,16 +561,36 @@ export function GroupAnalysisClient({ rows, warnings }: Props) {
         onChange={(_, v) => setTab(v as number)}
         sx={{ borderBottom: 1, borderColor: "divider", mb: 3 }}
       >
-        <Tab label="Contributions" />
-        <Tab label="Files" />
-        <Tab label="AI Chat" />
+        {TABS.map((t, i) => {
+          const pipelineRan =
+            t.requiredPipeline === null ||
+            executedPipelines.includes(t.requiredPipeline);
+          const tabEl = <Tab key={i} label={t.label} disabled={!pipelineRan} />;
+          return pipelineRan ? (
+            tabEl
+          ) : (
+            <MuiTooltip
+              key={i}
+              title={`Run the "${t.requiredPipeline}" pipeline to enable this tab`}
+            >
+              {/* Tooltip requires a non-disabled wrapper to receive pointer events */}
+              <span>{tabEl}</span>
+            </MuiTooltip>
+          );
+        })}
       </Tabs>
 
       {tab === 0 && (
         <ContributionsTab rows={filteredRows} warnings={filteredWarnings} />
       )}
       {tab === 1 && <FilesTab rows={filteredRows} />}
-      {tab === 2 && <AiChatTab />}
+      {tab === 2 && (
+        <ReviewTab
+          rows={filteredRows}
+          reviewWarnings={filteredReviewWarnings}
+        />
+      )}
+      {tab === 3 && <AiChatTab />}
     </Box>
   );
 }

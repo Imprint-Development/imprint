@@ -55,6 +55,10 @@ export const courses = pgTable("courses", {
     .array()
     .notNull()
     .default(sql`ARRAY[]::text[]`),
+  ignoredGithubUsernames: text("ignored_github_usernames")
+    .array()
+    .notNull()
+    .default(sql`ARRAY[]::text[]`),
   createdBy: uuid("created_by")
     .references(() => users.id)
     .notNull(),
@@ -93,6 +97,7 @@ export const students = pgTable("students", {
     .array()
     .notNull()
     .default(sql`ARRAY[]::text[]`),
+  githubUsername: text("github_username"),
   groupId: uuid("group_id")
     .references(() => studentGroups.id, { onDelete: "cascade" })
     .notNull(),
@@ -168,6 +173,9 @@ export const checkpointLogs = pgTable("checkpoint_logs", {
     .references(() => checkpoints.id, { onDelete: "cascade" })
     .notNull(),
   groupId: uuid("group_id").references(() => studentGroups.id, {
+    onDelete: "cascade",
+  }),
+  repositoryId: uuid("repository_id").references(() => repositories.id, {
     onDelete: "cascade",
   }),
   pipeline: text("pipeline").notNull(),

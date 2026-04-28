@@ -1,10 +1,12 @@
 import AppLink from "@/components/AppLink";
 import GroupAnalysisLogs from "@/components/GroupAnalysisLogs";
+import { ALL_PIPELINE_IDS } from "@/lib/analysis/pipelines/registry";
 import { db } from "@/lib/db";
 import {
   checkpoints,
   checkpointAnalyses,
   checkpointRepoMeta,
+  checkpointLogs,
   students,
   repositories,
   studentGroups,
@@ -18,6 +20,7 @@ import {
   GroupAnalysisClient,
   type AnalysisRow,
   type RepoWarning,
+  type ReviewWarning,
 } from "./GroupAnalysisClient";
 import Typography from "@mui/material/Typography";
 import PageBreadcrumbs from "@/components/PageBreadcrumbs";
@@ -84,12 +87,15 @@ export default async function GroupCheckpointAnalysisPage({
 
   let analysisRows: AnalysisRow[] = [];
   let repoWarnings: RepoWarning[] = [];
+  let reviewWarnings: ReviewWarning[] = [];
+  let executedPipelines: string[] = [];
 
   if (checkpoint.status === "complete" && repoIds.length > 0) {
     const analyses = await db
       .select({
         codeMetrics: checkpointAnalyses.codeMetrics,
         testMetrics: checkpointAnalyses.testMetrics,
+        reviewMetrics: checkpointAnalyses.reviewMetrics,
         studentName: students.displayName,
         repoId: repositories.id,
         repoUrl: repositories.url,
@@ -113,6 +119,7 @@ export default async function GroupCheckpointAnalysisPage({
       repoUrl: a.repoUrl,
       codeMetrics: (a.codeMetrics as Record<string, number>) ?? {},
       testMetrics: (a.testMetrics as Record<string, number>) ?? {},
+      reviewMetrics: (a.reviewMetrics as Record<string, number>) ?? {},
     }));
 
     const metaRows = await db
@@ -140,6 +147,40 @@ export default async function GroupCheckpointAnalysisPage({
         repoUrl: m.repoUrl,
         unidentifiedAuthors: m.unidentifiedAuthors as string[],
       }));
+
+    const logRows = await db
+      .selectDistinct({ pipeline: checkpointLogs.pipeline })
+      .from(checkpointLogs)
+      .where(
+        and(
+          eq(checkpointLogs.checkpointId, checkpointId),
+          eq(checkpointLogs.groupId, groupId)
+        )
+      );
+    executedPipelines = logRows.map((r) => r.pipeline);
+
+    const reviewWarnLogs = await db
+      .select({
+        message: checkpointLogs.message,
+        repoId: repositories.id,
+        repoUrl: repositories.url,
+      })
+      .from(checkpointLogs)
+      .innerJoin(repositories, eq(repositories.id, checkpointLogs.repositoryId))
+      .where(
+        and(
+          eq(checkpointLogs.checkpointId, checkpointId),
+          eq(checkpointLogs.groupId, groupId),
+          eq(checkpointLogs.pipeline, "review"),
+          eq(checkpointLogs.level, "warn"),
+          inArray(checkpointLogs.repositoryId, repoIds)
+        )
+      );
+    reviewWarnings = reviewWarnLogs.map((r) => ({
+      repoId: r.repoId,
+      repoUrl: r.repoUrl,
+      message: r.message,
+    }));
   }
 
   const rerunWithIds = rerunGroupAnalysis.bind(
@@ -232,7 +273,12 @@ export default async function GroupCheckpointAnalysisPage({
       )}
 
       {checkpoint.status === "complete" && analysisRows.length > 0 && (
-        <GroupAnalysisClient rows={analysisRows} warnings={repoWarnings} />
+        <GroupAnalysisClient
+          rows={analysisRows}
+          warnings={repoWarnings}
+          reviewWarnings={reviewWarnings}
+          executedPipelines={executedPipelines}
+        />
       )}
 
       {checkpoint.status === "complete" && (
@@ -255,6 +301,7 @@ export default async function GroupCheckpointAnalysisPage({
           checkpointId={checkpointId}
           groupId={groupId}
           groupName={group.name}
+          pipelines={ALL_PIPELINE_IDS}
           initialStatus={checkpoint.status}
         />
       )}

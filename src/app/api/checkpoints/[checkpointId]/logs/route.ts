@@ -16,6 +16,8 @@ export async function GET(
   const { checkpointId } = await params;
   const { searchParams } = new URL(req.url);
   const groupId = searchParams.get("groupId");
+  const pipeline = searchParams.get("pipeline");
+  const level = searchParams.get("level");
 
   const [checkpoint] = await db
     .select({ status: checkpoints.status })
@@ -27,17 +29,15 @@ export async function GET(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const where = groupId
-    ? and(
-        eq(checkpointLogs.checkpointId, checkpointId),
-        eq(checkpointLogs.groupId, groupId)
-      )
-    : eq(checkpointLogs.checkpointId, checkpointId);
+  const conditions = [eq(checkpointLogs.checkpointId, checkpointId)];
+  if (groupId) conditions.push(eq(checkpointLogs.groupId, groupId));
+  if (pipeline) conditions.push(eq(checkpointLogs.pipeline, pipeline));
+  if (level) conditions.push(eq(checkpointLogs.level, level));
 
   const logs = await db
     .select()
     .from(checkpointLogs)
-    .where(where)
+    .where(and(...conditions))
     .orderBy(asc(checkpointLogs.createdAt));
 
   return NextResponse.json({ status: checkpoint.status, logs });

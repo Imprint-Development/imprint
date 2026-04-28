@@ -135,6 +135,45 @@ export async function addStudentGitEmail(
   revalidatePath(`/courses/${courseId}`);
 }
 
+export async function setStudentGithubUsername(
+  studentId: string,
+  courseId: string,
+  formData: FormData
+) {
+  await verifyCollaborator(courseId);
+
+  const username = (formData.get("githubUsername") as string).trim() || null;
+
+  await db
+    .update(students)
+    .set({ githubUsername: username })
+    .where(eq(students.id, studentId));
+
+  revalidatePath(`/courses/${courseId}`);
+}
+
+/**
+ * Bulk-apply GitHub username mappings for multiple students in one shot.
+ * Accepts a plain object mapping studentId → githubUsername (empty string = clear).
+ */
+export async function applyGithubUsernameMappings(
+  groupId: string,
+  courseId: string,
+  mappings: Record<string, string>
+) {
+  await verifyCollaborator(courseId);
+
+  for (const [studentId, username] of Object.entries(mappings)) {
+    const value = username.trim() || null;
+    await db
+      .update(students)
+      .set({ githubUsername: value })
+      .where(eq(students.id, studentId));
+  }
+
+  revalidatePath(`/courses/${courseId}/groups/${groupId}`);
+}
+
 export async function removeStudentGitEmail(
   studentId: string,
   courseId: string,
