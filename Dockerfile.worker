@@ -10,13 +10,15 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
-RUN addgroup --system --gid 1001 nodejs \
-  && adduser --system --uid 1001 worker
+RUN apk add --no-cache su-exec tzdata shadow \
+  && addgroup --system --gid 1001 appgroup \
+  && adduser --system --uid 1001 -G appgroup appuser
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY src ./src
 COPY tsconfig.json ./
 
-USER worker
+COPY --chmod=0755 docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["node_modules/.bin/tsx", "src/worker.ts"]
