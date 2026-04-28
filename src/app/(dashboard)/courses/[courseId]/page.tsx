@@ -13,6 +13,7 @@ import {
   users,
   checkpoints,
 } from "@/lib/db/schema";
+import type { GradingConfig } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import {
@@ -24,6 +25,10 @@ import {
   removeIgnoredGitEmail,
   addIgnoredGithubUsername,
   removeIgnoredGithubUsername,
+  addGradingCategory,
+  removeGradingCategory,
+  addGradeThreshold,
+  removeGradeThreshold,
 } from "@/lib/actions/courses";
 import { CHECKPOINT_STATUS_COLOR } from "@/lib/constants";
 import Typography from "@mui/material/Typography";
@@ -46,11 +51,15 @@ import Divider from "@mui/material/Divider";
 import FormControl from "@mui/material/FormControl";
 import FormLabel from "@mui/material/FormLabel";
 import Paper from "@mui/material/Paper";
+import Select from "@mui/material/Select";
+import MenuItem from "@mui/material/MenuItem";
 import DeleteRounded from "@mui/icons-material/DeleteRounded";
 import AddRounded from "@mui/icons-material/AddRounded";
+
 const TABS = [
   { label: "Groups", value: "groups" },
   { label: "Checkpoints", value: "checkpoints" },
+  { label: "Grading", value: "grading" },
   { label: "Collaborators", value: "collaborators" },
   { label: "Settings", value: "settings" },
 ];
@@ -119,6 +128,8 @@ export default async function CourseDetailPage({
     .innerJoin(users, eq(users.id, courseCollaborators.userId))
     .where(eq(courseCollaborators.courseId, courseId));
 
+  const config: GradingConfig = course.gradingConfig;
+
   const addCollaboratorWithId = addCollaborator.bind(null, courseId);
   const updateCourseWithId = updateCourse.bind(null, courseId);
   const deleteCourseWithId = deleteCourse.bind(null, courseId);
@@ -127,6 +138,8 @@ export default async function CourseDetailPage({
     null,
     courseId
   );
+  const addGradingCategoryWithId = addGradingCategory.bind(null, courseId);
+  const addGradeThresholdWithId = addGradeThreshold.bind(null, courseId);
 
   return (
     <Box sx={{ p: 3 }}>
@@ -304,6 +317,214 @@ export default async function CourseDetailPage({
               </Table>
             </TableContainer>
           )}
+        </Box>
+      )}
+
+      {/* Grading tab */}
+      {tab === "grading" && (
+        <Box sx={{ maxWidth: 700 }}>
+          {/* Grading Categories */}
+          <Card variant="outlined" sx={{ mb: 3 }}>
+            <CardContent>
+              <Typography variant="h6" sx={{ mb: 1 }}>
+                Grading Categories
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Define point categories. Standalone categories apply once per
+                student; per-checkpoint categories are graded for each
+                checkpoint separately.
+              </Typography>
+
+              {config.categories.length > 0 && (
+                <TableContainer component={Paper} variant="outlined" sx={{ mb: 2 }}>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Name</TableCell>
+                        <TableCell>Max Points</TableCell>
+                        <TableCell>Scope</TableCell>
+                        <TableCell sx={{ width: 48 }} />
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {config.categories.map((cat) => (
+                        <TableRow key={cat.id}>
+                          <TableCell>{cat.name}</TableCell>
+                          <TableCell>{cat.maxPoints}</TableCell>
+                          <TableCell>
+                            <Chip
+                              size="small"
+                              label={cat.perCheckpoint ? "Per checkpoint" : "Standalone"}
+                              variant="outlined"
+                              color={cat.perCheckpoint ? "primary" : "default"}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <form
+                              action={removeGradingCategory.bind(
+                                null,
+                                courseId,
+                                cat.id
+                              )}
+                            >
+                              <IconButton
+                                type="submit"
+                                size="small"
+                                color="error"
+                              >
+                                <DeleteRounded fontSize="small" />
+                              </IconButton>
+                            </form>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
+
+              <Divider sx={{ my: 2 }} />
+
+              <form action={addGradingCategoryWithId}>
+                <Stack spacing={2}>
+                  <Stack direction="row" spacing={1} alignItems="flex-end">
+                    <FormControl sx={{ flex: 1 }}>
+                      <FormLabel>Category Name</FormLabel>
+                      <TextField
+                        name="name"
+                        placeholder="e.g. Code Quality"
+                        size="small"
+                        required
+                      />
+                    </FormControl>
+                    <FormControl sx={{ width: 120 }}>
+                      <FormLabel>Max Points</FormLabel>
+                      <TextField
+                        name="maxPoints"
+                        type="number"
+                        size="small"
+                        required
+                        slotProps={{ htmlInput: { min: 0, step: 0.5 } }}
+                      />
+                    </FormControl>
+                    <FormControl sx={{ width: 160 }}>
+                      <FormLabel>Scope</FormLabel>
+                      <Select
+                        name="perCheckpoint"
+                        size="small"
+                        defaultValue="false"
+                      >
+                        <MenuItem value="false">Standalone</MenuItem>
+                        <MenuItem value="true">Per checkpoint</MenuItem>
+                      </Select>
+                    </FormControl>
+                    <Button
+                      type="submit"
+                      size="small"
+                      variant="outlined"
+                      startIcon={<AddRounded />}
+                      sx={{ mb: 0.25 }}
+                    >
+                      Add
+                    </Button>
+                  </Stack>
+                </Stack>
+              </form>
+            </CardContent>
+          </Card>
+
+          {/* Grade Thresholds */}
+          <Card variant="outlined" sx={{ mb: 3 }}>
+            <CardContent>
+              <Typography variant="h6" sx={{ mb: 1 }}>
+                Grade Thresholds
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Map percentage ranges to letter grades or labels. The highest
+                matching threshold is applied.
+              </Typography>
+
+              {config.gradeThresholds.length > 0 && (
+                <TableContainer component={Paper} variant="outlined" sx={{ mb: 2 }}>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Grade</TableCell>
+                        <TableCell>Minimum %</TableCell>
+                        <TableCell sx={{ width: 48 }} />
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {[...config.gradeThresholds]
+                        .sort((a, b) => b.minPercentage - a.minPercentage)
+                        .map((t) => (
+                          <TableRow key={t.grade}>
+                            <TableCell>
+                              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                {t.grade}
+                              </Typography>
+                            </TableCell>
+                            <TableCell>{t.minPercentage}%</TableCell>
+                            <TableCell>
+                              <form
+                                action={removeGradeThreshold.bind(
+                                  null,
+                                  courseId,
+                                  t.grade
+                                )}
+                              >
+                                <IconButton
+                                  type="submit"
+                                  size="small"
+                                  color="error"
+                                >
+                                  <DeleteRounded fontSize="small" />
+                                </IconButton>
+                              </form>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
+
+              <Divider sx={{ my: 2 }} />
+
+              <form action={addGradeThresholdWithId}>
+                <Stack direction="row" spacing={1} alignItems="flex-end">
+                  <FormControl sx={{ width: 120 }}>
+                    <FormLabel>Grade</FormLabel>
+                    <TextField
+                      name="grade"
+                      placeholder="e.g. A"
+                      size="small"
+                      required
+                    />
+                  </FormControl>
+                  <FormControl sx={{ width: 140 }}>
+                    <FormLabel>Min % (≥)</FormLabel>
+                    <TextField
+                      name="minPercentage"
+                      type="number"
+                      size="small"
+                      required
+                      slotProps={{ htmlInput: { min: 0, max: 100, step: 1 } }}
+                    />
+                  </FormControl>
+                  <Button
+                    type="submit"
+                    size="small"
+                    variant="outlined"
+                    startIcon={<AddRounded />}
+                    sx={{ mb: 0.25 }}
+                  >
+                    Add
+                  </Button>
+                </Stack>
+              </form>
+            </CardContent>
+          </Card>
         </Box>
       )}
 

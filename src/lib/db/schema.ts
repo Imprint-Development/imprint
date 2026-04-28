@@ -10,6 +10,23 @@ import {
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
+export type GradingCategory = {
+  id: string;
+  name: string;
+  maxPoints: number;
+  perCheckpoint: boolean;
+};
+
+export type GradeThreshold = {
+  grade: string;
+  minPercentage: number;
+};
+
+export type GradingConfig = {
+  categories: GradingCategory[];
+  gradeThresholds: GradeThreshold[];
+};
+
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
   email: text("email").unique().notNull(),
@@ -59,6 +76,10 @@ export const courses = pgTable("courses", {
     .array()
     .notNull()
     .default(sql`ARRAY[]::text[]`),
+  gradingConfig: jsonb("grading_config")
+    .$type<GradingConfig>()
+    .notNull()
+    .default({ categories: [], gradeThresholds: [] }),
   createdBy: uuid("created_by")
     .references(() => users.id)
     .notNull(),
@@ -148,24 +169,25 @@ export const checkpointAnalyses = pgTable("checkpoint_analyses", {
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow(),
 });
 
-export const grades = pgTable(
-  "grades",
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    checkpointId: uuid("checkpoint_id").references(() => checkpoints.id, {
-      onDelete: "cascade",
-    }),
-    groupId: uuid("group_id").references(() => studentGroups.id, {
-      onDelete: "cascade",
-    }),
-    points: real("points").notNull(),
-    maxPoints: real("max_points").notNull(),
-    notes: text("notes"),
-    gradedBy: uuid("graded_by").references(() => users.id),
-    createdAt: timestamp("created_at", { mode: "date" }).defaultNow(),
-  },
-  (table) => [unique().on(table.checkpointId, table.groupId)]
-);
+// Grades are now per-student and per-category (defined in course gradingConfig).
+// checkpointId is null for standalone (non-checkpoint-specific) categories.
+// Uniqueness is enforced by two partial indexes in the migration:
+//   - grades_per_checkpoint_unique ON (student_id, category_id, checkpoint_id) WHERE checkpoint_id IS NOT NULL
+//   - grades_standalone_unique ON (student_id, category_id) WHERE checkpoint_id IS NULL
+export const grades = pgTable("grades", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  studentId: uuid("student_id").references(() => students.id, {
+    onDelete: "cascade",
+  }),
+  categoryId: text("category_id").notNull(),
+  checkpointId: uuid("checkpoint_id").references(() => checkpoints.id, {
+    onDelete: "cascade",
+  }),
+  points: real("points").notNull(),
+  notes: text("notes"),
+  gradedBy: uuid("graded_by").references(() => users.id),
+  createdAt: timestamp("created_at", { mode: "date" }).defaultNow(),
+});
 
 export const checkpointLogs = pgTable("checkpoint_logs", {
   id: uuid("id").primaryKey().defaultRandom(),
