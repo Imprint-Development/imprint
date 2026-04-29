@@ -64,6 +64,20 @@
       "when": 1777600000000,
       "tag": "0010_checkpoint_log_repository",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1777498318011,
+      "tag": "0009_fixed_nightcrawler",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1777498485359,
+      "tag": "0010_loose_lethal_legion",
+      "breakpoints": true
     }
   ]
 }

@@ -25,10 +25,12 @@ export const accounts = pgTable(
   "accounts",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    userId: uuid("user_id").references(() => users.id),
-    type: text("type"),
-    provider: text("provider"),
-    providerAccountId: text("provider_account_id"),
+    userId: uuid("user_id")
+      .references(() => users.id)
+      .notNull(),
+    type: text("type").notNull(),
+    provider: text("provider").notNull(),
+    providerAccountId: text("provider_account_id").notNull(),
     refresh_token: text("refresh_token"),
     access_token: text("access_token"),
     expires_at: integer("expires_at"),
@@ -41,9 +43,10 @@ export const accounts = pgTable(
 );
 
 export const sessions = pgTable("sessions", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  sessionToken: text("session_token").unique().notNull(),
-  userId: uuid("user_id").references(() => users.id),
+  sessionToken: text("session_token").primaryKey(),
+  userId: uuid("user_id")
+    .references(() => users.id)
+    .notNull(),
   expires: timestamp("expires", { mode: "date" }).notNull(),
 });
 
