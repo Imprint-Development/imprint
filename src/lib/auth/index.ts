@@ -3,7 +3,7 @@ import GitHub from "next-auth/providers/github";
 import Credentials from "next-auth/providers/credentials";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import { db } from "@/lib/db";
-import { users } from "@/lib/db/schema";
+import { users, accounts, sessions } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 
 import type { Provider } from "next-auth/providers";
@@ -78,7 +78,11 @@ if (isLocalDev) {
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  adapter: DrizzleAdapter(db),
+  adapter: DrizzleAdapter(db, {
+    usersTable: users,
+    accountsTable: accounts,
+    sessionsTable: sessions,
+  }),
   providers,
   session: {
     strategy: isLocalDev ? "jwt" : "database",
