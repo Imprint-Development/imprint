@@ -615,7 +615,7 @@ export default async function CourseDetailPage({
               <Divider sx={{ my: 2 }} />
 
               <form action={addGradeThresholdWithId}>
-                <Stack direction="row" spacing={1} alignItems="flex-end">
+                <Stack direction="row" spacing={1} sx={{ alignItems: "flex-end" }}>
                   <FormControl sx={{ width: 120 }}>
                     <FormLabel>Grade</FormLabel>
                     <TextField
