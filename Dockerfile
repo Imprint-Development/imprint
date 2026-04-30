@@ -36,6 +36,9 @@ COPY --from=builder /app/public ./public
 # Copy migration files and the migration runner script
 COPY --from=builder /app/drizzle ./drizzle
 COPY --from=builder /app/scripts/migrate.mjs ./scripts/migrate.mjs
+# Copy packages required by migrate.mjs (not bundled in the standalone output)
+COPY --from=deps /app/node_modules/drizzle-orm ./node_modules/drizzle-orm
+COPY --from=deps /app/node_modules/postgres ./node_modules/postgres
 
 # Entrypoint: run migrations then start the server
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
