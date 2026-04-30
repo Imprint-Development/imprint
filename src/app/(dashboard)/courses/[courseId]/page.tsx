@@ -13,7 +13,7 @@ import {
   users,
   checkpoints,
 } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, count, inArray } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import {
   addCollaborator,
@@ -68,56 +68,78 @@ export default async function CourseDetailPage({
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
-  const [membership] = await db
-    .select()
-    .from(courseCollaborators)
-    .where(
-      and(
-        eq(courseCollaborators.courseId, courseId),
-        eq(courseCollaborators.userId, session.user.id)
+  const [[membership], [course]] = await Promise.all([
+    db
+      .select()
+      .from(courseCollaborators)
+      .where(
+        and(
+          eq(courseCollaborators.courseId, courseId),
+          eq(courseCollaborators.userId, session.user.id)
+        )
       )
-    );
-  if (!membership) redirect("/courses");
+      .limit(1),
+    db.select().from(courses).where(eq(courses.id, courseId)).limit(1),
+  ]);
 
-  const [course] = await db
-    .select()
-    .from(courses)
-    .where(eq(courses.id, courseId));
+  if (!membership) redirect("/courses");
   if (!course) redirect("/courses");
 
-  // Data for Groups tab
-  const groups = await db
-    .select()
-    .from(studentGroups)
-    .where(eq(studentGroups.courseId, courseId));
+  // Fetch only data needed for the active tab
+  let groupsWithCounts: Array<{
+    id: string;
+    name: string;
+    courseId: string;
+    studentCount: number;
+  }> = [];
+  let courseCheckpoints: (typeof checkpoints.$inferSelect)[] = [];
+  let collaborators: Array<{
+    id: string;
+    role: string;
+    email: string | null;
+  }> = [];
 
-  const groupsWithCounts = await Promise.all(
-    groups.map(async (group) => {
-      const studentList = await db
-        .select()
-        .from(students)
-        .where(eq(students.groupId, group.id));
-      return { ...group, studentCount: studentList.length };
-    })
-  );
+  if (tab === "groups") {
+    const groups = await db
+      .select()
+      .from(studentGroups)
+      .where(eq(studentGroups.courseId, courseId));
 
-  // Data for Checkpoints tab
-  const courseCheckpoints = await db
-    .select()
-    .from(checkpoints)
-    .where(eq(checkpoints.courseId, courseId))
-    .orderBy(checkpoints.createdAt);
+    const groupIds = groups.map((g) => g.id);
+    const studentCounts =
+      groupIds.length > 0
+        ? await db
+            .select({ groupId: students.groupId, cnt: count() })
+            .from(students)
+            .where(inArray(students.groupId, groupIds))
+            .groupBy(students.groupId)
+        : [];
 
-  // Data for Collaborators tab
-  const collaborators = await db
-    .select({
-      id: courseCollaborators.id,
-      role: courseCollaborators.role,
-      email: users.email,
-    })
-    .from(courseCollaborators)
-    .innerJoin(users, eq(users.id, courseCollaborators.userId))
-    .where(eq(courseCollaborators.courseId, courseId));
+    const countMap = new Map(studentCounts.map((r) => [r.groupId, r.cnt]));
+    groupsWithCounts = groups.map((g) => ({
+      id: g.id,
+      name: g.name,
+      courseId: g.courseId,
+      studentCount: countMap.get(g.id) ?? 0,
+    }));
+  } else if (tab === "checkpoints") {
+    courseCheckpoints = await db
+      .select()
+      .from(checkpoints)
+      .where(eq(checkpoints.courseId, courseId))
+      .orderBy(checkpoints.createdAt);
+  } else if (tab === "collaborators") {
+    collaborators = await db
+      .select({
+        id: courseCollaborators.id,
+        role: courseCollaborators.role,
+        email: users.email,
+      })
+      .from(courseCollaborators)
+      .innerJoin(users, eq(users.id, courseCollaborators.userId))
+      .where(eq(courseCollaborators.courseId, courseId));
+  }
+  // "settings" tab only uses `course`, already fetched above
 
   const addCollaboratorWithId = addCollaborator.bind(null, courseId);
   const updateCourseWithId = updateCourse.bind(null, courseId);

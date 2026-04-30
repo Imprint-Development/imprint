@@ -7,7 +7,7 @@ import {
   grades,
 } from "@/lib/db/schema";
 import { auth } from "@/lib/auth";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { saveGrade } from "@/lib/actions/grading";
 import Typography from "@mui/material/Typography";
@@ -37,38 +37,38 @@ export default async function CourseGradingPage({
 
   const { courseId } = await params;
 
-  const [membership] = await db
-    .select()
-    .from(courseCollaborators)
-    .where(
-      and(
-        eq(courseCollaborators.courseId, courseId),
-        eq(courseCollaborators.userId, session.user.id)
-      )
-    );
-  if (!membership) redirect("/grading");
+  const [[membership], [course], courseCheckpoints, groups] = await Promise.all(
+    [
+      db
+        .select()
+        .from(courseCollaborators)
+        .where(
+          and(
+            eq(courseCollaborators.courseId, courseId),
+            eq(courseCollaborators.userId, session.user.id)
+          )
+        )
+        .limit(1),
+      db.select().from(courses).where(eq(courses.id, courseId)).limit(1),
+      db.select().from(checkpoints).where(eq(checkpoints.courseId, courseId)),
+      db
+        .select()
+        .from(studentGroups)
+        .where(eq(studentGroups.courseId, courseId)),
+    ]
+  );
 
-  const [course] = await db
-    .select()
-    .from(courses)
-    .where(eq(courses.id, courseId));
+  if (!membership) redirect("/grading");
   if (!course) redirect("/grading");
 
-  const courseCheckpoints = await db
-    .select()
-    .from(checkpoints)
-    .where(eq(checkpoints.courseId, courseId));
-
-  const groups = await db
-    .select()
-    .from(studentGroups)
-    .where(eq(studentGroups.courseId, courseId));
-
-  const allGrades = await db.select().from(grades);
-  const checkpointIds = new Set(courseCheckpoints.map((c) => c.id));
-  const courseGrades = allGrades.filter((g) =>
-    checkpointIds.has(g.checkpointId!)
-  );
+  const checkpointIds = courseCheckpoints.map((c) => c.id);
+  const courseGrades =
+    checkpointIds.length > 0
+      ? await db
+          .select()
+          .from(grades)
+          .where(inArray(grades.checkpointId, checkpointIds))
+      : [];
 
   const gradeMap = new Map<string, (typeof courseGrades)[number]>();
   for (const g of courseGrades) {

@@ -13,27 +13,28 @@ export default async function DashboardLayout({
   const session = await auth();
   if (!session) redirect("/login");
 
-  const [dbUser] = await db
-    .select({ role: users.role })
-    .from(users)
-    .where(eq(users.id, session.user!.id!))
-    .limit(1);
+  const [[dbUser], userCourses] = await Promise.all([
+    db
+      .select({ role: users.role })
+      .from(users)
+      .where(eq(users.id, session.user!.id!))
+      .limit(1),
+    db
+      .select({
+        id: courses.id,
+        name: courses.name,
+        semester: courses.semester,
+      })
+      .from(courseCollaborators)
+      .innerJoin(courses, eq(courses.id, courseCollaborators.courseId))
+      .where(eq(courseCollaborators.userId, session.user!.id!)),
+  ]);
 
   const user = {
     name: session.user?.name ?? "User",
     email: session.user?.email ?? "",
     isAdmin: dbUser?.role === "admin",
   };
-
-  const userCourses = await db
-    .select({
-      id: courses.id,
-      name: courses.name,
-      semester: courses.semester,
-    })
-    .from(courseCollaborators)
-    .innerJoin(courses, eq(courses.id, courseCollaborators.courseId))
-    .where(eq(courseCollaborators.userId, session.user!.id!));
 
   async function signOutAction() {
     "use server";
