@@ -42,14 +42,14 @@ Breaking changes must include `BREAKING CHANGE:` in the commit body or a `!` aft
 
 The pipeline is defined in `.github/workflows/ci.yml` and runs on every push to `main`, every `v*` tag, and every pull request.
 
-| Job                     | Trigger                         | What it does                                                        |
-| ----------------------- | ------------------------------- | ------------------------------------------------------------------- |
-| `commitlint`            | PRs only                        | Checks every commit in the PR against the conventional commits spec |
-| `lint-typecheck-format` | push + PR                       | `eslint`, `tsc --noEmit`, `prettier --check`                        |
-| `test`                  | push + PR                       | `vitest run`                                                        |
-| `build`                 | push + PR                       | `next build` (DATABASE_URL stubbed — no real DB needed)             |
+| Job                     | Trigger                         | What it does                                                                                                 |
+| ----------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `commitlint`            | PRs only                        | Checks every commit in the PR against the conventional commits spec                                          |
+| `lint-typecheck-format` | push + PR                       | `eslint`, `tsc --noEmit`, `prettier --check`                                                                 |
+| `test`                  | push + PR                       | `vitest run`                                                                                                 |
+| `build`                 | push + PR                       | `next build` (DATABASE_URL stubbed — no real DB needed)                                                      |
 | `check-migrations`      | push + PR                       | `drizzle-kit check` (file consistency) + `npm run db:migrate` against a live PostgreSQL 16 service container |
-| `publish`               | push to `main` or `v*` tag only | Builds and pushes a container image to `ghcr.io`                    |
+| `publish`               | push to `main` or `v*` tag only | Builds and pushes a container image to `ghcr.io`                                                             |
 
 The `publish` job only runs after `lint-typecheck-format`, `test`, `build`, and `check-migrations` all pass.
 
