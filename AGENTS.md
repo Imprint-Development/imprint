@@ -48,9 +48,10 @@ The pipeline is defined in `.github/workflows/ci.yml` and runs on every push to 
 | `lint-typecheck-format` | push + PR                       | `eslint`, `tsc --noEmit`, `prettier --check`                        |
 | `test`                  | push + PR                       | `vitest run`                                                        |
 | `build`                 | push + PR                       | `next build` (DATABASE_URL stubbed — no real DB needed)             |
+| `check-migrations`      | push + PR                       | `drizzle-kit check` (file consistency) + `npm run db:migrate` against a live PostgreSQL 16 service container |
 | `publish`               | push to `main` or `v*` tag only | Builds and pushes a container image to `ghcr.io`                    |
 
-The `publish` job only runs after `lint-typecheck-format`, `test`, and `build` all pass.
+The `publish` job only runs after `lint-typecheck-format`, `test`, `build`, and `check-migrations` all pass.
 
 ### Container image tags
 
