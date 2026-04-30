@@ -1,5 +1,5 @@
 {
-  "id": "4e79c05c-8429-44f1-ae72-19c1a3732d11",
+  "id": "003ad856-4d33-4d2a-b924-91ca3a2f008e",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -19,25 +19,25 @@
           "name": "user_id",
           "type": "uuid",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "type": {
           "name": "type",
           "type": "text",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "provider": {
           "name": "provider",
           "type": "text",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "provider_account_id": {
           "name": "provider_account_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "refresh_token": {
           "name": "refresh_token",
@@ -234,6 +234,175 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.checkpoint_logs": {
+      "name": "checkpoint_logs",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "checkpoint_id": {
+          "name": "checkpoint_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "group_id": {
+          "name": "group_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "repository_id": {
+          "name": "repository_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pipeline": {
+          "name": "pipeline",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "level": {
+          "name": "level",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "message": {
+          "name": "message",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "checkpoint_logs_checkpoint_id_checkpoints_id_fk": {
+          "name": "checkpoint_logs_checkpoint_id_checkpoints_id_fk",
+          "tableFrom": "checkpoint_logs",
+          "tableTo": "checkpoints",
+          "columnsFrom": [
+            "checkpoint_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "checkpoint_logs_group_id_student_groups_id_fk": {
+          "name": "checkpoint_logs_group_id_student_groups_id_fk",
+          "tableFrom": "checkpoint_logs",
+          "tableTo": "student_groups",
+          "columnsFrom": [
+            "group_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "checkpoint_logs_repository_id_repositories_id_fk": {
+          "name": "checkpoint_logs_repository_id_repositories_id_fk",
+          "tableFrom": "checkpoint_logs",
+          "tableTo": "repositories",
+          "columnsFrom": [
+            "repository_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.checkpoint_repo_meta": {
+      "name": "checkpoint_repo_meta",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "checkpoint_id": {
+          "name": "checkpoint_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "repository_id": {
+          "name": "repository_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "unidentified_authors": {
+          "name": "unidentified_authors",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "checkpoint_repo_meta_checkpoint_id_checkpoints_id_fk": {
+          "name": "checkpoint_repo_meta_checkpoint_id_checkpoints_id_fk",
+          "tableFrom": "checkpoint_repo_meta",
+          "tableTo": "checkpoints",
+          "columnsFrom": [
+            "checkpoint_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "checkpoint_repo_meta_repository_id_repositories_id_fk": {
+          "name": "checkpoint_repo_meta_repository_id_repositories_id_fk",
+          "tableFrom": "checkpoint_repo_meta",
+          "tableTo": "repositories",
+          "columnsFrom": [
+            "repository_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.checkpoints": {
       "name": "checkpoints",
       "schema": "",
@@ -257,8 +426,14 @@
           "primaryKey": false,
           "notNull": true
         },
-        "timestamp": {
-          "name": "timestamp",
+        "start_date": {
+          "name": "start_date",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "end_date": {
+          "name": "end_date",
           "type": "timestamp",
           "primaryKey": false,
           "notNull": false
@@ -275,6 +450,13 @@
           "primaryKey": false,
           "notNull": true,
           "default": "'pending'"
+        },
+        "enabled_pipelines": {
+          "name": "enabled_pipelines",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "ARRAY['contributions']::text[]"
         },
         "created_at": {
           "name": "created_at",
@@ -403,6 +585,20 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "ignored_git_emails": {
+          "name": "ignored_git_emails",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "ARRAY[]::text[]"
+        },
+        "ignored_github_usernames": {
+          "name": "ignored_github_usernames",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "ARRAY[]::text[]"
         },
         "created_by": {
           "name": "created_by",
@@ -609,24 +805,17 @@
       "name": "sessions",
       "schema": "",
       "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
         "session_token": {
           "name": "session_token",
           "type": "text",
-          "primaryKey": false,
+          "primaryKey": true,
           "notNull": true
         },
         "user_id": {
           "name": "user_id",
           "type": "uuid",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "expires": {
           "name": "expires",
@@ -652,15 +841,7 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "sessions_session_token_unique": {
-          "name": "sessions_session_token_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "session_token"
-          ]
-        }
-      },
+      "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -733,6 +914,19 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "git_emails": {
+          "name": "git_emails",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "ARRAY[]::text[]"
+        },
+        "github_username": {
+          "name": "github_username",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         },
         "group_id": {
           "name": "group_id",
