@@ -20,7 +20,9 @@ declare module "next-auth" {
   }
 }
 
-const isLocalDev = process.env.NODE_ENV === "development";
+const isLocalLoginEnabled =
+  process.env.NODE_ENV === "development" ||
+  process.env.LOCAL_LOGIN_ENABLED === "true";
 
 const providers: Provider[] = [
   GitHub({
@@ -29,7 +31,7 @@ const providers: Provider[] = [
   }),
 ];
 
-if (isLocalDev) {
+if (isLocalLoginEnabled) {
   providers.push(
     Credentials({
       id: "local-credentials",
@@ -85,7 +87,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   }),
   providers,
   session: {
-    strategy: isLocalDev ? "jwt" : "database",
+    strategy: isLocalLoginEnabled ? "jwt" : "database",
   },
   pages: {
     signIn: "/login",
