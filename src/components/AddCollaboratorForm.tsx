@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef } from "react";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Button from "@mui/material/Button";
@@ -17,9 +17,18 @@ const initialState = { error: null };
 
 export default function AddCollaboratorForm({ action }: Props) {
   const [state, formAction, isPending] = useActionState(action, initialState);
+  const formRef = useRef<HTMLFormElement>(null);
+  const wasPending = useRef(false);
+
+  useEffect(() => {
+    if (wasPending.current && !isPending && state.error === null) {
+      formRef.current?.reset();
+    }
+    wasPending.current = isPending;
+  }, [isPending, state.error]);
 
   return (
-    <form action={formAction}>
+    <form ref={formRef} action={formAction} aria-label="Add collaborator">
       <Stack direction="row" spacing={1}>
         <TextField
           name="email"
