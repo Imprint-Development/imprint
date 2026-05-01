@@ -231,7 +231,7 @@ export default async function AdminPage({
                         {u.createdAt?.toLocaleString() ?? "—"}
                       </TableCell>
                       <TableCell>
-                        {u.role !== "admin" && u.id !== session.user.id && (
+                        {u.role !== "admin" && u.id !== session.user?.id && (
                           <UserActionButtons
                             userId={u.id}
                             currentStatus={u.status}
