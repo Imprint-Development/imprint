@@ -4,10 +4,28 @@ import {
   courseCollaborators,
   checkpoints,
   studentGroups,
+  students,
   grades,
 } from "@/lib/db/schema";
+import type { GradingConfig, GradeThreshold } from "@/lib/db/schema";
 import { auth } from "@/lib/auth";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
+
+function calcGrade(
+  points: number,
+  maxPoints: number,
+  thresholds: GradeThreshold[]
+): string {
+  if (maxPoints === 0) return "—";
+  const pct = (points / maxPoints) * 100;
+  const sorted = [...thresholds].sort(
+    (a, b) => b.minPercentage - a.minPercentage
+  );
+  for (const t of sorted) {
+    if (pct >= t.minPercentage) return t.grade;
+  }
+  return "—";
+}
 
 export async function GET(
   _request: Request,
@@ -19,7 +37,6 @@ export async function GET(
     return new Response("Unauthorized", { status: 401 });
   }
 
-  // Verify collaborator access
   const [membership] = await db
     .select()
     .from(courseCollaborators)
@@ -41,6 +58,12 @@ export async function GET(
     return new Response("Not found", { status: 404 });
   }
 
+  const config: GradingConfig = course.gradingConfig;
+  const standaloneCategories = config.categories.filter(
+    (c) => !c.perCheckpoint
+  );
+  const perCpCategories = config.categories.filter((c) => c.perCheckpoint);
+
   const courseCheckpoints = await db
     .select()
     .from(checkpoints)
@@ -51,29 +74,101 @@ export async function GET(
     .from(studentGroups)
     .where(eq(studentGroups.courseId, courseId));
 
-  const checkpointIds = courseCheckpoints.map((c) => c.id);
+  const groupIds = groups.map((g) => g.id);
+  const allStudents =
+    groupIds.length > 0
+      ? await db
+          .select()
+          .from(students)
+          .where(inArray(students.groupId, groupIds))
+      : [];
+
+  const studentIds = allStudents.map((s) => s.id);
   const allGrades =
-    checkpointIds.length > 0 ? await db.select().from(grades) : [];
-  const courseGrades = allGrades.filter((g) =>
-    checkpointIds.includes(g.checkpointId!)
-  );
+    studentIds.length > 0
+      ? await db
+          .select()
+          .from(grades)
+          .where(inArray(grades.studentId, studentIds))
+      : [];
 
-  const rows: string[] = ["Group,Checkpoint,Points,MaxPoints,Percentage,Notes"];
+  const groupMap = new Map(groups.map((g) => [g.id, g.name]));
 
-  for (const group of groups) {
-    for (const cp of courseCheckpoints) {
-      const grade = courseGrades.find(
-        (g) => g.checkpointId === cp.id && g.groupId === group.id
-      );
-      const points = grade?.points ?? 0;
-      const maxPoints = grade?.maxPoints ?? 0;
-      const percentage =
-        maxPoints > 0 ? ((points / maxPoints) * 100).toFixed(1) : "0.0";
-      const notes = (grade?.notes ?? "").replace(/"/g, '""');
-      rows.push(
-        `"${group.name}","${cp.name}",${points},${maxPoints},${percentage}%,"${notes}"`
-      );
+  const overrides = config.checkpointOverrides ?? {};
+  const effMax = (catId: string, cpId: string, def: number) =>
+    overrides[cpId]?.[catId]?.maxPoints ?? def;
+
+  const maxPossible =
+    standaloneCategories.reduce((s, c) => s + c.maxPoints, 0) +
+    courseCheckpoints.reduce(
+      (cpSum, cp) =>
+        cpSum +
+        perCpCategories.reduce(
+          (catSum, cat) => catSum + effMax(cat.id, cp.id, cat.maxPoints),
+          0
+        ),
+      0
+    );
+
+  // Build CSV header
+  const headers = ["Student", "Group"];
+  for (const cat of standaloneCategories) {
+    headers.push(`${cat.name} (/${cat.maxPoints})`);
+  }
+  for (const cp of courseCheckpoints) {
+    for (const cat of perCpCategories) {
+      const max = effMax(cat.id, cp.id, cat.maxPoints);
+      headers.push(`${cp.name} - ${cat.name} (/${max})`);
     }
+  }
+  headers.push("Total Points", "Max Points", "Percentage", "Grade");
+
+  const rows: string[] = [
+    headers.map((h) => `"${h.replace(/"/g, '""')}"`).join(","),
+  ];
+
+  for (const student of allStudents) {
+    const studentGrades = allGrades.filter((g) => g.studentId === student.id);
+    const displayName = String(student.displayName).replace(/"/g, '""');
+    const groupName = String(groupMap.get(student.groupId) ?? "").replace(
+      /"/g,
+      '""'
+    );
+    const row: string[] = [`"${displayName}"`, `"${groupName}"`];
+
+    let totalPoints = 0;
+
+    for (const cat of standaloneCategories) {
+      const g = studentGrades.find(
+        (g) => g.categoryId === cat.id && g.checkpointId === null
+      );
+      const pts = g?.points ?? 0;
+      totalPoints += pts;
+      row.push(String(pts));
+    }
+
+    for (const cp of courseCheckpoints) {
+      for (const cat of perCpCategories) {
+        const g = studentGrades.find(
+          (g) => g.categoryId === cat.id && g.checkpointId === cp.id
+        );
+        const pts = g?.points ?? 0;
+        totalPoints += pts;
+        row.push(String(pts));
+      }
+    }
+
+    const percentage =
+      maxPossible > 0 ? ((totalPoints / maxPossible) * 100).toFixed(1) : "0.0";
+    const grade = calcGrade(totalPoints, maxPossible, config.gradeThresholds);
+
+    row.push(
+      String(totalPoints),
+      String(maxPossible),
+      `${percentage}%`,
+      `"${grade}"`
+    );
+    rows.push(row.join(","));
   }
 
   const csv = rows.join("\n");

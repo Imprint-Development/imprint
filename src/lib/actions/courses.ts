@@ -2,6 +2,11 @@
 
 import { db } from "@/lib/db";
 import { courses, courseCollaborators, users } from "@/lib/db/schema";
+import type {
+  GradingConfig,
+  GradingCategory,
+  GradeThreshold,
+} from "@/lib/db/schema";
 import { auth } from "@/lib/auth";
 import { eq, sql } from "drizzle-orm";
 import { redirect } from "next/navigation";
@@ -154,4 +159,169 @@ export async function removeIgnoredGithubUsername(
     .where(eq(courses.id, courseId));
 
   revalidatePath(`/courses/${courseId}`);
+}
+
+async function getGradingConfig(courseId: string): Promise<GradingConfig> {
+  const [course] = await db
+    .select({ gradingConfig: courses.gradingConfig })
+    .from(courses)
+    .where(eq(courses.id, courseId));
+  return (
+    course?.gradingConfig ?? {
+      categories: [],
+      gradeThresholds: [],
+      checkpointOverrides: {},
+    }
+  );
+}
+
+async function setGradingConfig(courseId: string, config: GradingConfig) {
+  await db
+    .update(courses)
+    .set({ gradingConfig: config, updatedAt: new Date() })
+    .where(eq(courses.id, courseId));
+  revalidatePath(`/courses/${courseId}`);
+}
+
+export async function addGradingCategory(courseId: string, formData: FormData) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  const name = (formData.get("name") as string).trim();
+  const maxPoints = parseFloat(formData.get("maxPoints") as string);
+  const perCheckpoint = formData.get("perCheckpoint") === "true";
+
+  if (!name || isNaN(maxPoints) || maxPoints < 0) return;
+
+  const config = await getGradingConfig(courseId);
+  const newCategory: GradingCategory = {
+    id: crypto.randomUUID(),
+    name,
+    maxPoints,
+    perCheckpoint,
+  };
+  config.categories.push(newCategory);
+  await setGradingConfig(courseId, config);
+}
+
+export async function removeGradingCategory(
+  courseId: string,
+  categoryId: string
+) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  const config = await getGradingConfig(courseId);
+  config.categories = config.categories.filter((c) => c.id !== categoryId);
+  await setGradingConfig(courseId, config);
+}
+
+export async function renameGradingCategory(
+  courseId: string,
+  categoryId: string,
+  formData: FormData
+) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  const name = (formData.get("name") as string).trim();
+  const maxPoints = parseFloat(formData.get("maxPoints") as string);
+  if (!name || isNaN(maxPoints) || maxPoints < 0) return;
+
+  const config = await getGradingConfig(courseId);
+  const cat = config.categories.find((c) => c.id === categoryId);
+  if (cat) {
+    cat.name = name;
+    cat.maxPoints = maxPoints;
+  }
+  await setGradingConfig(courseId, config);
+}
+
+export async function moveGradingCategory(
+  courseId: string,
+  categoryId: string,
+  direction: "up" | "down"
+) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  const config = await getGradingConfig(courseId);
+  const idx = config.categories.findIndex((c) => c.id === categoryId);
+  if (idx === -1) return;
+
+  const newIdx = direction === "up" ? idx - 1 : idx + 1;
+  if (newIdx < 0 || newIdx >= config.categories.length) return;
+
+  const cats = config.categories;
+  [cats[idx], cats[newIdx]] = [cats[newIdx], cats[idx]];
+  await setGradingConfig(courseId, config);
+}
+
+export async function addGradeThreshold(courseId: string, formData: FormData) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  const grade = (formData.get("grade") as string).trim();
+  const minPercentage = parseFloat(formData.get("minPercentage") as string);
+
+  if (
+    !grade ||
+    isNaN(minPercentage) ||
+    minPercentage < 0 ||
+    minPercentage > 100
+  )
+    return;
+
+  const config = await getGradingConfig(courseId);
+  // Replace if same grade label already exists
+  config.gradeThresholds = config.gradeThresholds.filter(
+    (t) => t.grade !== grade
+  );
+  const newThreshold: GradeThreshold = { grade, minPercentage };
+  config.gradeThresholds.push(newThreshold);
+  // Sort descending by minPercentage
+  config.gradeThresholds.sort((a, b) => b.minPercentage - a.minPercentage);
+  await setGradingConfig(courseId, config);
+}
+
+export async function removeGradeThreshold(courseId: string, grade: string) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  const config = await getGradingConfig(courseId);
+  config.gradeThresholds = config.gradeThresholds.filter(
+    (t) => t.grade !== grade
+  );
+  await setGradingConfig(courseId, config);
+}
+
+export async function setCheckpointCategoryMaxPoints(
+  courseId: string,
+  checkpointId: string,
+  categoryId: string,
+  formData: FormData
+) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  const raw = (formData.get("maxPoints") as string).trim();
+  const maxPoints = raw === "" ? null : parseFloat(raw);
+
+  const config = await getGradingConfig(courseId);
+  config.checkpointOverrides ??= {};
+
+  if (maxPoints === null || isNaN(maxPoints)) {
+    // Clear override
+    if (config.checkpointOverrides[checkpointId]) {
+      delete config.checkpointOverrides[checkpointId][categoryId];
+      if (Object.keys(config.checkpointOverrides[checkpointId]).length === 0) {
+        delete config.checkpointOverrides[checkpointId];
+      }
+    }
+  } else {
+    config.checkpointOverrides[checkpointId] ??= {};
+    config.checkpointOverrides[checkpointId][categoryId] = { maxPoints };
+  }
+
+  await setGradingConfig(courseId, config);
 }
