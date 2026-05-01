@@ -27,7 +27,7 @@ export async function GET() {
     .limit(1);
 
   return NextResponse.json({
-    privateModeEnabled: setting?.value === true,
+    privateModeEnabled: setting?.value === true || setting?.value === "true",
   });
 }
 

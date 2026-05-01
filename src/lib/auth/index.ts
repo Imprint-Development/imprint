@@ -148,7 +148,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           .from(systemSettings)
           .where(eq(systemSettings.key, "privateModeEnabled"))
           .limit(1);
-        if (setting?.value === true) {
+        if (setting?.value === true || setting?.value === "true") {
           await db
             .update(users)
             .set({ status: "locked" })
