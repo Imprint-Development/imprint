@@ -34,10 +34,16 @@ export const users = pgTable("users", {
   email: text("email").unique().notNull(),
   name: text("name"),
   role: text("role").default("lecturer"),
+  status: text("status").default("active"),
   githubId: text("github_id").unique(),
   image: text("image"),
   emailVerified: timestamp("email_verified", { mode: "date" }),
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow(),
+});
+
+export const systemSettings = pgTable("system_settings", {
+  key: text("key").primaryKey(),
+  value: jsonb("value").notNull(),
 });
 
 export const accounts = pgTable(

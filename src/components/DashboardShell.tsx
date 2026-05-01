@@ -12,6 +12,7 @@ interface DashboardShellProps {
   signOutAction: () => Promise<void>;
   courses: CourseOption[];
   children: React.ReactNode;
+  lockedUsersCount?: number;
 }
 
 export default function DashboardShell({
@@ -19,6 +20,7 @@ export default function DashboardShell({
   signOutAction,
   courses,
   children,
+  lockedUsersCount = 0,
 }: DashboardShellProps) {
   const [drawerOpen, setDrawerOpen] = React.useState(false);
 
@@ -29,6 +31,7 @@ export default function DashboardShell({
           user={user}
           signOutAction={signOutAction}
           isAdmin={user.isAdmin}
+          lockedUsersCount={lockedUsersCount}
           open={drawerOpen}
           onClose={() => setDrawerOpen(false)}
         />

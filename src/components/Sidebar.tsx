@@ -18,6 +18,7 @@ import Tooltip from "@mui/material/Tooltip";
 import Select from "@mui/material/Select";
 import MenuItem from "@mui/material/MenuItem";
 import FormControl from "@mui/material/FormControl";
+import Badge from "@mui/material/Badge";
 import HomeRounded from "@mui/icons-material/HomeRounded";
 import SchoolRounded from "@mui/icons-material/SchoolRounded";
 import GradingRounded from "@mui/icons-material/GradingRounded";
@@ -112,6 +113,7 @@ interface SidebarProps {
   user: { name: string; email: string };
   signOutAction: () => Promise<void>;
   isAdmin?: boolean;
+  lockedUsersCount?: number;
   open?: boolean;
   onClose?: () => void;
 }
@@ -120,7 +122,11 @@ function SidebarContent({
   user,
   signOutAction,
   isAdmin,
-}: Pick<SidebarProps, "user" | "signOutAction" | "isAdmin">) {
+  lockedUsersCount = 0,
+}: Pick<
+  SidebarProps,
+  "user" | "signOutAction" | "isAdmin" | "lockedUsersCount"
+>) {
   const pathname = usePathname();
   const { courses, selectedCourseId, selectedCourse, selectCourse } =
     useCourse();
@@ -229,7 +235,11 @@ function SidebarContent({
             item={{
               label: "Admin",
               href: "/admin",
-              icon: <AdminPanelSettingsRounded />,
+              icon: (
+                <Badge badgeContent={lockedUsersCount} color="warning" max={99}>
+                  <AdminPanelSettingsRounded />
+                </Badge>
+              ),
             }}
             href="/admin"
             active={pathname === "/admin" || pathname.startsWith("/admin/")}
@@ -264,6 +274,7 @@ export default function Sidebar({
   user,
   signOutAction,
   isAdmin,
+  lockedUsersCount = 0,
   open,
   onClose,
 }: SidebarProps) {
@@ -281,6 +292,7 @@ export default function Sidebar({
           user={user}
           signOutAction={signOutAction}
           isAdmin={isAdmin}
+          lockedUsersCount={lockedUsersCount}
         />
       </Box>
 
@@ -295,6 +307,7 @@ export default function Sidebar({
           user={user}
           signOutAction={signOutAction}
           isAdmin={isAdmin}
+          lockedUsersCount={lockedUsersCount}
         />
       </Drawer>
     </>

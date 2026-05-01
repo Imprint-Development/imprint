@@ -1,6 +1,6 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { users } from "@/lib/db/schema";
+import { users, systemSettings } from "@/lib/db/schema";
 import { analysisQueue } from "@/lib/queue";
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
@@ -15,10 +15,14 @@ import TableRow from "@mui/material/TableRow";
 import Paper from "@mui/material/Paper";
 import Chip from "@mui/material/Chip";
 import Box from "@mui/material/Box";
+import Stack from "@mui/material/Stack";
+import UserActionButtons from "./UserActionButtons";
+import PrivateModeToggle from "./PrivateModeToggle";
 
 const TABS = [
   { label: "Users", value: "users" },
   { label: "Worker Runs", value: "runs" },
+  { label: "Settings", value: "settings" },
 ];
 
 const JOB_STATUS_COLOR: Record<
@@ -30,6 +34,15 @@ const JOB_STATUS_COLOR: Record<
   active: "primary",
   waiting: "default",
   delayed: "warning",
+};
+
+const USER_STATUS_COLOR: Record<
+  string,
+  "default" | "success" | "warning" | "error"
+> = {
+  active: "success",
+  locked: "warning",
+  banned: "error",
 };
 
 export default async function AdminPage({
@@ -58,10 +71,19 @@ export default async function AdminPage({
       name: users.name,
       email: users.email,
       role: users.role,
+      status: users.status,
       createdAt: users.createdAt,
     })
     .from(users)
     .orderBy(users.createdAt);
+
+  // ── Settings ─────────────────────────────────────────────────────────────
+  const [privateModeSetting] = await db
+    .select({ value: systemSettings.value })
+    .from(systemSettings)
+    .where(eq(systemSettings.key, "privateModeEnabled"))
+    .limit(1);
+  const privateModeEnabled = privateModeSetting?.value === true;
 
   // ── Worker runs ──────────────────────────────────────────────────────────
   type JobRow = {
@@ -108,6 +130,10 @@ export default async function AdminPage({
     // Redis may not be available at render time — show empty state
   }
 
+  const lockedUsers = allUsers.filter(
+    (u) => u.status === "locked" && u.role !== "admin"
+  );
+
   return (
     <Box>
       <Typography variant="h5" sx={{ mb: 0.5 }}>
@@ -121,35 +147,104 @@ export default async function AdminPage({
 
       {/* ── Users tab ── */}
       {tab === "users" && (
-        <TableContainer component={Paper} variant="outlined">
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Name</TableCell>
-                <TableCell>Email</TableCell>
-                <TableCell>Role</TableCell>
-                <TableCell>Registered</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {allUsers.map((u) => (
-                <TableRow key={u.id}>
-                  <TableCell>{u.name ?? "—"}</TableCell>
-                  <TableCell>{u.email}</TableCell>
-                  <TableCell>
-                    <Chip
-                      label={u.role ?? "lecturer"}
-                      size="small"
-                      color={u.role === "admin" ? "primary" : "default"}
-                      variant={u.role === "admin" ? "filled" : "outlined"}
-                    />
-                  </TableCell>
-                  <TableCell>{u.createdAt?.toLocaleString() ?? "—"}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+        <Stack spacing={2}>
+          {lockedUsers.length > 0 && (
+            <Box>
+              <Typography
+                variant="subtitle2"
+                sx={{ mb: 1, color: "warning.main" }}
+              >
+                Pending approval ({lockedUsers.length})
+              </Typography>
+              <TableContainer component={Paper} variant="outlined">
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Name</TableCell>
+                      <TableCell>Email</TableCell>
+                      <TableCell>Registered</TableCell>
+                      <TableCell>Actions</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {lockedUsers.map((u) => (
+                      <TableRow key={u.id}>
+                        <TableCell>{u.name ?? "—"}</TableCell>
+                        <TableCell>{u.email}</TableCell>
+                        <TableCell>
+                          {u.createdAt?.toLocaleString() ?? "—"}
+                        </TableCell>
+                        <TableCell>
+                          <UserActionButtons
+                            userId={u.id}
+                            currentStatus={u.status}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Box>
+          )}
+
+          <Box>
+            <Typography variant="subtitle2" sx={{ mb: 1 }}>
+              All users
+            </Typography>
+            <TableContainer component={Paper} variant="outlined">
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Name</TableCell>
+                    <TableCell>Email</TableCell>
+                    <TableCell>Role</TableCell>
+                    <TableCell>Status</TableCell>
+                    <TableCell>Registered</TableCell>
+                    <TableCell>Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {allUsers.map((u) => (
+                    <TableRow key={u.id}>
+                      <TableCell>{u.name ?? "—"}</TableCell>
+                      <TableCell>{u.email}</TableCell>
+                      <TableCell>
+                        <Chip
+                          label={u.role ?? "lecturer"}
+                          size="small"
+                          color={u.role === "admin" ? "primary" : "default"}
+                          variant={u.role === "admin" ? "filled" : "outlined"}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          label={u.status ?? "active"}
+                          size="small"
+                          color={
+                            USER_STATUS_COLOR[u.status ?? "active"] ?? "default"
+                          }
+                          variant="outlined"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        {u.createdAt?.toLocaleString() ?? "—"}
+                      </TableCell>
+                      <TableCell>
+                        {u.role !== "admin" && u.id !== session.user.id && (
+                          <UserActionButtons
+                            userId={u.id}
+                            currentStatus={u.status}
+                          />
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Box>
+        </Stack>
       )}
 
       {/* ── Worker runs tab ── */}
@@ -253,6 +348,13 @@ export default async function AdminPage({
             </TableContainer>
           )}
         </>
+      )}
+
+      {/* ── Settings tab ── */}
+      {tab === "settings" && (
+        <Box sx={{ maxWidth: 600 }}>
+          <PrivateModeToggle initialEnabled={privateModeEnabled} />
+        </Box>
       )}
     </Box>
   );
