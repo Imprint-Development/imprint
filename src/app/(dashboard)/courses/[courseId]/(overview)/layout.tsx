@@ -42,6 +42,7 @@ export default async function CourseOverviewLayout({
   const tabs = [
     { label: "Groups", href: `/courses/${courseId}/groups` },
     { label: "Checkpoints", href: `/courses/${courseId}/checkpoints` },
+    { label: "Grading", href: `/courses/${courseId}/grading` },
     { label: "Collaborators", href: `/courses/${courseId}/collaborators` },
     { label: "Settings", href: `/courses/${courseId}/settings` },
   ];

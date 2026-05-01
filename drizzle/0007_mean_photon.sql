@@ -1,1 +1,0 @@
-ALTER TABLE "checkpoints" ADD COLUMN "enabled_pipelines" text[] DEFAULT ARRAY['contributions']::text[] NOT NULL;

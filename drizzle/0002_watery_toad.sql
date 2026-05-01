@@ -1,1 +1,0 @@
-ALTER TABLE "students" ADD COLUMN "git_emails" text[] DEFAULT ARRAY[]::text[] NOT NULL;
