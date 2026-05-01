@@ -23,10 +23,10 @@ export default function AddCollaboratorForm({ action }: Props) {
       <Stack direction="row" spacing={1}>
         <TextField
           name="email"
-          placeholder="Email address"
+          label="Email address"
           type="email"
           size="small"
-          inputProps={{ "aria-label": "Collaborator email address" }}
+          required
           sx={{ flex: 1, maxWidth: 400 }}
         />
         <Button
