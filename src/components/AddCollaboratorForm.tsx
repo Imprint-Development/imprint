@@ -26,6 +26,7 @@ export default function AddCollaboratorForm({ action }: Props) {
           placeholder="Email address"
           type="email"
           size="small"
+          inputProps={{ "aria-label": "Collaborator email address" }}
           sx={{ flex: 1, maxWidth: 400 }}
         />
         <Button
@@ -38,7 +39,7 @@ export default function AddCollaboratorForm({ action }: Props) {
         </Button>
       </Stack>
       {state.error && (
-        <Alert severity="error" sx={{ mt: 1, maxWidth: 460 }}>
+        <Alert severity="error" role="alert" sx={{ mt: 1, maxWidth: 460 }}>
           {state.error}
         </Alert>
       )}
