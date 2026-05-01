@@ -72,7 +72,8 @@ export async function addCollaborator(
 
   const [user] = await db.select().from(users).where(eq(users.email, email));
 
-  if (!user) return { error: "No registered user found with that email address." };
+  if (!user)
+    return { error: "No registered user found with that email address." };
 
   await db
     .insert(courseCollaborators)
