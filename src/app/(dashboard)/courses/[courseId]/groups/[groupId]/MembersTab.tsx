@@ -67,6 +67,9 @@ export default function MembersTab({
 }: Props) {
   const [mode, setMode] = useState<"view" | "edit">("view");
   const isEdit = mode === "edit";
+  const sorted = [...students].sort((a, b) =>
+    a.displayName.localeCompare(b.displayName)
+  );
 
   return (
     <Box>
@@ -116,7 +119,7 @@ export default function MembersTab({
               </TableRow>
             </TableHead>
             <TableBody>
-              {students.map((student) => (
+              {sorted.map((student) => (
                 <TableRow key={student.id}>
                   <TableCell>{student.displayName}</TableCell>
                   <TableCell>{student.email}</TableCell>

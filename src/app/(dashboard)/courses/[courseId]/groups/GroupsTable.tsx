@@ -173,6 +173,7 @@ export default function GroupsTable({
   groups: GroupRowData[];
   courseId: string;
 }) {
+  const sorted = [...groups].sort((a, b) => a.name.localeCompare(b.name));
   return (
     <TableContainer
       sx={{
@@ -193,7 +194,7 @@ export default function GroupsTable({
           </TableRow>
         </TableHead>
         <TableBody>
-          {groups.map((group) => (
+          {sorted.map((group) => (
             <CollapsibleRow key={group.id} group={group} courseId={courseId} />
           ))}
         </TableBody>

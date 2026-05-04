@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { analysisQueue } from "@/lib/queue";
 import { redirect } from "next/navigation";
-import { eq } from "drizzle-orm";
+import { eq, asc } from "drizzle-orm";
 import TabNav from "@/components/TabNav";
 import Typography from "@mui/material/Typography";
 import Table from "@mui/material/Table";
@@ -60,7 +60,7 @@ export default async function AdminPage({
       createdAt: users.createdAt,
     })
     .from(users)
-    .orderBy(users.createdAt);
+    .orderBy(asc(users.name));
 
   // ── Worker runs ──────────────────────────────────────────────────────────
   type JobRow = {

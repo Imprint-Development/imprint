@@ -47,6 +47,7 @@ export default function CheckpointTable({
 }: Props) {
   const { gitRef = false, startDate = false, endDate = false } = columns;
   const showActions = !!renderActions;
+  const sorted = [...checkpoints].sort((a, b) => a.name.localeCompare(b.name));
 
   return (
     <TableContainer
@@ -70,7 +71,7 @@ export default function CheckpointTable({
           </TableRow>
         </TableHead>
         <TableBody>
-          {checkpoints.map((cp) => (
+          {sorted.map((cp) => (
             <TableRow key={cp.id} hover sx={{ position: "relative" }}>
               <TableCell>
                 {/* ::after overlay makes the whole row clickable */}

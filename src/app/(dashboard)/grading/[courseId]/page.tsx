@@ -9,7 +9,7 @@ import {
 } from "@/lib/db/schema";
 import type { GradingConfig, GradeThreshold } from "@/lib/db/schema";
 import { auth } from "@/lib/auth";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, asc } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { saveGrade } from "@/lib/actions/grading";
 import Typography from "@mui/material/Typography";
@@ -100,6 +100,7 @@ export default async function CourseGradingPage({
           .select()
           .from(students)
           .where(inArray(students.groupId, groupIds))
+          .orderBy(asc(students.displayName))
       : [];
 
   const studentIds = allStudents.map((s) => s.id);

@@ -287,7 +287,7 @@ function FilesTab({ rows }: { rows: AnalysisRow[] }) {
       total:
         (d.codeMetrics.filesChanged ?? 0) + (d.testMetrics.filesChanged ?? 0),
     }))
-    .sort((a, b) => b.total - a.total);
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   return (
     <>
@@ -614,10 +614,11 @@ export function GroupAnalysisClient({
   const [selectedRepo, setSelectedRepo] = useState<string>("all");
   const [tab, setTab] = useState(0);
 
-  const filteredRows =
+  const filteredRows = (
     selectedRepo === "all"
       ? aggregateRows(rows)
-      : rows.filter((r) => r.repoId === selectedRepo);
+      : rows.filter((r) => r.repoId === selectedRepo)
+  ).sort((a, b) => a.studentName.localeCompare(b.studentName));
 
   const filteredWarnings =
     selectedRepo === "all"
