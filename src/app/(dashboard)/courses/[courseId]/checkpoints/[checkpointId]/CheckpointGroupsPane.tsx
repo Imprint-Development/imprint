@@ -1,6 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import * as React from "react";
+import { styled } from "@mui/material/styles";
+import MuiAvatar from "@mui/material/Avatar";
+import MuiListItemAvatar from "@mui/material/ListItemAvatar";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Chip from "@mui/material/Chip";
@@ -14,13 +18,14 @@ import Alert from "@mui/material/Alert";
 import AlertTitle from "@mui/material/AlertTitle";
 import Stack from "@mui/material/Stack";
 import Tooltip from "@mui/material/Tooltip";
-import Select from "@mui/material/Select";
+import Select, { selectClasses } from "@mui/material/Select";
 import MenuItem from "@mui/material/MenuItem";
-import FormControl from "@mui/material/FormControl";
-import InputLabel from "@mui/material/InputLabel";
+import ListSubheader from "@mui/material/ListSubheader";
+import ListItemText from "@mui/material/ListItemText";
 import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
 import WarningAmberRounded from "@mui/icons-material/WarningAmberRounded";
+import GroupsRounded from "@mui/icons-material/GroupsRounded";
 import { GroupAnalysisClient } from "./GroupAnalysisClient";
 import type {
   AnalysisRow,
@@ -31,6 +36,23 @@ import AiReportsSection, { type AiReportRow } from "./AiReportsSection";
 import GroupAnalysisLogs from "@/components/GroupAnalysisLogs";
 import { ALL_PIPELINE_IDS } from "@/lib/analysis/pipelines/registry";
 import { rerunGroupAnalysis } from "@/lib/actions/checkpoints";
+
+// ── Styled primitives from template SelectContent ────────────────────────────
+
+const Avatar = styled(MuiAvatar)(({ theme }) => ({
+  width: 28,
+  height: 28,
+  backgroundColor: (theme.vars || theme).palette.background.paper,
+  color: (theme.vars || theme).palette.text.secondary,
+  border: `1px solid ${(theme.vars || theme).palette.divider}`,
+}));
+
+const ListItemAvatar = styled(MuiListItemAvatar)({
+  minWidth: 0,
+  marginRight: 12,
+});
+
+// ── Types ────────────────────────────────────────────────────────────────────
 
 export interface WarnLog {
   pipeline: string;
@@ -63,6 +85,8 @@ interface Props {
   initialGroupId?: string;
 }
 
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
 function shortRepoLabel(url: string): string {
   try {
     return new URL(url).pathname.replace(/^\//, "").replace(/\.git$/, "");
@@ -70,6 +94,8 @@ function shortRepoLabel(url: string): string {
     return url;
   }
 }
+
+// ── WarningsModal ─────────────────────────────────────────────────────────────
 
 function WarningsModal({
   groupName,
@@ -142,6 +168,64 @@ function WarningsModal({
   );
 }
 
+// ── GroupSelectContent — template SelectContent style ────────────────────────
+
+function GroupSelectContent({
+  groups,
+  selectedId,
+  onChange,
+}: {
+  groups: GroupPaneData[];
+  selectedId: string;
+  onChange: (id: string) => void;
+}) {
+  return (
+    <Select
+      value={selectedId}
+      onChange={(e) => onChange(e.target.value)}
+      inputProps={{ "aria-label": "Select group" }}
+      fullWidth
+      sx={{
+        maxHeight: 56,
+        "&.MuiList-root": { p: "8px" },
+        [`& .${selectClasses.select}`]: {
+          display: "flex",
+          alignItems: "center",
+          gap: "2px",
+          pl: 1,
+        },
+      }}
+    >
+      <ListSubheader sx={{ pt: 0 }}>Groups</ListSubheader>
+      {groups.map((g) => (
+        <MenuItem key={g.groupId} value={g.groupId}>
+          <ListItemAvatar>
+            <Avatar alt={g.groupName}>
+              <GroupsRounded sx={{ fontSize: "1rem" }} />
+            </Avatar>
+          </ListItemAvatar>
+          <ListItemText
+            primary={
+              <Stack direction="row" sx={{ alignItems: "center", gap: 1 }}>
+                <span>{g.groupName}</span>
+                {g.analysisRows.length === 0 && (
+                  <Chip label="empty" size="small" color="default" />
+                )}
+              </Stack>
+            }
+            secondary={`${g.studentCount} student${g.studentCount !== 1 ? "s" : ""}`}
+          />
+          {g.logWarningCount > 0 && (
+            <WarningAmberRounded fontSize="small" color="warning" />
+          )}
+        </MenuItem>
+      ))}
+    </Select>
+  );
+}
+
+// ── Main component ─────────────────────────────────────────────────────────────
+
 const GROUP_TABS = [
   { label: "Overview", value: "overview" },
   { label: "AI Analysis", value: "ai-analysis" },
@@ -172,35 +256,44 @@ export default function CheckpointGroupsPane({
 
   return (
     <Box>
-      {/* Toolbar: group dropdown + meta + actions */}
+      {/* Group selector — template SelectContent style */}
       <Stack
         direction="row"
-        sx={{ alignItems: "center", mb: 2.5, flexWrap: "wrap", gap: 1.5 }}
+        sx={{ alignItems: "center", mb: 3, gap: 1.5, flexWrap: "wrap" }}
       >
-        {/* Left: meta for selected group */}
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          {selected && (
-            <Stack
-              direction="row"
-              sx={{ alignItems: "center", gap: 1, flexWrap: "wrap" }}
-            >
-              {selected.analysedAt && (
-                <Typography variant="caption" color="text.secondary">
-                  Analysed{" "}
-                  {selected.analysedAt.toLocaleString(undefined, {
-                    dateStyle: "medium",
-                    timeStyle: "short",
-                  })}
-                </Typography>
-              )}
-              {selected.executedPipelines.map((p) => (
-                <Chip key={p} label={p} size="small" variant="outlined" />
-              ))}
-            </Stack>
-          )}
+        <Box sx={{ flex: 1, minWidth: 200, maxWidth: 320 }}>
+          <GroupSelectContent
+            groups={groups}
+            selectedId={selectedId}
+            onChange={(id) => {
+              setSelectedId(id);
+              setGroupTab("overview");
+            }}
+          />
         </Box>
 
-        {/* Right: warnings button + group selector + re-run */}
+        {/* Meta: analysedAt + pipeline chips */}
+        {selected && (
+          <Stack
+            direction="row"
+            sx={{ alignItems: "center", gap: 1, flexWrap: "wrap", flex: 1 }}
+          >
+            {selected.analysedAt && (
+              <Typography variant="caption" color="text.secondary">
+                Analysed{" "}
+                {selected.analysedAt.toLocaleString(undefined, {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                })}
+              </Typography>
+            )}
+            {selected.executedPipelines.map((p) => (
+              <Chip key={p} label={p} size="small" variant="outlined" />
+            ))}
+          </Stack>
+        )}
+
+        {/* Actions */}
         <Stack
           direction="row"
           sx={{ alignItems: "center", gap: 1, flexShrink: 0 }}
@@ -218,43 +311,6 @@ export default function CheckpointGroupsPane({
               </IconButton>
             </Tooltip>
           )}
-
-          <FormControl size="small" sx={{ minWidth: 200 }}>
-            <InputLabel id="group-select-label">Group</InputLabel>
-            <Select
-              labelId="group-select-label"
-              label="Group"
-              value={selectedId}
-              onChange={(e) => {
-                setSelectedId(e.target.value);
-                setGroupTab("overview");
-              }}
-            >
-              {groups.map((g) => (
-                <MenuItem key={g.groupId} value={g.groupId}>
-                  <Stack
-                    direction="row"
-                    sx={{ alignItems: "center", gap: 1, width: "100%" }}
-                  >
-                    <Typography variant="body2" sx={{ flex: 1 }}>
-                      {g.groupName}
-                    </Typography>
-                    {g.analysisRows.length === 0 && (
-                      <Chip label="empty" size="small" color="default" />
-                    )}
-                    {g.logWarningCount > 0 && (
-                      <WarningAmberRounded
-                        fontSize="small"
-                        color="warning"
-                        sx={{ flexShrink: 0 }}
-                      />
-                    )}
-                  </Stack>
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
           {selected && rerunWithIds && checkpointStatus === "complete" && (
             <form action={rerunWithIds}>
               <Button
@@ -272,7 +328,6 @@ export default function CheckpointGroupsPane({
 
       {selected ? (
         <>
-          {/* Per-group sub-tabs */}
           <Tabs
             value={groupTab}
             onChange={(_, v: string) => setGroupTab(v)}
@@ -283,7 +338,6 @@ export default function CheckpointGroupsPane({
             ))}
           </Tabs>
 
-          {/* Overview sub-tab */}
           {groupTab === "overview" && (
             <>
               {selected.analysisRows.length === 0 ? (
@@ -301,7 +355,6 @@ export default function CheckpointGroupsPane({
             </>
           )}
 
-          {/* AI Analysis sub-tab */}
           {groupTab === "ai-analysis" && (
             <AiReportsSection
               reports={selected.aiReports}
@@ -313,7 +366,6 @@ export default function CheckpointGroupsPane({
             />
           )}
 
-          {/* Logs sub-tab */}
           {groupTab === "logs" && (
             <GroupAnalysisLogs
               checkpointId={checkpointId}
@@ -330,7 +382,6 @@ export default function CheckpointGroupsPane({
         </Typography>
       )}
 
-      {/* Warnings modal */}
       {selected && (
         <WarningsModal
           groupName={selected.groupName}

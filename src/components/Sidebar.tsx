@@ -2,25 +2,24 @@
 
 import * as React from "react";
 import NextLink from "next/link";
-import NextImage from "next/image";
 import { usePathname } from "next/navigation";
 import { styled } from "@mui/material/styles";
+import MuiAvatar from "@mui/material/Avatar";
+import MuiListItemAvatar from "@mui/material/ListItemAvatar";
 import MuiDrawer, { drawerClasses } from "@mui/material/Drawer";
 import Box from "@mui/material/Box";
+import Divider from "@mui/material/Divider";
 import List from "@mui/material/List";
 import ListItem from "@mui/material/ListItem";
 import ListItemButton from "@mui/material/ListItemButton";
 import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemText from "@mui/material/ListItemText";
-import Typography from "@mui/material/Typography";
-import Divider from "@mui/material/Divider";
-import Avatar from "@mui/material/Avatar";
-import Stack from "@mui/material/Stack";
-import Tooltip from "@mui/material/Tooltip";
-import IconButton from "@mui/material/IconButton";
-import Select from "@mui/material/Select";
+import ListSubheader from "@mui/material/ListSubheader";
 import MenuItem from "@mui/material/MenuItem";
-import FormControl from "@mui/material/FormControl";
+import Select, { selectClasses } from "@mui/material/Select";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
+import Tooltip from "@mui/material/Tooltip";
 import HomeRounded from "@mui/icons-material/HomeRounded";
 import SchoolRounded from "@mui/icons-material/SchoolRounded";
 import GradingRounded from "@mui/icons-material/GradingRounded";
@@ -29,20 +28,96 @@ import GroupsRounded from "@mui/icons-material/GroupsRounded";
 import FlagRounded from "@mui/icons-material/FlagRounded";
 import AdminPanelSettingsRounded from "@mui/icons-material/AdminPanelSettingsRounded";
 import BugReportRounded from "@mui/icons-material/BugReportRounded";
+import SchoolOutlined from "@mui/icons-material/SchoolOutlined";
 import ColorModeIconDropdown from "@/components/ColorModeIconDropdown";
 import { useCourse } from "./CourseProvider";
+import type { CourseOption } from "./CourseProvider";
+import MenuButton from "./MenuButton";
 
-const SIDEBAR_WIDTH = 240;
+// ── styled primitives copied from template ──────────────────────────────────
 
-const PermanentDrawer = styled(MuiDrawer)({
-  width: SIDEBAR_WIDTH,
+const drawerWidth = 240;
+
+const Drawer = styled(MuiDrawer)({
+  width: drawerWidth,
   flexShrink: 0,
   boxSizing: "border-box",
+  mt: 10,
   [`& .${drawerClasses.paper}`]: {
-    width: SIDEBAR_WIDTH,
+    width: drawerWidth,
     boxSizing: "border-box",
   },
 });
+
+const Avatar = styled(MuiAvatar)(({ theme }) => ({
+  width: 28,
+  height: 28,
+  backgroundColor: (theme.vars || theme).palette.background.paper,
+  color: (theme.vars || theme).palette.text.secondary,
+  border: `1px solid ${(theme.vars || theme).palette.divider}`,
+}));
+
+const ListItemAvatar = styled(MuiListItemAvatar)({
+  minWidth: 0,
+  marginRight: 12,
+});
+
+// ── CourseSelectContent — mirrors template SelectContent ────────────────────
+
+function CourseSelectContent() {
+  const { courses, selectedCourseId, selectCourse } = useCourse();
+
+  if (courses.length === 0) {
+    return (
+      <Typography variant="body2" color="text.secondary" sx={{ px: 1 }}>
+        No courses available
+      </Typography>
+    );
+  }
+
+  return (
+    <Select
+      value={selectedCourseId ?? ""}
+      onChange={(e) => selectCourse(e.target.value)}
+      displayEmpty
+      inputProps={{ "aria-label": "Select course" }}
+      fullWidth
+      sx={{
+        maxHeight: 56,
+        width: 215,
+        "&.MuiList-root": { p: "8px" },
+        [`& .${selectClasses.select}`]: {
+          display: "flex",
+          alignItems: "center",
+          gap: "2px",
+          pl: 1,
+        },
+      }}
+    >
+      {courses.length === 0 ? (
+        <MenuItem value="" disabled>
+          <em>No courses</em>
+        </MenuItem>
+      ) : (
+        <>
+          <ListSubheader sx={{ pt: 0 }}>Courses</ListSubheader>
+          {courses.map((c: CourseOption) => (
+            <MenuItem key={c.id} value={c.id}>
+              <ListItemAvatar>
+                <Avatar alt={c.name}>
+                  <SchoolOutlined sx={{ fontSize: "1rem" }} />
+                </Avatar>
+              </ListItemAvatar>
+              <ListItemText primary={c.name} secondary={c.semester} />
+            </MenuItem>
+          ))}
+        </>
+      )}
+    </Select>
+  );
+}
+
+// ── Nav items ─────────────────────────────────────────────────────────────────
 
 interface NavItem {
   label: string;
@@ -52,7 +127,7 @@ interface NavItem {
   buildHref?: (selectedCourseId: string | null) => string | null;
 }
 
-const navItems: NavItem[] = [
+const mainNavItems: NavItem[] = [
   {
     label: "Dashboard",
     href: "/dashboard",
@@ -79,68 +154,15 @@ const navItems: NavItem[] = [
   },
 ];
 
-const bottomNavItems: NavItem[] = [
+const secondaryNavItems: NavItem[] = [
   { label: "Course management", href: "/courses", icon: <SchoolRounded /> },
 ];
 
-function NavItemRow({
-  item,
-  href,
-  active,
-  disabled,
-}: {
-  item: NavItem;
-  href: string | null;
-  active: boolean;
-  disabled: boolean;
-}) {
-  return (
-    <ListItem disablePadding sx={{ display: "block" }}>
-      <ListItemButton
-        component={disabled || !href ? "div" : NextLink}
-        href={disabled || !href ? undefined : href}
-        selected={active}
-        disabled={disabled}
-        sx={{ borderRadius: 1, gap: 1 }}
-      >
-        <ListItemIcon
-          sx={{
-            minWidth: 0,
-            color: active ? "text.primary" : "text.secondary",
-          }}
-        >
-          {item.icon}
-        </ListItemIcon>
-        <ListItemText
-          primary={item.label}
-          slotProps={{
-            primary: {
-              variant: "body2",
-              sx: { fontWeight: active ? 600 : 500 },
-            },
-          }}
-        />
-      </ListItemButton>
-    </ListItem>
-  );
-}
+// ── MenuContent — mirrors template MenuContent ──────────────────────────────
 
-interface SidebarProps {
-  user: { name: string; email: string };
-  signOutAction: () => Promise<void>;
-  isAdmin?: boolean;
-  open?: boolean;
-  onClose?: () => void;
-}
-
-function SidebarContent({
-  user,
-  signOutAction,
-  isAdmin,
-}: Pick<SidebarProps, "user" | "signOutAction" | "isAdmin">) {
+function MenuContent({ isAdmin }: { isAdmin?: boolean }) {
   const pathname = usePathname();
-  const { courses, selectedCourseId, selectedCourse, selectCourse } =
-    useCourse();
+  const { selectedCourseId } = useCourse();
 
   function resolveItem(item: NavItem): {
     href: string | null;
@@ -170,6 +192,49 @@ function SidebarContent({
     return { href: item.href, active, disabled: false };
   }
 
+  const adminItems: NavItem[] = isAdmin
+    ? [
+        { label: "Admin", href: "/admin", icon: <AdminPanelSettingsRounded /> },
+        { label: "Debug", href: "/admin/debug", icon: <BugReportRounded /> },
+      ]
+    : [];
+
+  function renderItems(items: NavItem[]) {
+    return items.map((item) => {
+      const { href, active, disabled } = resolveItem(item);
+      return (
+        <ListItem key={item.label} disablePadding sx={{ display: "block" }}>
+          <ListItemButton
+            component={disabled || !href ? "div" : NextLink}
+            href={disabled || !href ? undefined : href}
+            selected={active}
+            disabled={disabled}
+          >
+            <ListItemIcon>{item.icon}</ListItemIcon>
+            <ListItemText primary={item.label} />
+          </ListItemButton>
+        </ListItem>
+      );
+    });
+  }
+
+  return (
+    <Stack sx={{ flexGrow: 1, p: 1, justifyContent: "space-between" }}>
+      <List dense>{renderItems(mainNavItems)}</List>
+      <List dense>{renderItems([...secondaryNavItems, ...adminItems])}</List>
+    </Stack>
+  );
+}
+
+// ── OptionsMenu — sign-out + color mode ──────────────────────────────────────
+
+function UserFooter({
+  user,
+  signOutAction,
+}: {
+  user: { name: string; email: string };
+  signOutAction: () => Promise<void>;
+}) {
   const userInitials = user.name
     .split(" ")
     .map((n) => n[0])
@@ -178,209 +243,158 @@ function SidebarContent({
     .slice(0, 2);
 
   return (
-    <Box
+    <Stack
+      direction="row"
       sx={{
-        display: "flex",
-        flexDirection: "column",
-        height: "100%",
-        bgcolor: "background.default",
+        p: 2,
+        gap: 1,
+        alignItems: "center",
+        borderTop: "1px solid",
+        borderColor: "divider",
       }}
     >
-      {/* Logo */}
-      <Box
+      <MuiAvatar
+        sizes="small"
         sx={{
-          p: 1.5,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
+          width: 36,
+          height: 36,
+          fontSize: "0.75rem",
+          fontWeight: 700,
+          bgcolor: "primary.main",
+          color: "primary.contrastText",
         }}
       >
-        <NextImage
-          src="/header-logo.png"
-          alt="Imprint"
-          width={140}
-          height={42}
-          style={{ objectFit: "contain" }}
-          priority
-        />
+        {userInitials}
+      </MuiAvatar>
+      <Box sx={{ mr: "auto", minWidth: 0 }}>
+        <Typography
+          variant="body2"
+          sx={{ fontWeight: 500, lineHeight: "16px" }}
+          noWrap
+        >
+          {user.name}
+        </Typography>
+        <Typography variant="caption" sx={{ color: "text.secondary" }} noWrap>
+          {user.email}
+        </Typography>
+      </Box>
+      <ColorModeIconDropdown size="small" />
+      <Tooltip title="Sign out">
+        <form action={signOutAction}>
+          <MenuButton type="submit" aria-label="Sign out">
+            <LogoutRounded />
+          </MenuButton>
+        </form>
+      </Tooltip>
+    </Stack>
+  );
+}
+
+// ── SidebarContent — full sidebar body ───────────────────────────────────────
+
+interface SidebarContentProps {
+  user: { name: string; email: string };
+  signOutAction: () => Promise<void>;
+  isAdmin?: boolean;
+}
+
+function SidebarContent({ user, signOutAction, isAdmin }: SidebarContentProps) {
+  return (
+    <>
+      <Box
+        sx={{
+          display: "flex",
+          mt: "calc(var(--template-frame-height, 0px) + 4px)",
+          p: 1.5,
+        }}
+      >
+        <CourseSelectContent />
       </Box>
       <Divider />
-
-      {/* Course selector */}
-      {courses.length > 0 && (
-        <Box sx={{ px: 1.5, py: 1.5 }}>
-          <FormControl fullWidth size="small">
-            <Select
-              value={selectedCourseId ?? ""}
-              onChange={(e) => selectCourse(e.target.value)}
-              displayEmpty
-              renderValue={(value) => {
-                if (!value) return <em>Select course…</em>;
-                return selectedCourse
-                  ? `${selectedCourse.name} (${selectedCourse.semester})`
-                  : "";
-              }}
-              sx={{ fontSize: "0.85rem" }}
-            >
-              {courses.map((c) => (
-                <MenuItem key={c.id} value={c.id}>
-                  {c.name} ({c.semester})
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </Box>
-      )}
-
-      <Divider />
-
-      {/* Main nav */}
       <Box
         sx={{
           overflow: "auto",
-          flex: 1,
+          height: "100%",
           display: "flex",
           flexDirection: "column",
         }}
       >
-        <List sx={{ flex: 1, p: 1 }}>
-          {navItems.map((item) => {
-            const resolved = resolveItem(item);
-            return <NavItemRow key={item.label} item={item} {...resolved} />;
-          })}
-        </List>
-
-        <Divider />
-
-        <List sx={{ p: 1 }}>
-          {bottomNavItems.map((item) => {
-            const resolved = resolveItem(item);
-            return <NavItemRow key={item.label} item={item} {...resolved} />;
-          })}
-          {isAdmin && (
-            <>
-              <NavItemRow
-                item={{
-                  label: "Admin",
-                  href: "/admin",
-                  icon: <AdminPanelSettingsRounded />,
-                }}
-                href="/admin"
-                active={
-                  (pathname === "/admin" || pathname.startsWith("/admin/")) &&
-                  !pathname.startsWith("/admin/debug")
-                }
-                disabled={false}
-              />
-              <NavItemRow
-                item={{
-                  label: "Debug",
-                  href: "/admin/debug",
-                  icon: <BugReportRounded />,
-                }}
-                href="/admin/debug"
-                active={pathname.startsWith("/admin/debug")}
-                disabled={false}
-              />
-            </>
-          )}
-        </List>
+        <MenuContent isAdmin={isAdmin} />
       </Box>
-
-      {/* User footer */}
-      <Divider />
-      <Stack
-        direction="row"
-        sx={{
-          p: 1.5,
-          gap: 1,
-          alignItems: "center",
-          borderTop: "1px solid",
-          borderColor: "divider",
-        }}
-      >
-        <Avatar
-          sx={{
-            width: 32,
-            height: 32,
-            fontSize: "0.75rem",
-            fontWeight: 700,
-            bgcolor: "primary.main",
-            color: "primary.contrastText",
-            flexShrink: 0,
-          }}
-        >
-          {userInitials}
-        </Avatar>
-        <Box sx={{ minWidth: 0, flex: 1 }}>
-          <Typography
-            variant="body2"
-            sx={{ fontWeight: 500, lineHeight: "16px" }}
-            noWrap
-          >
-            {user.name}
-          </Typography>
-          <Typography variant="caption" color="text.secondary" noWrap>
-            {user.email}
-          </Typography>
-        </Box>
-        <ColorModeIconDropdown size="small" sx={{ flexShrink: 0 }} />
-        <Tooltip title="Sign out">
-          <form action={signOutAction}>
-            <IconButton type="submit" size="small">
-              <LogoutRounded fontSize="small" />
-            </IconButton>
-          </form>
-        </Tooltip>
-      </Stack>
-    </Box>
+      <UserFooter user={user} signOutAction={signOutAction} />
+    </>
   );
+}
+
+// ── SideMenuMobile ─────────────────────────────────────────────────────────────
+
+interface SideMenuMobileProps {
+  open: boolean;
+  toggleDrawer: (newOpen: boolean) => () => void;
+  user: { name: string; email: string };
+  signOutAction: () => Promise<void>;
+  isAdmin?: boolean;
+}
+
+export function SideMenuMobile({
+  open,
+  toggleDrawer,
+  user,
+  signOutAction,
+  isAdmin,
+}: SideMenuMobileProps) {
+  return (
+    <MuiDrawer
+      anchor="right"
+      open={open}
+      onClose={toggleDrawer(false)}
+      sx={{
+        zIndex: (theme) => theme.zIndex.drawer + 1,
+        [`& .${drawerClasses.paper}`]: {
+          backgroundImage: "none",
+          backgroundColor: "background.paper",
+        },
+      }}
+    >
+      <Stack sx={{ maxWidth: "70dvw", height: "100%" }}>
+        <SidebarContent
+          user={user}
+          signOutAction={signOutAction}
+          isAdmin={isAdmin}
+        />
+      </Stack>
+    </MuiDrawer>
+  );
+}
+
+// ── Sidebar (desktop permanent drawer) ────────────────────────────────────────
+
+interface SidebarProps {
+  user: { name: string; email: string };
+  signOutAction: () => Promise<void>;
+  isAdmin?: boolean;
 }
 
 export default function Sidebar({
   user,
   signOutAction,
   isAdmin,
-  open,
-  onClose,
 }: SidebarProps) {
   return (
-    <>
-      {/* Desktop — permanent */}
-      <PermanentDrawer
-        variant="permanent"
-        sx={{
-          display: { xs: "none", md: "block" },
-          [`& .${drawerClasses.paper}`]: {
-            backgroundColor: "background.default",
-          },
-        }}
-      >
-        <SidebarContent
-          user={user}
-          signOutAction={signOutAction}
-          isAdmin={isAdmin}
-        />
-      </PermanentDrawer>
-
-      {/* Mobile — temporary */}
-      <MuiDrawer
-        open={open ?? false}
-        onClose={onClose}
-        sx={{
-          display: { xs: "block", md: "none" },
-          [`& .${drawerClasses.paper}`]: {
-            width: SIDEBAR_WIDTH,
-            backgroundColor: "background.default",
-          },
-        }}
-      >
-        <SidebarContent
-          user={user}
-          signOutAction={signOutAction}
-          isAdmin={isAdmin}
-        />
-      </MuiDrawer>
-    </>
+    <Drawer
+      variant="permanent"
+      sx={{
+        display: { xs: "none", md: "block" },
+        [`& .${drawerClasses.paper}`]: {
+          backgroundColor: "background.paper",
+        },
+      }}
+    >
+      <SidebarContent
+        user={user}
+        signOutAction={signOutAction}
+        isAdmin={isAdmin}
+      />
+    </Drawer>
   );
 }
