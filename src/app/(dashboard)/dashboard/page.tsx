@@ -11,7 +11,6 @@ import CardContent from "@mui/material/CardContent";
 import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
 import Alert from "@mui/material/Alert";
-import NextLink from "next/link";
 
 export default async function DashboardIndexPage() {
   const session = await auth();
@@ -54,11 +53,8 @@ export default async function DashboardIndexPage() {
           }}
         >
           {userCourses.map((c) => (
-            <Card key={c.id} variant="outlined">
-              <CardActionArea
-                component={NextLink}
-                href={`/courses/${c.id}/dashboard`}
-              >
+            <Card key={c.id} variant="outlined" sx={{ textDecoration: "none" }}>
+              <CardActionArea href={`/courses/${c.id}/dashboard`}>
                 <CardContent>
                   <Typography variant="h6" sx={{ mb: 0.5 }}>
                     {c.name}
