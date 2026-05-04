@@ -222,18 +222,15 @@ function GroupSelectContent({
             </Avatar>
           </ListItemAvatar>
           <ListItemText
-            primary={
-              <Stack direction="row" sx={{ alignItems: "center", gap: 1 }}>
-                <span>{g.groupName}</span>
-                {g.analysisRows.length === 0 && (
-                  <Chip label="empty" size="small" color="default" />
-                )}
-              </Stack>
-            }
-            secondary={`${g.studentCount} student${g.studentCount !== 1 ? "s" : ""}`}
+            primary={g.groupName}
+            secondary={`${g.studentCount} student${g.studentCount !== 1 ? "s" : ""}${g.analysisRows.length === 0 ? " · empty" : ""}`}
           />
           {g.logWarningCount > 0 && (
-            <WarningAmberRounded fontSize="small" color="warning" />
+            <WarningAmberRounded
+              fontSize="small"
+              color="warning"
+              sx={{ pointerEvents: "none" }}
+            />
           )}
         </MenuItem>
       ))}
