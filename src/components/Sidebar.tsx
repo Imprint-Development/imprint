@@ -110,25 +110,21 @@ function CourseSelectContent() {
         },
       }}
     >
-      {courses.length === 0 ? (
-        <MenuItem value="" disabled>
-          <em>No courses</em>
-        </MenuItem>
-      ) : (
-        <>
-          <ListSubheader sx={{ pt: 0 }}>Courses</ListSubheader>
-          {courses.map((c: CourseOption) => (
-            <MenuItem key={c.id} value={c.id}>
-              <ListItemAvatar>
-                <Avatar alt={c.name}>
-                  <SchoolOutlined sx={{ fontSize: "1rem" }} />
-                </Avatar>
-              </ListItemAvatar>
-              <ListItemText primary={c.name} secondary={c.semester} />
-            </MenuItem>
-          ))}
-        </>
-      )}
+      {[
+        <ListSubheader key="__hdr" sx={{ pt: 0 }}>
+          Courses
+        </ListSubheader>,
+        ...courses.map((c: CourseOption) => (
+          <MenuItem key={c.id} value={c.id}>
+            <ListItemAvatar>
+              <Avatar alt={c.name}>
+                <SchoolOutlined sx={{ fontSize: "1rem" }} />
+              </Avatar>
+            </ListItemAvatar>
+            <ListItemText primary={c.name} secondary={c.semester} />
+          </MenuItem>
+        )),
+      ]}
     </Select>
   );
 }

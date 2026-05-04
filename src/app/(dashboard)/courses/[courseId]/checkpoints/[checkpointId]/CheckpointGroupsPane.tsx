@@ -213,27 +213,31 @@ function GroupSelectContent({
         },
       }}
     >
-      <ListSubheader sx={{ pt: 0 }}>Groups</ListSubheader>
-      {groups.map((g) => (
-        <MenuItem key={g.groupId} value={g.groupId}>
-          <ListItemAvatar>
-            <Avatar alt={g.groupName}>
-              <GroupsRounded sx={{ fontSize: "1rem" }} />
-            </Avatar>
-          </ListItemAvatar>
-          <ListItemText
-            primary={g.groupName}
-            secondary={`${g.studentCount} student${g.studentCount !== 1 ? "s" : ""}${g.analysisRows.length === 0 ? " · empty" : ""}`}
-          />
-          {g.logWarningCount > 0 && (
-            <WarningAmberRounded
-              fontSize="small"
-              color="warning"
-              sx={{ pointerEvents: "none" }}
+      {[
+        <ListSubheader key="__hdr" sx={{ pt: 0 }}>
+          Groups
+        </ListSubheader>,
+        ...groups.map((g) => (
+          <MenuItem key={g.groupId} value={g.groupId}>
+            <ListItemAvatar>
+              <Avatar alt={g.groupName}>
+                <GroupsRounded sx={{ fontSize: "1rem" }} />
+              </Avatar>
+            </ListItemAvatar>
+            <ListItemText
+              primary={g.groupName}
+              secondary={`${g.studentCount} student${g.studentCount !== 1 ? "s" : ""}${g.analysisRows.length === 0 ? " · empty" : ""}`}
             />
-          )}
-        </MenuItem>
-      ))}
+            {g.logWarningCount > 0 && (
+              <WarningAmberRounded
+                fontSize="small"
+                color="warning"
+                sx={{ pointerEvents: "none" }}
+              />
+            )}
+          </MenuItem>
+        )),
+      ]}
     </Select>
   );
 }
