@@ -1,6 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import type {
+  AnalysisRow,
+  RepoWarning,
+  ReviewWarning,
+} from "@/lib/types/analysis";
+export type { AnalysisRow, RepoWarning, ReviewWarning };
 import Box from "@mui/material/Box";
 import Paper from "@mui/material/Paper";
 import Tabs from "@mui/material/Tabs";
@@ -36,27 +42,6 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-
-export interface AnalysisRow {
-  studentName: string;
-  repoId: string;
-  repoUrl: string;
-  codeMetrics: Record<string, number>;
-  testMetrics: Record<string, number>;
-  reviewMetrics: Record<string, number>;
-}
-
-export interface RepoWarning {
-  repoId: string;
-  repoUrl: string;
-  unidentifiedAuthors: string[];
-}
-
-export interface ReviewWarning {
-  repoId: string;
-  repoUrl: string;
-  message: string;
-}
 
 interface Props {
   rows: AnalysisRow[];

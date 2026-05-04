@@ -18,14 +18,19 @@ import Select from "@mui/material/Select";
 import MenuItem from "@mui/material/MenuItem";
 import FormControl from "@mui/material/FormControl";
 import InputLabel from "@mui/material/InputLabel";
+import Tabs from "@mui/material/Tabs";
+import Tab from "@mui/material/Tab";
 import WarningAmberRounded from "@mui/icons-material/WarningAmberRounded";
-import AppLink from "@/components/AppLink";
-import {
-  GroupAnalysisClient,
-  type AnalysisRow,
-  type RepoWarning,
-  type ReviewWarning,
-} from "../../groups/[groupId]/checkpoints/[checkpointId]/GroupAnalysisClient";
+import { GroupAnalysisClient } from "./GroupAnalysisClient";
+import type {
+  AnalysisRow,
+  RepoWarning,
+  ReviewWarning,
+} from "@/lib/types/analysis";
+import AiReportsSection, { type AiReportRow } from "./AiReportsSection";
+import GroupAnalysisLogs from "@/components/GroupAnalysisLogs";
+import { ALL_PIPELINE_IDS } from "@/lib/analysis/pipelines/registry";
+import { rerunGroupAnalysis } from "@/lib/actions/checkpoints";
 
 export interface WarnLog {
   pipeline: string;
@@ -45,12 +50,17 @@ export interface GroupPaneData {
   reviewWarnings: ReviewWarning[];
   logWarningCount: number;
   warnLogs: WarnLog[];
+  aiReports: AiReportRow[];
+  checkpointStatus: string;
 }
 
 interface Props {
   groups: GroupPaneData[];
   courseId: string;
   checkpointId: string;
+  checkpointName: string;
+  checkpointStatus: string;
+  initialGroupId?: string;
 }
 
 function shortRepoLabel(url: string): string {
@@ -132,17 +142,33 @@ function WarningsModal({
   );
 }
 
+const GROUP_TABS = [
+  { label: "Overview", value: "overview" },
+  { label: "AI Analysis", value: "ai-analysis" },
+  { label: "Logs", value: "logs" },
+];
+
 export default function CheckpointGroupsPane({
   groups,
   courseId,
   checkpointId,
+  checkpointName,
+  checkpointStatus,
+  initialGroupId,
 }: Props) {
   const [selectedId, setSelectedId] = useState<string>(
-    groups[0]?.groupId ?? ""
+    (initialGroupId && groups.some((g) => g.groupId === initialGroupId)
+      ? initialGroupId
+      : groups[0]?.groupId) ?? ""
   );
   const [warningsOpen, setWarningsOpen] = useState(false);
+  const [groupTab, setGroupTab] = useState("overview");
 
   const selected = groups.find((g) => g.groupId === selectedId) ?? null;
+
+  const rerunWithIds = selected
+    ? rerunGroupAnalysis.bind(null, checkpointId, selected.groupId, courseId)
+    : null;
 
   return (
     <Box>
@@ -174,7 +200,7 @@ export default function CheckpointGroupsPane({
           )}
         </Box>
 
-        {/* Right: warnings button + group selector + open link */}
+        {/* Right: warnings button + group selector + re-run */}
         <Stack
           direction="row"
           sx={{ alignItems: "center", gap: 1, flexShrink: 0 }}
@@ -199,7 +225,10 @@ export default function CheckpointGroupsPane({
               labelId="group-select-label"
               label="Group"
               value={selectedId}
-              onChange={(e) => setSelectedId(e.target.value)}
+              onChange={(e) => {
+                setSelectedId(e.target.value);
+                setGroupTab("overview");
+              }}
             >
               {groups.map((g) => (
                 <MenuItem key={g.groupId} value={g.groupId}>
@@ -226,30 +255,75 @@ export default function CheckpointGroupsPane({
             </Select>
           </FormControl>
 
-          {selected && (
-            <AppLink
-              href={`/courses/${courseId}/groups/${selected.groupId}/checkpoints/${checkpointId}`}
-            >
-              Open full page ↗
-            </AppLink>
+          {selected && rerunWithIds && checkpointStatus === "complete" && (
+            <form action={rerunWithIds}>
+              <Button
+                type="submit"
+                variant="outlined"
+                color="warning"
+                size="small"
+              >
+                Re-run for Group
+              </Button>
+            </form>
           )}
         </Stack>
       </Stack>
 
-      {/* Analysis content */}
       {selected ? (
-        selected.analysisRows.length === 0 ? (
-          <Typography variant="body2" color="text.secondary">
-            No analysis data found for this group.
-          </Typography>
-        ) : (
-          <GroupAnalysisClient
-            rows={selected.analysisRows}
-            warnings={selected.repoWarnings}
-            reviewWarnings={selected.reviewWarnings}
-            executedPipelines={selected.executedPipelines}
-          />
-        )
+        <>
+          {/* Per-group sub-tabs */}
+          <Tabs
+            value={groupTab}
+            onChange={(_, v: string) => setGroupTab(v)}
+            sx={{ borderBottom: 1, borderColor: "divider", mb: 3 }}
+          >
+            {GROUP_TABS.map((t) => (
+              <Tab key={t.value} label={t.label} value={t.value} />
+            ))}
+          </Tabs>
+
+          {/* Overview sub-tab */}
+          {groupTab === "overview" && (
+            <>
+              {selected.analysisRows.length === 0 ? (
+                <Typography variant="body2" color="text.secondary">
+                  No analysis data found for this group.
+                </Typography>
+              ) : (
+                <GroupAnalysisClient
+                  rows={selected.analysisRows}
+                  warnings={selected.repoWarnings}
+                  reviewWarnings={selected.reviewWarnings}
+                  executedPipelines={selected.executedPipelines}
+                />
+              )}
+            </>
+          )}
+
+          {/* AI Analysis sub-tab */}
+          {groupTab === "ai-analysis" && (
+            <AiReportsSection
+              reports={selected.aiReports}
+              checkpointName={checkpointName}
+              groupName={selected.groupName}
+              checkpointStatus={checkpointStatus}
+              courseId={courseId}
+              checkpointId={checkpointId}
+            />
+          )}
+
+          {/* Logs sub-tab */}
+          {groupTab === "logs" && (
+            <GroupAnalysisLogs
+              checkpointId={checkpointId}
+              groupId={selected.groupId}
+              groupName={selected.groupName}
+              pipelines={ALL_PIPELINE_IDS}
+              initialStatus={checkpointStatus}
+            />
+          )}
+        </>
       ) : (
         <Typography variant="body2" color="text.secondary">
           No groups found.

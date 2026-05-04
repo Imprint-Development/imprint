@@ -19,9 +19,10 @@ import {
   checkpointAnalyses,
   checkpointRepoMeta,
   checkpointLogs,
+  aiReports,
 } from "@/lib/db/schema";
 import { auth } from "@/lib/auth";
-import { eq, and, inArray, or, gte, max, like } from "drizzle-orm";
+import { eq, and, inArray, or, gte, max, like, desc } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { triggerAnalysis, deleteCheckpoint } from "@/lib/actions/checkpoints";
 import { CHECKPOINT_STATUS_COLOR } from "@/lib/constants";
@@ -29,7 +30,8 @@ import type {
   AnalysisRow,
   RepoWarning,
   ReviewWarning,
-} from "../../groups/[groupId]/checkpoints/[checkpointId]/GroupAnalysisClient";
+} from "@/lib/types/analysis";
+import type { AiReportRow } from "./AiReportsSection";
 import Typography from "@mui/material/Typography";
 import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 import Card from "@mui/material/Card";
@@ -50,13 +52,13 @@ export default async function CheckpointDetailPage({
   searchParams,
 }: {
   params: Promise<{ courseId: string; checkpointId: string }>;
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; group?: string }>;
 }) {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
   const { courseId, checkpointId } = await params;
-  const { tab = "overview" } = await searchParams;
+  const { tab = "overview", group: initialGroupId } = await searchParams;
 
   const [course] = await db
     .select()
@@ -253,6 +255,37 @@ export default async function CheckpointDetailPage({
           message: r.message,
         }));
 
+        // AI reports — fetch all generations for this group+checkpoint, newest first
+        const rawAiReports = await db
+          .select({
+            id: aiReports.id,
+            studentId: aiReports.studentId,
+            studentName: students.displayName,
+            content: aiReports.content,
+            provider: aiReports.provider,
+            model: aiReports.model,
+            createdAt: aiReports.createdAt,
+          })
+          .from(aiReports)
+          .leftJoin(students, eq(students.id, aiReports.studentId))
+          .where(
+            and(
+              eq(aiReports.checkpointId, checkpointId),
+              eq(aiReports.groupId, group.id)
+            )
+          )
+          .orderBy(desc(aiReports.createdAt));
+
+        const aiReportRows: AiReportRow[] = rawAiReports.map((r) => ({
+          id: r.id,
+          studentId: r.studentId,
+          studentName: r.studentName ?? null,
+          content: r.content,
+          provider: r.provider,
+          model: r.model,
+          createdAt: r.createdAt,
+        }));
+
         return {
           groupId: group.id,
           groupName: group.name,
@@ -264,6 +297,8 @@ export default async function CheckpointDetailPage({
           reviewWarnings,
           logWarningCount,
           warnLogs,
+          aiReports: aiReportRows,
+          checkpointStatus: checkpoint.status,
         };
       })
     );
@@ -286,6 +321,8 @@ export default async function CheckpointDetailPage({
           reviewWarnings: [] as ReviewWarning[],
           logWarningCount: 0,
           warnLogs: [],
+          aiReports: [],
+          checkpointStatus: checkpoint.status,
         };
       })
     );
@@ -442,6 +479,9 @@ export default async function CheckpointDetailPage({
               groups={groupPaneData}
               courseId={courseId}
               checkpointId={checkpointId}
+              checkpointName={checkpoint.name}
+              checkpointStatus={checkpoint.status}
+              initialGroupId={initialGroupId}
             />
           )}
         </Box>

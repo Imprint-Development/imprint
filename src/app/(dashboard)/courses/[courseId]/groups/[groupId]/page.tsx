@@ -300,7 +300,9 @@ export default async function GroupDetailPage({
             <CheckpointTable
               checkpoints={courseCheckpoints}
               href={(cp) =>
-                `/courses/${courseId}/groups/${groupId}/checkpoints/${cp.id}`
+                cp.status === "complete"
+                  ? `/courses/${courseId}/checkpoints/${cp.id}?tab=analysis&group=${groupId}`
+                  : `/courses/${courseId}/checkpoints/${cp.id}`
               }
             />
           )}

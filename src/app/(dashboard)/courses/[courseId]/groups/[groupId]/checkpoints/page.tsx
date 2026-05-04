@@ -104,7 +104,7 @@ export default async function GroupCheckpointsPage({
           {courseCheckpoints.map((cp) => {
             const href =
               cp.status === "complete"
-                ? `/courses/${courseId}/groups/${groupId}/checkpoints/${cp.id}`
+                ? `/courses/${courseId}/checkpoints/${cp.id}?tab=analysis&group=${groupId}`
                 : `/courses/${courseId}/checkpoints/${cp.id}`;
             return (
               <Card key={cp.id} variant="outlined">
