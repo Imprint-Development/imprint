@@ -329,15 +329,30 @@ export async function setCheckpointCategoryMaxPoints(
 
 export async function updateAiAnalysisConfig(
   courseId: string,
-  config: AiAnalysisConfig
+  config: AiAnalysisConfig // eslint-disable-line @typescript-eslint/no-unused-vars
 ) {
   const session = await auth();
   if (!session?.user?.id) throw new Error("Unauthorized");
 
-  await db
-    .update(courses)
-    .set({ aiAnalysisConfig: config, updatedAt: new Date() })
-    .where(eq(courses.id, courseId));
-
   revalidatePath(`/courses/${courseId}`);
+}
+
+export async function toggleCheckpointUngraded(
+  courseId: string,
+  checkpointId: string
+) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  const config = await getGradingConfig(courseId);
+  config.ungradedCheckpoints ??= [];
+
+  const idx = config.ungradedCheckpoints.indexOf(checkpointId);
+  if (idx === -1) {
+    config.ungradedCheckpoints.push(checkpointId);
+  } else {
+    config.ungradedCheckpoints.splice(idx, 1);
+  }
+
+  await setGradingConfig(courseId, config);
 }

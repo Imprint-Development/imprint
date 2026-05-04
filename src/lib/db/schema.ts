@@ -46,6 +46,8 @@ export type GradingConfig = {
   gradeThresholds: GradeThreshold[];
   // checkpointId -> categoryId -> override max points
   checkpointOverrides: Record<string, Record<string, { maxPoints: number }>>;
+  // checkpoint IDs excluded from grading (hidden columns, not counted in total)
+  ungradedCheckpoints: string[];
 };
 
 export const users = pgTable("users", {
@@ -103,7 +105,12 @@ export const courses = pgTable("courses", {
   gradingConfig: jsonb("grading_config")
     .$type<GradingConfig>()
     .notNull()
-    .default({ categories: [], gradeThresholds: [], checkpointOverrides: {} }),
+    .default({
+      categories: [],
+      gradeThresholds: [],
+      checkpointOverrides: {},
+      ungradedCheckpoints: [],
+    }),
   aiAnalysisConfig: jsonb("ai_analysis_config")
     .$type<AiAnalysisConfig>()
     .notNull()

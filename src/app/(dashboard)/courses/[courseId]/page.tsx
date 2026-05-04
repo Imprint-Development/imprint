@@ -35,9 +35,11 @@ import {
   addGradeThreshold,
   removeGradeThreshold,
   setCheckpointCategoryMaxPoints,
+  toggleCheckpointUngraded,
 } from "@/lib/actions/courses";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
+import Switch from "@mui/material/Switch";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Chip from "@mui/material/Chip";
@@ -55,7 +57,6 @@ import IconButton from "@mui/material/IconButton";
 import Divider from "@mui/material/Divider";
 import FormControl from "@mui/material/FormControl";
 import FormLabel from "@mui/material/FormLabel";
-import Paper from "@mui/material/Paper";
 import Select from "@mui/material/Select";
 import MenuItem from "@mui/material/MenuItem";
 import DeleteRounded from "@mui/icons-material/DeleteRounded";
@@ -202,7 +203,14 @@ export default async function CourseDetailPage({
               No groups yet.
             </Typography>
           ) : (
-            <TableContainer component={Paper} variant="outlined">
+            <TableContainer
+              sx={{
+                border: "1px solid",
+                borderColor: "divider",
+                borderRadius: 1,
+                overflow: "hidden",
+              }}
+            >
               <Table size="small">
                 <TableHead>
                   <TableRow>
@@ -306,9 +314,13 @@ export default async function CourseDetailPage({
                     />
                   ))}
                   <TableContainer
-                    component={Paper}
-                    variant="outlined"
-                    sx={{ mb: 2 }}
+                    sx={{
+                      border: "1px solid",
+                      borderColor: "divider",
+                      borderRadius: 1,
+                      overflow: "hidden",
+                      mb: 2,
+                    }}
                   >
                     <Table size="small">
                       <TableHead>
@@ -508,9 +520,13 @@ export default async function CourseDetailPage({
 
               {config.gradeThresholds.length > 0 && (
                 <TableContainer
-                  component={Paper}
-                  variant="outlined"
-                  sx={{ mb: 2 }}
+                  sx={{
+                    border: "1px solid",
+                    borderColor: "divider",
+                    borderRadius: 1,
+                    overflow: "hidden",
+                    mb: 2,
+                  }}
                 >
                   <Table size="small">
                     <TableHead>
@@ -617,7 +633,14 @@ export default async function CourseDetailPage({
                     default. Overridden values are highlighted in the grading
                     view.
                   </Typography>
-                  <TableContainer component={Paper} variant="outlined">
+                  <TableContainer
+                    sx={{
+                      border: "1px solid",
+                      borderColor: "divider",
+                      borderRadius: 1,
+                      overflow: "hidden",
+                    }}
+                  >
                     <Table size="small">
                       <TableHead>
                         <TableRow>
@@ -639,6 +662,16 @@ export default async function CourseDetailPage({
                               </Typography>
                             </TableCell>
                           ))}
+                          <TableCell sx={{ fontWeight: 700 }}>
+                            Ungraded
+                            <Typography
+                              component="span"
+                              variant="caption"
+                              sx={{ display: "block", color: "text.secondary" }}
+                            >
+                              skip in totals
+                            </Typography>
+                          </TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
@@ -699,6 +732,25 @@ export default async function CourseDetailPage({
                                 </TableCell>
                               );
                             })}
+                            <TableCell>
+                              <form
+                                action={toggleCheckpointUngraded.bind(
+                                  null,
+                                  courseId,
+                                  cp.id
+                                )}
+                              >
+                                <Switch
+                                  type="submit"
+                                  size="small"
+                                  checked={
+                                    config.ungradedCheckpoints?.includes(
+                                      cp.id
+                                    ) ?? false
+                                  }
+                                />
+                              </form>
+                            </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -716,7 +768,15 @@ export default async function CourseDetailPage({
           <Typography variant="h6" sx={{ mb: 2 }}>
             Collaborators
           </Typography>
-          <TableContainer component={Paper} variant="outlined" sx={{ mb: 2 }}>
+          <TableContainer
+            sx={{
+              border: "1px solid",
+              borderColor: "divider",
+              borderRadius: 1,
+              overflow: "hidden",
+              mb: 2,
+            }}
+          >
             <Table size="small">
               <TableHead>
                 <TableRow>

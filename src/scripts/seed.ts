@@ -140,6 +140,7 @@ async function main() {
       { grade: "F", minPercentage: 0 },
     ],
     checkpointOverrides: {},
+    ungradedCheckpoints: [],
   };
 
   const aiConfig: AiAnalysisConfig = {
@@ -198,6 +199,7 @@ async function main() {
           { grade: "Nicht Genügend", minPercentage: 0 },
         ],
         checkpointOverrides: {},
+        ungradedCheckpoints: [],
       },
       aiAnalysisConfig: aiConfig,
       createdBy: lecturer2.id,
@@ -516,7 +518,7 @@ async function main() {
     })
     .returning();
 
-  const [cp3] = await db
+  await db
     .insert(checkpoints)
     .values({
       name: "Checkpoint 3 — Final Submission",
