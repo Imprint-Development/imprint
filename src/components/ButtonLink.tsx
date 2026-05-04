@@ -9,10 +9,13 @@ type ButtonLinkProps = Omit<ButtonProps, "href" | "component"> & {
   href: string | Url;
 };
 
+// Button doesn't expose its ref type publicly; cast is unavoidable here.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const ButtonLinkInner = Button as unknown as React.ComponentType<any>;
+
 const ButtonLink = forwardRef<HTMLAnchorElement, ButtonLinkProps>(
   function ButtonLink(props, ref) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return <Button ref={ref as any} component={NextLink} {...(props as any)} />;
+    return <ButtonLinkInner ref={ref} component={NextLink} {...props} />;
   }
 );
 

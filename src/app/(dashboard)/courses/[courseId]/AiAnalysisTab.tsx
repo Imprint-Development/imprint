@@ -28,6 +28,8 @@ import {
 interface Props {
   courseId: string;
   config: AiAnalysisConfig;
+  availableProviders: { openai: boolean; anthropic: boolean };
+  providerBaseUrls: { openai: string; anthropic: string };
 }
 
 const MODEL_MAP = {
@@ -35,7 +37,14 @@ const MODEL_MAP = {
   anthropic: ANTHROPIC_MODELS as readonly { value: string; label: string }[],
 };
 
-export default function AiAnalysisTab({ courseId, config }: Props) {
+export default function AiAnalysisTab({
+  courseId,
+  config,
+  availableProviders,
+  providerBaseUrls,
+}: Props) {
+  const noneAvailable =
+    !availableProviders.openai && !availableProviders.anthropic;
   const [enabled, setEnabled] = useState(config.enabled);
   const [provider, setProvider] = useState<"openai" | "anthropic">(
     config.provider
@@ -51,10 +60,11 @@ export default function AiAnalysisTab({ courseId, config }: Props) {
 
   const models = MODEL_MAP[provider];
 
-  // When provider changes, reset model to the first option for that provider
+  // When provider changes, reset model and prefill base URL from env
   function handleProviderChange(newProvider: "openai" | "anthropic") {
     setProvider(newProvider);
     setModel(MODEL_MAP[newProvider][0]?.value ?? "");
+    setBaseUrl(providerBaseUrls[newProvider]);
     setSaved(false);
   }
 
@@ -91,7 +101,21 @@ export default function AiAnalysisTab({ courseId, config }: Props) {
             report per student plus a group summary.
           </Typography>
 
-          <Stack spacing={2.5}>
+          {noneAvailable && (
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              No AI provider API keys are configured on this server. Set{" "}
+              <code>OPENAI_API_KEY</code> or <code>ANTHROPIC_API_KEY</code> to
+              enable AI analysis.
+            </Alert>
+          )}
+
+          <Stack
+            spacing={2.5}
+            sx={{
+              opacity: noneAvailable ? 0.5 : 1,
+              pointerEvents: noneAvailable ? "none" : "auto",
+            }}
+          >
             <FormControlLabel
               control={
                 <Switch
@@ -115,8 +139,15 @@ export default function AiAnalysisTab({ courseId, config }: Props) {
                 }
                 sx={{ maxWidth: 220 }}
               >
-                <MenuItem value="openai">OpenAI</MenuItem>
-                <MenuItem value="anthropic">Anthropic</MenuItem>
+                <MenuItem value="openai" disabled={!availableProviders.openai}>
+                  OpenAI
+                </MenuItem>
+                <MenuItem
+                  value="anthropic"
+                  disabled={!availableProviders.anthropic}
+                >
+                  Anthropic
+                </MenuItem>
               </Select>
             </FormControl>
 
@@ -198,11 +229,13 @@ export default function AiAnalysisTab({ courseId, config }: Props) {
 
           <Divider sx={{ my: 2 }} />
 
-          <Alert severity="info" sx={{ mb: 2 }}>
-            The API key is read from the <code>OPENAI_API_KEY</code> /{" "}
-            <code>ANTHROPIC_API_KEY</code> environment variable on the server.
-            It is never stored in the database.
-          </Alert>
+          {!noneAvailable && (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              The API key is read from the <code>OPENAI_API_KEY</code> /{" "}
+              <code>ANTHROPIC_API_KEY</code> environment variable on the server.
+              It is never stored in the database.
+            </Alert>
+          )}
 
           {saved && (
             <Alert severity="success" sx={{ mb: 2 }}>
@@ -215,7 +248,11 @@ export default function AiAnalysisTab({ courseId, config }: Props) {
             </Alert>
           )}
 
-          <Button variant="contained" onClick={handleSave} disabled={isPending}>
+          <Button
+            variant="contained"
+            onClick={handleSave}
+            disabled={isPending || noneAvailable}
+          >
             {isPending ? "Saving…" : "Save Configuration"}
           </Button>
         </CardContent>

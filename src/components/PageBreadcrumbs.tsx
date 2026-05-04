@@ -13,7 +13,7 @@ export interface BreadcrumbItem {
 }
 
 const StyledBreadcrumbs = styled(Breadcrumbs)(({ theme }) => ({
-  margin: theme.spacing(1, 0),
+  margin: theme.spacing(1, 0, 2),
   [`& .${breadcrumbsClasses.separator}`]: {
     color: (theme.vars || theme).palette.action.disabled,
     margin: 1,

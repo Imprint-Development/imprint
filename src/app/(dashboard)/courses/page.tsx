@@ -1,18 +1,22 @@
 import ButtonLink from "@/components/ButtonLink";
-import AppLink from "@/components/AppLink";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { courses, courseCollaborators } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import Typography from "@mui/material/Typography";
-import Card from "@mui/material/Card";
-import CardContent from "@mui/material/CardContent";
-import Chip from "@mui/material/Chip";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
+import Table from "@mui/material/Table";
+import TableBody from "@mui/material/TableBody";
+import TableCell from "@mui/material/TableCell";
+import TableContainer from "@mui/material/TableContainer";
+import TableHead from "@mui/material/TableHead";
+import TableRow from "@mui/material/TableRow";
+import MuiLink from "@mui/material/Link";
 import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 import AddRounded from "@mui/icons-material/AddRounded";
+import AppLink from "@/components/AppLink";
 
 export default async function CoursesPage() {
   const session = await auth();
@@ -23,6 +27,10 @@ export default async function CoursesPage() {
     .from(courseCollaborators)
     .innerJoin(courses, eq(courses.id, courseCollaborators.courseId))
     .where(eq(courseCollaborators.userId, session.user.id));
+
+  const sorted = [...userCourses].sort((a, b) =>
+    a.course.name.localeCompare(b.course.name)
+  );
 
   return (
     <Box sx={{ p: { xs: 2, md: 3 } }}>
@@ -38,7 +46,7 @@ export default async function CoursesPage() {
         </ButtonLink>
       </Stack>
 
-      {userCourses.length === 0 ? (
+      {sorted.length === 0 ? (
         <Stack sx={{ alignItems: "center", py: 8 }} spacing={2}>
           <Typography variant="body1" color="text.secondary">
             No courses yet.
@@ -48,46 +56,51 @@ export default async function CoursesPage() {
           </ButtonLink>
         </Stack>
       ) : (
-        <Box
-          sx={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
-            gap: 2,
-          }}
+        <TableContainer
+          sx={{ border: "1px solid", borderColor: "divider", borderRadius: 1 }}
         >
-          {userCourses.map(({ course }) => (
-            <AppLink
-              key={course.id}
-              href={`/courses/${course.id}`}
-              sx={{
-                textDecoration: "none",
-                color: "inherit",
-                display: "block",
-              }}
-            >
-              <Card
-                variant="outlined"
-                sx={{
-                  height: "100%",
-                  "&:hover": { boxShadow: 3 },
-                  transition: "box-shadow 0.2s",
-                }}
-              >
-                <CardContent>
-                  <Stack spacing={1}>
-                    <Typography variant="h6">{course.name}</Typography>
-                    <Chip
-                      size="small"
-                      label={course.semester}
-                      color="primary"
-                      variant="outlined"
-                    />
-                  </Stack>
-                </CardContent>
-              </Card>
-            </AppLink>
-          ))}
-        </Box>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell sx={{ fontWeight: 700 }}>Name</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Semester</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {sorted.map(({ course }) => (
+                <TableRow
+                  key={course.id}
+                  hover
+                  sx={{ cursor: "pointer", position: "relative" }}
+                >
+                  <TableCell>
+                    <MuiLink
+                      component={AppLink}
+                      href={`/courses/${course.id}`}
+                      underline="hover"
+                      color="text.primary"
+                      sx={{
+                        fontWeight: 500,
+                        "&::after": {
+                          content: '""',
+                          position: "absolute",
+                          inset: 0,
+                        },
+                      }}
+                    >
+                      {course.name}
+                    </MuiLink>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2" color="text.secondary">
+                      {course.semester}
+                    </Typography>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
       )}
     </Box>
   );

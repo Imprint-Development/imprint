@@ -185,8 +185,14 @@ export const inputsCustomizations: Components<Theme> = {
         },
         ...theme.applyStyles("dark", { "&:hover": { borderColor: gray[500] } }),
         variants: [
-          { props: { size: "small" }, style: { height: "2.25rem" } },
-          { props: { size: "medium" }, style: { height: "2.5rem" } },
+          {
+            props: { size: "small", multiline: false },
+            style: { height: "2.25rem" },
+          },
+          {
+            props: { size: "medium", multiline: false },
+            style: { height: "2.5rem" },
+          },
         ],
       }),
       notchedOutline: { border: "none" },

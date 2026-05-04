@@ -329,10 +329,15 @@ export async function setCheckpointCategoryMaxPoints(
 
 export async function updateAiAnalysisConfig(
   courseId: string,
-  config: AiAnalysisConfig // eslint-disable-line @typescript-eslint/no-unused-vars
+  config: AiAnalysisConfig
 ) {
   const session = await auth();
   if (!session?.user?.id) throw new Error("Unauthorized");
+
+  await db
+    .update(courses)
+    .set({ aiAnalysisConfig: config, updatedAt: new Date() })
+    .where(eq(courses.id, courseId));
 
   revalidatePath(`/courses/${courseId}`);
 }

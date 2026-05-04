@@ -53,6 +53,10 @@ export async function callLlm(
       ],
     });
 
+    console.log(
+      `[ai-report][openai] finish_reason=${response.choices[0]?.finish_reason} choices=${response.choices.length}`
+    );
+
     return response.choices[0]?.message?.content ?? "";
   }
 
@@ -61,20 +65,29 @@ export async function callLlm(
     if (!apiKey)
       throw new Error("ANTHROPIC_API_KEY environment variable not set");
 
-    const client = new Anthropic({
+    const clientOptions: ConstructorParameters<typeof Anthropic>[0] = {
       apiKey,
-      ...(baseUrl ? { baseURL: baseUrl } : {}),
-    });
+    };
+    if (baseUrl) {
+      // Anthropic SDK requires baseURL without a trailing slash
+      clientOptions.baseURL = baseUrl.replace(/\/$/, "");
+    }
+
+    const client = new Anthropic(clientOptions);
 
     const response = await client.messages.create({
       model,
-      max_tokens: 1024,
+      max_tokens: 4096,
       system: systemPrompt,
       messages: [{ role: "user", content: userMessage }],
     });
 
-    const block = response.content[0];
-    return block?.type === "text" ? block.text : "";
+    console.log(
+      `[ai-report][anthropic] stop_reason=${response.stop_reason} content_blocks=${response.content.length} types=${response.content.map((b) => b.type).join(",")}`
+    );
+
+    const textBlock = response.content.find((b) => b.type === "text");
+    return textBlock?.type === "text" ? textBlock.text : "";
   }
 
   throw new Error(`Unknown provider: ${provider}`);
@@ -438,7 +451,7 @@ export async function runAiReportPipeline(
 
   await log(
     "info",
-    `Running AI report pipeline using ${config.provider}/${config.model}`
+    `Running AI report pipeline using ${config.provider}/${config.model}${config.baseUrl ? ` (base URL: ${config.baseUrl})` : ""}`
   );
 
   // 2. Fetch group repos
@@ -606,7 +619,7 @@ export async function runAiReportPipeline(
   const studentReportParts: string[] = [];
 
   for (const [studentId, data] of studentEntries) {
-    await log("info", `Generating report for ${data.studentName}`);
+    await log("info", `Generating report for ${data.studentName}…`);
     try {
       const metricsSection = formatMetrics(
         data.studentName,
@@ -625,6 +638,11 @@ export async function runAiReportPipeline(
         `## Git history\n${gitSection}` +
         repoTreeSection;
 
+      await log(
+        "info",
+        `Calling ${config.provider} API (model: ${config.model}, prompt: ${userMessage.length} chars)`
+      );
+
       const content = await callLlm(
         config.provider,
         config.model,
@@ -632,6 +650,15 @@ export async function runAiReportPipeline(
         userMessage,
         config.baseUrl
       );
+
+      if (!content) {
+        await log("warn", `LLM returned empty content for ${data.studentName}`);
+      } else {
+        await log(
+          "info",
+          `Received response (${content.length} chars) for ${data.studentName}`
+        );
+      }
 
       await db.insert(aiReports).values({
         checkpointId: checkpoint.id,
@@ -645,11 +672,15 @@ export async function runAiReportPipeline(
 
       studentReportParts.push(`### ${data.studentName}\n\n${metricsSection}`);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
+      const msg =
+        err instanceof Error
+          ? `${err.message}${err.cause ? ` (cause: ${err.cause})` : ""}`
+          : JSON.stringify(err);
       await log(
         "error",
         `Failed to generate report for ${data.studentName}: ${msg}`
       );
+      console.error(`[ai-report] Error for student ${data.studentName}:`, err);
     }
   }
 
@@ -672,6 +703,11 @@ export async function runAiReportPipeline(
         })
         .join("\n\n---\n\n");
 
+    await log(
+      "info",
+      `Calling ${config.provider} API for group summary (model: ${config.model}, prompt: ${groupMessage.length} chars)`
+    );
+
     const groupContent = await callLlm(
       config.provider,
       config.model,
@@ -679,6 +715,15 @@ export async function runAiReportPipeline(
       groupMessage,
       config.baseUrl
     );
+
+    if (!groupContent) {
+      await log("warn", "LLM returned empty content for group summary");
+    } else {
+      await log(
+        "info",
+        `Received group summary (${groupContent.length} chars)`
+      );
+    }
 
     await db.insert(aiReports).values({
       checkpointId: checkpoint.id,
@@ -690,8 +735,12 @@ export async function runAiReportPipeline(
       systemPrompt: effectiveSystemPrompt,
     });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
+    const msg =
+      err instanceof Error
+        ? `${err.message}${err.cause ? ` (cause: ${err.cause})` : ""}`
+        : JSON.stringify(err);
     await log("error", `Failed to generate group summary: ${msg}`);
+    console.error(`[ai-report] Error generating group summary:`, err);
   }
 
   await log("info", "AI report pipeline complete");

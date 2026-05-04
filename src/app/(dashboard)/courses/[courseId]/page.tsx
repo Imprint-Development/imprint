@@ -836,6 +836,14 @@ export default async function CourseDetailPage({
       {tab === "ai-analysis" && (
         <AiAnalysisTab
           courseId={courseId}
+          availableProviders={{
+            openai: !!process.env.OPENAI_API_KEY,
+            anthropic: !!process.env.ANTHROPIC_API_KEY,
+          }}
+          providerBaseUrls={{
+            openai: process.env.OPENAI_BASE_URL ?? "",
+            anthropic: process.env.ANTHROPIC_BASE_URL ?? "",
+          }}
           config={
             (course.aiAnalysisConfig as AiAnalysisConfig) ?? {
               enabled: false,

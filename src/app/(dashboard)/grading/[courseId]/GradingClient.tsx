@@ -172,12 +172,17 @@ export default function GradingClient({
       0
     );
 
-  const visibleStudents =
+  const groupMap = new Map(groups.map((g) => [g.id, g.name]));
+
+  const visibleStudents = (
     selectedGroupId === "all"
       ? students
-      : students.filter((s) => s.groupId === selectedGroupId);
-
-  const groupMap = new Map(groups.map((g) => [g.id, g.name]));
+      : students.filter((s) => s.groupId === selectedGroupId)
+  ).toSorted((a, b) => {
+    const ga = groupMap.get(a.groupId) ?? "";
+    const gb = groupMap.get(b.groupId) ?? "";
+    return ga.localeCompare(gb) || a.displayName.localeCompare(b.displayName);
+  });
 
   const selectedGroup =
     selectedGroupId === "all"
@@ -299,11 +304,20 @@ export default function GradingClient({
           exclusive
           onChange={(_, v) => v && setMode(v)}
           size="small"
+          sx={{ boxShadow: "none", borderRadius: 1 }}
         >
-          <ToggleButton value="view" aria-label="view mode">
+          <ToggleButton
+            value="view"
+            aria-label="view mode"
+            sx={{ p: "5px 8px", borderRadius: 1 }}
+          >
             <VisibilityRounded fontSize="small" />
           </ToggleButton>
-          <ToggleButton value="edit" aria-label="edit mode">
+          <ToggleButton
+            value="edit"
+            aria-label="edit mode"
+            sx={{ p: "5px 8px", borderRadius: 1 }}
+          >
             <EditRounded fontSize="small" />
           </ToggleButton>
         </ToggleButtonGroup>
@@ -365,11 +379,25 @@ export default function GradingClient({
                     {cp.name}
                   </TableCell>
                 ))}
-              <TableCell rowSpan={2} sx={{ fontWeight: 700 }}>
+              <TableCell
+                rowSpan={2}
+                sx={{
+                  fontWeight: 700,
+                  borderLeft: perCpColSpan > 0 ? "1px solid" : undefined,
+                  borderColor: "divider",
+                }}
+              >
                 Total
               </TableCell>
               {config.gradeThresholds.length > 0 && (
-                <TableCell rowSpan={2} sx={{ fontWeight: 700 }}>
+                <TableCell
+                  rowSpan={2}
+                  sx={{
+                    fontWeight: 700,
+                    borderLeft: "1px solid",
+                    borderColor: "divider",
+                  }}
+                >
                   Grade
                 </TableCell>
               )}
@@ -510,7 +538,12 @@ export default function GradingClient({
                   </TableCell>
                   {standaloneCells}
                   {perCpCells}
-                  <TableCell>
+                  <TableCell
+                    sx={{
+                      borderLeft: perCpColSpan > 0 ? "1px solid" : undefined,
+                      borderColor: "divider",
+                    }}
+                  >
                     {pct !== null ? (
                       <Typography variant="body2">
                         {totalPoints}/{maxPerStudent}{" "}
@@ -523,7 +556,9 @@ export default function GradingClient({
                     )}
                   </TableCell>
                   {config.gradeThresholds.length > 0 && (
-                    <TableCell>
+                    <TableCell
+                      sx={{ borderLeft: "1px solid", borderColor: "divider" }}
+                    >
                       <Typography variant="body2" sx={{ fontWeight: 600 }}>
                         {calcGrade(
                           totalPoints,
