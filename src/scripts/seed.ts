@@ -212,8 +212,9 @@ async function main() {
 
   await db.insert(courseCollaborators).values([
     { courseId: seCourse.id, userId: lecturer1.id, role: "owner" },
-    { courseId: seCourse.id, userId: adminUser.id, role: "collaborator" },
+    { courseId: seCourse.id, userId: adminUser.id, role: "owner" },
     { courseId: webCourse.id, userId: lecturer2.id, role: "owner" },
+    { courseId: webCourse.id, userId: adminUser.id, role: "owner" },
     { courseId: webCourse.id, userId: lecturer1.id, role: "collaborator" },
   ]);
 
