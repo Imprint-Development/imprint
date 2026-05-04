@@ -5,7 +5,7 @@ import Box from "@mui/material/Box";
 
 export default function GradingIndexPage() {
   return (
-    <Box sx={{ p: 3 }}>
+    <Box sx={{ p: { xs: 2, md: 3 } }}>
       <PageBreadcrumbs items={[{ label: "Grading" }]} />
 
       <Typography variant="h5" sx={{ mb: 3 }}>

@@ -315,7 +315,7 @@ export default async function CheckpointDetailPage({
   ];
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box sx={{ p: { xs: 2, md: 3 } }}>
       <PageBreadcrumbs
         items={[
           {

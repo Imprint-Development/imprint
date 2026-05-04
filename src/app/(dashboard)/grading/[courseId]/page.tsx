@@ -139,7 +139,7 @@ export default async function CourseGradingPage({
   const perCpColSpan = perCpCategories.length;
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box sx={{ p: { xs: 2, md: 3 } }}>
       <PageBreadcrumbs items={[{ label: "Grading" }]} />
 
       <Box

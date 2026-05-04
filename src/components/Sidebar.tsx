@@ -25,6 +25,7 @@ import LogoutRounded from "@mui/icons-material/LogoutRounded";
 import GroupsRounded from "@mui/icons-material/GroupsRounded";
 import FlagRounded from "@mui/icons-material/FlagRounded";
 import AdminPanelSettingsRounded from "@mui/icons-material/AdminPanelSettingsRounded";
+import BugReportRounded from "@mui/icons-material/BugReportRounded";
 import { useCourse } from "./CourseProvider";
 
 const SIDEBAR_WIDTH = 240;
@@ -43,7 +44,12 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { label: "Dashboard", href: "/dashboard", icon: <HomeRounded /> },
+  {
+    label: "Dashboard",
+    href: "/dashboard",
+    icon: <HomeRounded />,
+    courseScoped: true,
+  },
   {
     label: "Groups",
     href: "/groups",
@@ -225,16 +231,31 @@ function SidebarContent({
           return <NavItemRow key={item.label} item={item} {...resolved} />;
         })}
         {isAdmin && (
-          <NavItemRow
-            item={{
-              label: "Admin",
-              href: "/admin",
-              icon: <AdminPanelSettingsRounded />,
-            }}
-            href="/admin"
-            active={pathname === "/admin" || pathname.startsWith("/admin/")}
-            disabled={false}
-          />
+          <>
+            <NavItemRow
+              item={{
+                label: "Admin",
+                href: "/admin",
+                icon: <AdminPanelSettingsRounded />,
+              }}
+              href="/admin"
+              active={
+                (pathname === "/admin" || pathname.startsWith("/admin/")) &&
+                !pathname.startsWith("/admin/debug")
+              }
+              disabled={false}
+            />
+            <NavItemRow
+              item={{
+                label: "Debug",
+                href: "/admin/debug",
+                icon: <BugReportRounded />,
+              }}
+              href="/admin/debug"
+              active={pathname.startsWith("/admin/debug")}
+              disabled={false}
+            />
+          </>
         )}
       </List>
 

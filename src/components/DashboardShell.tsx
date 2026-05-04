@@ -47,8 +47,7 @@ export default function DashboardShell({
           <Box
             sx={{
               flex: 1,
-              p: 3,
-              pt: { xs: "calc(var(--Header-height, 52px) + 24px)", md: 3 },
+              pt: { xs: "calc(var(--Header-height, 52px) + 16px)", md: 0 },
             }}
           >
             {children}

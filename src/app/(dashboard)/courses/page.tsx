@@ -25,7 +25,7 @@ export default async function CoursesPage() {
     .where(eq(courseCollaborators.userId, session.user.id));
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box sx={{ p: { xs: 2, md: 3 } }}>
       <PageBreadcrumbs items={[{ label: "Course management" }]} />
 
       <Stack

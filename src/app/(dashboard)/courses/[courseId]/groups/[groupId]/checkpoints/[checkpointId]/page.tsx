@@ -1,5 +1,6 @@
 import AppLink from "@/components/AppLink";
 import GroupAnalysisLogs from "@/components/GroupAnalysisLogs";
+import TabNav from "@/components/TabNav";
 import { ALL_PIPELINE_IDS } from "@/lib/analysis/pipelines/registry";
 import { db } from "@/lib/db";
 import {
@@ -34,6 +35,11 @@ import Chip from "@mui/material/Chip";
 import Alert from "@mui/material/Alert";
 import Stack from "@mui/material/Stack";
 
+const CHECKPOINT_TABS = [
+  { label: "Overview", value: "overview" },
+  { label: "AI Analysis", value: "ai-analysis" },
+];
+
 const statusColor = {
   pending: "warning",
   analyzing: "primary",
@@ -43,17 +49,20 @@ const statusColor = {
 
 export default async function GroupCheckpointAnalysisPage({
   params,
+  searchParams,
 }: {
   params: Promise<{
     courseId: string;
     groupId: string;
     checkpointId: string;
   }>;
+  searchParams: Promise<{ tab?: string }>;
 }) {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
   const { courseId, groupId, checkpointId } = await params;
+  const { tab = "overview" } = await searchParams;
 
   const [course] = await db
     .select()
@@ -225,7 +234,7 @@ export default async function GroupCheckpointAnalysisPage({
   );
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box sx={{ p: { xs: 2, md: 3 } }}>
       <PageBreadcrumbs
         items={[
           { label: "Groups", href: `/courses/${courseId}/groups` },
@@ -254,97 +263,116 @@ export default async function GroupCheckpointAnalysisPage({
         />
       </Stack>
 
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Stack spacing={1}>
-            <Typography variant="body2">
-              <strong>Git Ref:</strong>{" "}
-              <Typography component="span" sx={{ fontFamily: "monospace" }}>
-                {checkpoint.gitRef || "—"}
-              </Typography>
-            </Typography>
-            <Typography variant="body2">
-              <strong>Start Date:</strong>{" "}
-              {checkpoint.startDate?.toLocaleString() ?? "—"}
-            </Typography>
-            <Typography variant="body2">
-              <strong>End Date:</strong>{" "}
-              {checkpoint.endDate?.toLocaleString() ?? "—"}
-            </Typography>
-          </Stack>
-        </CardContent>
-      </Card>
+      <TabNav tabs={CHECKPOINT_TABS} defaultTab="overview" />
 
-      {checkpoint.status === "analyzing" && (
-        <Alert severity="info" sx={{ mb: 3 }}>
-          Analysis is running in the background.{" "}
-          <AppLink href={`/courses/${courseId}/checkpoints/${checkpointId}`}>
-            Manage checkpoint
-          </AppLink>
-        </Alert>
+      {/* ── Overview tab ── */}
+      {tab === "overview" && (
+        <>
+          <Card sx={{ mb: 3 }}>
+            <CardContent>
+              <Stack spacing={1}>
+                <Typography variant="body2">
+                  <strong>Git Ref:</strong>{" "}
+                  <Typography component="span" sx={{ fontFamily: "monospace" }}>
+                    {checkpoint.gitRef || "—"}
+                  </Typography>
+                </Typography>
+                <Typography variant="body2">
+                  <strong>Start Date:</strong>{" "}
+                  {checkpoint.startDate?.toLocaleString() ?? "—"}
+                </Typography>
+                <Typography variant="body2">
+                  <strong>End Date:</strong>{" "}
+                  {checkpoint.endDate?.toLocaleString() ?? "—"}
+                </Typography>
+              </Stack>
+            </CardContent>
+          </Card>
+
+          {checkpoint.status === "analyzing" && (
+            <Alert severity="info" sx={{ mb: 3 }}>
+              Analysis is running in the background.{" "}
+              <AppLink
+                href={`/courses/${courseId}/checkpoints/${checkpointId}`}
+              >
+                Manage checkpoint
+              </AppLink>
+            </Alert>
+          )}
+
+          {checkpoint.status === "pending" && (
+            <Alert severity="warning" sx={{ mb: 3 }}>
+              Analysis has not been run yet.{" "}
+              <AppLink
+                href={`/courses/${courseId}/checkpoints/${checkpointId}`}
+              >
+                Manage checkpoint
+              </AppLink>
+            </Alert>
+          )}
+
+          {checkpoint.status === "failed" && (
+            <Alert severity="error" sx={{ mb: 3 }}>
+              Analysis failed.{" "}
+              <AppLink
+                href={`/courses/${courseId}/checkpoints/${checkpointId}`}
+              >
+                Manage checkpoint
+              </AppLink>
+            </Alert>
+          )}
+
+          {checkpoint.status === "complete" && analysisRows.length === 0 && (
+            <Alert severity="info">
+              No analysis data found for this group.
+            </Alert>
+          )}
+
+          {checkpoint.status === "complete" && analysisRows.length > 0 && (
+            <GroupAnalysisClient
+              rows={analysisRows}
+              warnings={repoWarnings}
+              reviewWarnings={reviewWarnings}
+              executedPipelines={executedPipelines}
+            />
+          )}
+
+          {checkpoint.status === "complete" && (
+            <Box sx={{ mt: 3, display: "flex", justifyContent: "flex-end" }}>
+              <form action={rerunWithIds}>
+                <Button
+                  type="submit"
+                  variant="outlined"
+                  color="warning"
+                  size="small"
+                >
+                  Re-run Analysis for This Group
+                </Button>
+              </form>
+            </Box>
+          )}
+
+          {checkpoint.status !== "pending" && (
+            <GroupAnalysisLogs
+              checkpointId={checkpointId}
+              groupId={groupId}
+              groupName={group.name}
+              pipelines={ALL_PIPELINE_IDS}
+              initialStatus={checkpoint.status}
+            />
+          )}
+        </>
       )}
 
-      {checkpoint.status === "pending" && (
-        <Alert severity="warning" sx={{ mb: 3 }}>
-          Analysis has not been run yet.{" "}
-          <AppLink href={`/courses/${courseId}/checkpoints/${checkpointId}`}>
-            Manage checkpoint
-          </AppLink>
-        </Alert>
-      )}
-
-      {checkpoint.status === "failed" && (
-        <Alert severity="error" sx={{ mb: 3 }}>
-          Analysis failed.{" "}
-          <AppLink href={`/courses/${courseId}/checkpoints/${checkpointId}`}>
-            Manage checkpoint
-          </AppLink>
-        </Alert>
-      )}
-
-      {checkpoint.status === "complete" && analysisRows.length === 0 && (
-        <Alert severity="info">No analysis data found for this group.</Alert>
-      )}
-
-      {checkpoint.status === "complete" && analysisRows.length > 0 && (
-        <GroupAnalysisClient
-          rows={analysisRows}
-          warnings={repoWarnings}
-          reviewWarnings={reviewWarnings}
-          executedPipelines={executedPipelines}
-        />
-      )}
-
-      {checkpoint.status === "complete" && (
+      {/* ── AI Analysis tab ── */}
+      {tab === "ai-analysis" && (
         <AiReportsSection
           reports={aiReportRows}
           checkpointName={checkpoint.name}
           groupName={group.name}
-        />
-      )}
-
-      {checkpoint.status === "complete" && (
-        <Box sx={{ mt: 3, display: "flex", justifyContent: "flex-end" }}>
-          <form action={rerunWithIds}>
-            <Button
-              type="submit"
-              variant="outlined"
-              color="warning"
-              size="small"
-            >
-              Re-run Analysis for This Group
-            </Button>
-          </form>
-        </Box>
-      )}
-
-      {checkpoint.status !== "pending" && (
-        <GroupAnalysisLogs
+          checkpointStatus={checkpoint.status}
+          courseId={courseId}
           checkpointId={checkpointId}
-          groupId={groupId}
-          groupName={group.name}
-          pipelines={ALL_PIPELINE_IDS}
-          initialStatus={checkpoint.status}
         />
       )}
     </Box>

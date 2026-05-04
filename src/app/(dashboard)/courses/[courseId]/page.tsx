@@ -1,5 +1,6 @@
 import AppLink from "@/components/AppLink";
 import ButtonLink from "@/components/ButtonLink";
+import CheckpointTable from "@/components/CheckpointTable";
 import ImportCsvButton from "@/components/ImportCsvButton";
 import ConfirmDeleteButton from "@/components/ConfirmDeleteButton";
 import TabNav from "@/components/TabNav";
@@ -35,7 +36,6 @@ import {
   removeGradeThreshold,
   setCheckpointCategoryMaxPoints,
 } from "@/lib/actions/courses";
-import { CHECKPOINT_STATUS_COLOR } from "@/lib/constants";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
@@ -154,7 +154,7 @@ export default async function CourseDetailPage({
   const addGradeThresholdWithId = addGradeThreshold.bind(null, courseId);
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box sx={{ p: { xs: 2, md: 3 } }}>
       <PageBreadcrumbs
         items={[
           { label: "Course management", href: "/courses" },
@@ -266,68 +266,11 @@ export default async function CourseDetailPage({
               No checkpoints yet.
             </Typography>
           ) : (
-            <TableContainer component={Paper} variant="outlined">
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Name</TableCell>
-                    <TableCell>Git Ref</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell>Start Date</TableCell>
-                    <TableCell>End Date</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {courseCheckpoints.map((cp) => (
-                    <TableRow key={cp.id} hover sx={{ position: "relative" }}>
-                      <TableCell>
-                        <AppLink
-                          href={`/courses/${courseId}/checkpoints/${cp.id}`}
-                          sx={{
-                            "&::after": {
-                              content: '""',
-                              position: "absolute",
-                              inset: 0,
-                            },
-                          }}
-                        >
-                          {cp.name}
-                        </AppLink>
-                      </TableCell>
-                      <TableCell>
-                        <Typography
-                          variant="body2"
-                          sx={{ fontFamily: "monospace" }}
-                        >
-                          {cp.gitRef ?? "—"}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          size="small"
-                          color={
-                            CHECKPOINT_STATUS_COLOR[
-                              cp.status as keyof typeof CHECKPOINT_STATUS_COLOR
-                            ] ?? "default"
-                          }
-                          label={cp.status}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        {cp.startDate
-                          ? new Date(cp.startDate).toLocaleDateString()
-                          : "—"}
-                      </TableCell>
-                      <TableCell>
-                        {cp.endDate
-                          ? new Date(cp.endDate).toLocaleDateString()
-                          : "—"}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+            <CheckpointTable
+              checkpoints={courseCheckpoints}
+              href={(cp) => `/courses/${courseId}/checkpoints/${cp.id}`}
+              columns={{ gitRef: true, startDate: true, endDate: true }}
+            />
           )}
         </Box>
       )}

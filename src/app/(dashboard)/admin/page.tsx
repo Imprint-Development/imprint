@@ -109,7 +109,7 @@ export default async function AdminPage({
   }
 
   return (
-    <Box>
+    <Box sx={{ p: { xs: 2, md: 3 } }}>
       <Typography variant="h5" sx={{ mb: 0.5 }}>
         Admin
       </Typography>

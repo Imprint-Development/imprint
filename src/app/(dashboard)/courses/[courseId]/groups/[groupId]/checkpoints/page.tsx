@@ -14,8 +14,10 @@ import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
 import Card from "@mui/material/Card";
+import CardActionArea from "@mui/material/CardActionArea";
 import CardContent from "@mui/material/CardContent";
 import Alert from "@mui/material/Alert";
+import NextLink from "next/link";
 
 const statusColor = {
   pending: "warning",
@@ -63,7 +65,7 @@ export default async function GroupCheckpointsPage({
     .orderBy(checkpoints.createdAt);
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box sx={{ p: { xs: 2, md: 3 } }}>
       <PageBreadcrumbs
         items={[
           { label: "Groups", href: `/courses/${courseId}/groups` },
@@ -99,54 +101,47 @@ export default async function GroupCheckpointsPage({
         </Alert>
       ) : (
         <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          {courseCheckpoints.map((cp) => (
-            <Card key={cp.id} variant="outlined">
-              <CardContent>
-                <Box
-                  sx={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                  }}
-                >
-                  <Box>
-                    <Typography variant="subtitle1">{cp.name}</Typography>
-                    {cp.gitRef && (
-                      <Typography
-                        variant="body2"
-                        sx={{ fontFamily: "monospace" }}
-                      >
-                        {cp.gitRef}
-                      </Typography>
-                    )}
-                  </Box>
-                  <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
-                    <Chip
-                      size="small"
-                      color={
-                        statusColor[cp.status as keyof typeof statusColor] ??
-                        "default"
-                      }
-                      label={cp.status}
-                    />
-                    {cp.status === "complete" ? (
-                      <AppLink
-                        href={`/courses/${courseId}/groups/${groupId}/checkpoints/${cp.id}`}
-                      >
-                        View Analysis
-                      </AppLink>
-                    ) : (
-                      <AppLink
-                        href={`/courses/${courseId}/checkpoints/${cp.id}`}
-                      >
-                        Manage
-                      </AppLink>
-                    )}
-                  </Box>
-                </Box>
-              </CardContent>
-            </Card>
-          ))}
+          {courseCheckpoints.map((cp) => {
+            const href =
+              cp.status === "complete"
+                ? `/courses/${courseId}/groups/${groupId}/checkpoints/${cp.id}`
+                : `/courses/${courseId}/checkpoints/${cp.id}`;
+            return (
+              <Card key={cp.id} variant="outlined">
+                <CardActionArea component={NextLink} href={href}>
+                  <CardContent>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <Box>
+                        <Typography variant="subtitle1">{cp.name}</Typography>
+                        {cp.gitRef && (
+                          <Typography
+                            variant="body2"
+                            sx={{ fontFamily: "monospace" }}
+                          >
+                            {cp.gitRef}
+                          </Typography>
+                        )}
+                      </Box>
+                      <Chip
+                        size="small"
+                        color={
+                          statusColor[cp.status as keyof typeof statusColor] ??
+                          "default"
+                        }
+                        label={cp.status}
+                      />
+                    </Box>
+                  </CardContent>
+                </CardActionArea>
+              </Card>
+            );
+          })}
         </Box>
       )}
     </Box>

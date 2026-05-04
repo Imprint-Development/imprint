@@ -1,4 +1,4 @@
-import AppLink from "@/components/AppLink";
+import CheckpointTable from "@/components/CheckpointTable";
 import ConfirmDeleteButton from "@/components/ConfirmDeleteButton";
 import TabNav from "@/components/TabNav";
 import { auth } from "@/lib/auth";
@@ -24,7 +24,6 @@ import {
   removeStudentGitEmail,
   setStudentGithubUsername,
 } from "@/lib/actions/groups";
-import { CHECKPOINT_STATUS_COLOR } from "@/lib/constants";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
@@ -149,7 +148,7 @@ export default async function GroupDetailPage({
   const renameGroupWithIds = renameGroup.bind(null, groupId, courseId);
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box sx={{ p: { xs: 2, md: 3 } }}>
       <PageBreadcrumbs
         items={[
           { label: "Groups", href: `/courses/${courseId}/groups` },
@@ -298,47 +297,12 @@ export default async function GroupDetailPage({
               No checkpoints yet.
             </Typography>
           ) : (
-            <TableContainer component={Paper} variant="outlined">
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Checkpoint</TableCell>
-                    <TableCell>Status</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {courseCheckpoints.map((cp) => (
-                    <TableRow key={cp.id} hover sx={{ position: "relative" }}>
-                      <TableCell>
-                        <AppLink
-                          href={`/courses/${courseId}/groups/${groupId}/checkpoints/${cp.id}`}
-                          sx={{
-                            "&::after": {
-                              content: '""',
-                              position: "absolute",
-                              inset: 0,
-                            },
-                          }}
-                        >
-                          {cp.name}
-                        </AppLink>
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          size="small"
-                          color={
-                            CHECKPOINT_STATUS_COLOR[
-                              cp.status as keyof typeof CHECKPOINT_STATUS_COLOR
-                            ] ?? "default"
-                          }
-                          label={cp.status}
-                        />
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+            <CheckpointTable
+              checkpoints={courseCheckpoints}
+              href={(cp) =>
+                `/courses/${courseId}/groups/${groupId}/checkpoints/${cp.id}`
+              }
+            />
           )}
         </Box>
       )}

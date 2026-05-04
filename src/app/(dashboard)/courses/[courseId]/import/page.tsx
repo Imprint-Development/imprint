@@ -28,7 +28,7 @@ export default async function ImportPage({
   if (!course) redirect("/courses");
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box sx={{ p: { xs: 2, md: 3 } }}>
       <Breadcrumbs sx={{ mb: 2 }}>
         <AppLink href="/">Home</AppLink>
         <AppLink href="/courses">Courses</AppLink>

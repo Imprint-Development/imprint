@@ -5,18 +5,21 @@ import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
-import CardHeader from "@mui/material/CardHeader";
 import Chip from "@mui/material/Chip";
 import Button from "@mui/material/Button";
-import Accordion from "@mui/material/Accordion";
-import AccordionSummary from "@mui/material/AccordionSummary";
-import AccordionDetails from "@mui/material/AccordionDetails";
+import Tab from "@mui/material/Tab";
+import Tabs from "@mui/material/Tabs";
 import Stack from "@mui/material/Stack";
 import Alert from "@mui/material/Alert";
 import Divider from "@mui/material/Divider";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import Collapse from "@mui/material/Collapse";
 import DownloadIcon from "@mui/icons-material/Download";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import ExpandLessIcon from "@mui/icons-material/ExpandLess";
+import GroupsIcon from "@mui/icons-material/Groups";
+import PersonIcon from "@mui/icons-material/Person";
 import ReactMarkdown from "react-markdown";
+import AppLink from "@/components/AppLink";
 
 export interface AiReportRow {
   id: string;
@@ -32,6 +35,9 @@ interface Props {
   reports: AiReportRow[];
   checkpointName: string;
   groupName: string;
+  checkpointStatus: string;
+  courseId: string;
+  checkpointId: string;
 }
 
 function downloadMarkdown(content: string, filename: string) {
@@ -42,6 +48,10 @@ function downloadMarkdown(content: string, filename: string) {
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+function safeFilename(s: string) {
+  return s.replace(/[^a-z0-9_-]/gi, "_");
 }
 
 function ProviderChip({
@@ -81,7 +91,13 @@ function ReportCard({
     >
       <Stack
         direction="row"
-        sx={{ justifyContent: "space-between", alignItems: "center", mb: 1.5 }}
+        sx={{
+          justifyContent: "space-between",
+          alignItems: "center",
+          mb: 1.5,
+          flexWrap: "wrap",
+          gap: 1,
+        }}
       >
         <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
           <ProviderChip provider={report.provider} model={report.model} />
@@ -125,62 +141,43 @@ function ReportCard({
   );
 }
 
-function StudentReportGroup({
-  studentName,
-  reports,
+function ReportHistory({
+  history,
   groupName,
   checkpointName,
+  subjectLabel,
 }: {
-  studentName: string;
-  reports: AiReportRow[];
+  history: AiReportRow[];
   groupName: string;
   checkpointName: string;
+  subjectLabel: string;
 }) {
-  const [showHistory, setShowHistory] = useState(false);
-  const latest = reports[0]!;
-  const history = reports.slice(1);
-  const safeFilename = (s: string) => s.replace(/[^a-z0-9_-]/gi, "_");
-
+  const [open, setOpen] = useState(false);
+  if (history.length === 0) return null;
   return (
-    <Card variant="outlined" sx={{ mb: 2 }}>
-      <CardHeader
-        title={
-          <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-            {studentName}
-          </Typography>
-        }
-        subheader={`${history.length + 1} generation${reports.length > 1 ? "s" : ""}`}
-        sx={{ pb: 0 }}
-      />
-      <CardContent>
-        <ReportCard
-          report={latest}
-          filename={`report_${safeFilename(groupName)}_${safeFilename(checkpointName)}_${safeFilename(studentName)}_latest.md`}
-        />
-        {history.length > 0 && (
-          <Box sx={{ mt: 1.5 }}>
-            <Button
-              size="small"
-              variant="text"
-              onClick={() => setShowHistory((v) => !v)}
-            >
-              {showHistory
-                ? "Hide older versions"
-                : `Show ${history.length} older version${history.length > 1 ? "s" : ""}`}
-            </Button>
-            {showHistory &&
-              history.map((r, i) => (
-                <Box key={r.id} sx={{ mt: 1 }}>
-                  <ReportCard
-                    report={r}
-                    filename={`report_${safeFilename(groupName)}_${safeFilename(checkpointName)}_${safeFilename(studentName)}_v${history.length - i}.md`}
-                  />
-                </Box>
-              ))}
-          </Box>
-        )}
-      </CardContent>
-    </Card>
+    <Box sx={{ mt: 1.5 }}>
+      <Button
+        size="small"
+        variant="text"
+        endIcon={open ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+        onClick={() => setOpen((v) => !v)}
+      >
+        {open
+          ? "Hide older versions"
+          : `Show ${history.length} older version${history.length > 1 ? "s" : ""}`}
+      </Button>
+      <Collapse in={open}>
+        <Stack spacing={1} sx={{ mt: 1 }}>
+          {history.map((r, i) => (
+            <ReportCard
+              key={r.id}
+              report={r}
+              filename={`report_${safeFilename(groupName)}_${safeFilename(checkpointName)}_${safeFilename(subjectLabel)}_v${history.length - i}.md`}
+            />
+          ))}
+        </Stack>
+      </Collapse>
+    </Box>
   );
 }
 
@@ -188,25 +185,32 @@ export default function AiReportsSection({
   reports,
   checkpointName,
   groupName,
+  checkpointStatus,
+  courseId,
+  checkpointId,
 }: Props) {
-  // Hooks must be called unconditionally before any early return
-  const [showSummaryHistory, setShowSummaryHistory] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>("__group__");
 
-  if (reports.length === 0) {
+  // Not yet run
+  if (checkpointStatus !== "complete") {
     return (
-      <Box sx={{ mt: 3 }}>
-        <Typography variant="h6" sx={{ mb: 1 }}>
-          AI Reports
-        </Typography>
-        <Alert severity="info">
-          No AI reports generated yet. Enable the <strong>AI Report</strong>{" "}
-          pipeline on this checkpoint and re-run analysis.
-        </Alert>
-      </Box>
+      <Alert severity="warning">
+        Analysis has not completed yet.{" "}
+        <AppLink href={`/courses/${courseId}/checkpoints/${checkpointId}`}>
+          Manage checkpoint
+        </AppLink>
+      </Alert>
     );
   }
 
-  const safeFilename = (s: string) => s.replace(/[^a-z0-9_-]/gi, "_");
+  if (reports.length === 0) {
+    return (
+      <Alert severity="info">
+        No AI reports generated yet. Enable the <strong>AI Report</strong>{" "}
+        pipeline on this checkpoint and re-run analysis.
+      </Alert>
+    );
+  }
 
   // Separate group summaries (studentId = null) from per-student reports
   const groupSummaries = reports
@@ -218,7 +222,7 @@ export default function AiReportsSection({
 
   const studentReports = reports.filter((r) => r.studentId !== null);
 
-  // Group per-student reports by studentId, sorted newest-first
+  // Map: studentId → sorted (newest first) list
   const byStudent = new Map<string, AiReportRow[]>();
   for (const r of studentReports) {
     const key = r.studentId!;
@@ -232,72 +236,114 @@ export default function AiReportsSection({
     );
   }
 
+  const studentEntries = Array.from(byStudent.entries());
   const latestSummary = groupSummaries[0];
   const summaryHistory = groupSummaries.slice(1);
 
+  // Resolve which student's reports to show
+  const activeStudentReports =
+    activeTab === "__group__" ? null : (byStudent.get(activeTab) ?? null);
+
+  const activeStudentName = activeStudentReports?.[0]?.studentName ?? "Unknown";
+
   return (
-    <Box sx={{ mt: 3 }}>
-      <Typography variant="h6" sx={{ mb: 2 }}>
-        AI Reports
-      </Typography>
+    <Box>
+      {/* Header row */}
+      <Stack direction="row" sx={{ alignItems: "center", mb: 2 }} spacing={2}>
+        <Typography variant="h6">AI Analysis</Typography>
+        <Chip
+          size="small"
+          label={`${groupSummaries.length > 0 ? "Group summary" : "No group summary"} · ${byStudent.size} student${byStudent.size !== 1 ? "s" : ""}`}
+          variant="outlined"
+        />
+      </Stack>
 
-      {/* Group summary */}
-      {latestSummary && (
-        <Accordion defaultExpanded variant="outlined" sx={{ mb: 3 }}>
-          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-            <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-              Group Summary
-            </Typography>
-          </AccordionSummary>
-          <AccordionDetails>
-            <ReportCard
-              report={latestSummary}
-              filename={`report_${safeFilename(groupName)}_${safeFilename(checkpointName)}_group_summary_latest.md`}
-            />
-            {summaryHistory.length > 0 && (
-              <Box sx={{ mt: 1.5 }}>
-                <Button
-                  size="small"
-                  variant="text"
-                  onClick={() => setShowSummaryHistory((v) => !v)}
-                >
-                  {showSummaryHistory
-                    ? "Hide older versions"
-                    : `Show ${summaryHistory.length} older version${summaryHistory.length > 1 ? "s" : ""}`}
-                </Button>
-                {showSummaryHistory &&
-                  summaryHistory.map((r, i) => (
-                    <Box key={r.id} sx={{ mt: 1 }}>
-                      <ReportCard
-                        report={r}
-                        filename={`report_${safeFilename(groupName)}_${safeFilename(checkpointName)}_group_summary_v${summaryHistory.length - i}.md`}
-                      />
-                    </Box>
-                  ))}
-              </Box>
-            )}
-          </AccordionDetails>
-        </Accordion>
-      )}
+      {/* Tab bar: Group Summary + one tab per student */}
+      <Tabs
+        value={activeTab}
+        onChange={(_, v: string) => setActiveTab(v)}
+        variant="scrollable"
+        scrollButtons="auto"
+        sx={{ borderBottom: 1, borderColor: "divider", mb: 3 }}
+      >
+        <Tab
+          value="__group__"
+          label="Group Summary"
+          icon={<GroupsIcon fontSize="small" />}
+          iconPosition="start"
+        />
+        {studentEntries.map(([studentId, list]) => (
+          <Tab
+            key={studentId}
+            value={studentId}
+            label={list[0]?.studentName ?? "Unknown"}
+            icon={<PersonIcon fontSize="small" />}
+            iconPosition="start"
+          />
+        ))}
+      </Tabs>
 
-      {/* Per-student reports */}
-      {byStudent.size > 0 && (
+      {/* ── Group Summary panel ── */}
+      {activeTab === "__group__" && (
         <Box>
-          <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1.5 }}>
-            Student Reports
-          </Typography>
-          {Array.from(byStudent.entries()).map(([, studentReportList]) => {
-            const name = studentReportList[0]?.studentName ?? "Unknown Student";
-            return (
-              <StudentReportGroup
-                key={studentReportList[0]?.studentId}
-                studentName={name}
-                reports={studentReportList}
+          {latestSummary ? (
+            <>
+              <Card variant="outlined" sx={{ mb: 2 }}>
+                <CardContent>
+                  <ReportCard
+                    report={latestSummary}
+                    filename={`report_${safeFilename(groupName)}_${safeFilename(checkpointName)}_group_summary_latest.md`}
+                  />
+                </CardContent>
+              </Card>
+              <ReportHistory
+                history={summaryHistory}
                 groupName={groupName}
                 checkpointName={checkpointName}
+                subjectLabel="group_summary"
               />
-            );
-          })}
+            </>
+          ) : (
+            <Alert severity="info">
+              No group summary generated yet. The AI Report pipeline produces a
+              group summary after processing all students.
+            </Alert>
+          )}
+        </Box>
+      )}
+
+      {/* ── Per-student panel ── */}
+      {activeTab !== "__group__" && activeStudentReports && (
+        <Box>
+          <Stack
+            direction="row"
+            sx={{ alignItems: "center", mb: 2 }}
+            spacing={1}
+          >
+            <PersonIcon color="action" />
+            <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+              {activeStudentName}
+            </Typography>
+            <Chip
+              size="small"
+              label={`${activeStudentReports.length} generation${activeStudentReports.length > 1 ? "s" : ""}`}
+              variant="outlined"
+            />
+          </Stack>
+          <Card variant="outlined" sx={{ mb: 2 }}>
+            <CardContent>
+              <ReportCard
+                report={activeStudentReports[0]!}
+                filename={`report_${safeFilename(groupName)}_${safeFilename(checkpointName)}_${safeFilename(activeStudentName)}_latest.md`}
+              />
+            </CardContent>
+          </Card>
+          <ReportHistory
+            history={activeStudentReports.slice(1)}
+            groupName={groupName}
+            checkpointName={checkpointName}
+            subjectLabel={activeStudentName}
+          />
         </Box>
       )}
     </Box>
