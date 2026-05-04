@@ -179,11 +179,28 @@ function GroupSelectContent({
   selectedId: string;
   onChange: (id: string) => void;
 }) {
+  const selectedGroup = groups.find((g) => g.groupId === selectedId);
+
   return (
     <Select
       value={selectedId}
       onChange={(e) => onChange(e.target.value)}
       inputProps={{ "aria-label": "Select group" }}
+      renderValue={() =>
+        selectedGroup ? (
+          <Stack direction="row" sx={{ alignItems: "center", gap: 1 }}>
+            <Avatar
+              alt={selectedGroup.groupName}
+              sx={{ width: 24, height: 24 }}
+            >
+              <GroupsRounded sx={{ fontSize: "0.85rem" }} />
+            </Avatar>
+            <span>{selectedGroup.groupName}</span>
+          </Stack>
+        ) : (
+          <em>Select group…</em>
+        )
+      }
       fullWidth
       sx={{
         maxHeight: 56,

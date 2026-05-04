@@ -65,7 +65,8 @@ const ListItemAvatar = styled(MuiListItemAvatar)({
 // ── CourseSelectContent — mirrors template SelectContent ────────────────────
 
 function CourseSelectContent() {
-  const { courses, selectedCourseId, selectCourse } = useCourse();
+  const { courses, selectedCourseId, selectedCourse, selectCourse } =
+    useCourse();
 
   if (courses.length === 0) {
     return (
@@ -81,6 +82,21 @@ function CourseSelectContent() {
       onChange={(e) => selectCourse(e.target.value)}
       displayEmpty
       inputProps={{ "aria-label": "Select course" }}
+      renderValue={() =>
+        selectedCourse ? (
+          <Stack direction="row" sx={{ alignItems: "center", gap: 1 }}>
+            <Avatar alt={selectedCourse.name} sx={{ width: 24, height: 24 }}>
+              <SchoolOutlined sx={{ fontSize: "0.85rem" }} />
+            </Avatar>
+            <ListItemText
+              primary={selectedCourse.name}
+              secondary={selectedCourse.semester}
+            />
+          </Stack>
+        ) : (
+          <em>Select course…</em>
+        )
+      }
       fullWidth
       sx={{
         maxHeight: 56,
