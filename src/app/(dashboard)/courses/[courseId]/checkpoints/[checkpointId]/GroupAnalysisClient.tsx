@@ -8,7 +8,6 @@ import type {
 } from "@/lib/types/analysis";
 export type { AnalysisRow, RepoWarning, ReviewWarning };
 import Box from "@mui/material/Box";
-import Paper from "@mui/material/Paper";
 import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
 import Typography from "@mui/material/Typography";
@@ -219,7 +218,14 @@ function ContributionsTab({
         </CardContent>
       </Card>
 
-      <TableContainer component={Paper} variant="outlined">
+      <TableContainer
+        sx={{
+          border: "1px solid",
+          borderColor: "divider",
+          borderRadius: 1,
+          overflow: "hidden",
+        }}
+      >
         <Table size="small">
           <TableHead>
             <TableRow>
@@ -321,7 +327,14 @@ function FilesTab({ rows }: { rows: AnalysisRow[] }) {
         </CardContent>
       </Card>
 
-      <TableContainer component={Paper} variant="outlined">
+      <TableContainer
+        sx={{
+          border: "1px solid",
+          borderColor: "divider",
+          borderRadius: 1,
+          overflow: "hidden",
+        }}
+      >
         <Table size="small">
           <TableHead>
             <TableRow>
@@ -447,7 +460,14 @@ function ReviewTab({
             </CardContent>
           </Card>
 
-          <TableContainer component={Paper} variant="outlined">
+          <TableContainer
+            sx={{
+              border: "1px solid",
+              borderColor: "divider",
+              borderRadius: 1,
+              overflow: "hidden",
+            }}
+          >
             <Table size="small">
               <TableHead>
                 <TableRow>

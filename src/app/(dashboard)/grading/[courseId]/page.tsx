@@ -23,7 +23,6 @@ import TableCell from "@mui/material/TableCell";
 import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
-import Paper from "@mui/material/Paper";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import AppLink from "@/components/AppLink";
@@ -175,9 +174,12 @@ export default async function CourseGradingPage({
         </Alert>
       ) : (
         <TableContainer
-          component={Paper}
-          variant="outlined"
-          sx={{ overflow: "auto" }}
+          sx={{
+            border: "1px solid",
+            borderColor: "divider",
+            borderRadius: 1,
+            overflow: "auto",
+          }}
         >
           <Table size="small" sx={{ minWidth: 600 }}>
             <TableHead>

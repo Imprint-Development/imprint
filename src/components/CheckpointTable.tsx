@@ -5,7 +5,6 @@ import TableCell from "@mui/material/TableCell";
 import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
-import Paper from "@mui/material/Paper";
 import Typography from "@mui/material/Typography";
 import Chip from "@mui/material/Chip";
 import { CHECKPOINT_STATUS_COLOR } from "@/lib/constants";
@@ -51,9 +50,13 @@ export default function CheckpointTable({
 
   return (
     <TableContainer
-      component={Paper}
-      variant="outlined"
-      sx={borderless ? { border: 0 } : undefined}
+      sx={{
+        border: "1px solid",
+        borderColor: "divider",
+        borderRadius: 1,
+        overflow: "hidden",
+        ...(borderless ? { border: 0, borderRadius: 0 } : {}),
+      }}
     >
       <Table size="small">
         <TableHead>

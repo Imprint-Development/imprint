@@ -12,7 +12,6 @@ import TableCell from "@mui/material/TableCell";
 import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
-import Paper from "@mui/material/Paper";
 import Chip from "@mui/material/Chip";
 import Box from "@mui/material/Box";
 
@@ -121,7 +120,14 @@ export default async function AdminPage({
 
       {/* ── Users tab ── */}
       {tab === "users" && (
-        <TableContainer component={Paper} variant="outlined">
+        <TableContainer
+          sx={{
+            border: "1px solid",
+            borderColor: "divider",
+            borderRadius: 1,
+            overflow: "hidden",
+          }}
+        >
           <Table size="small">
             <TableHead>
               <TableRow>
@@ -161,7 +167,14 @@ export default async function AdminPage({
               empty.
             </Typography>
           ) : (
-            <TableContainer component={Paper} variant="outlined">
+            <TableContainer
+              sx={{
+                border: "1px solid",
+                borderColor: "divider",
+                borderRadius: 1,
+                overflow: "hidden",
+              }}
+            >
               <Table size="small">
                 <TableHead>
                   <TableRow>
