@@ -3,6 +3,7 @@ import ButtonLink from "@/components/ButtonLink";
 import ImportCsvButton from "@/components/ImportCsvButton";
 import ConfirmDeleteButton from "@/components/ConfirmDeleteButton";
 import TabNav from "@/components/TabNav";
+import AiAnalysisTab from "./AiAnalysisTab";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import {
@@ -13,7 +14,8 @@ import {
   users,
   checkpoints,
 } from "@/lib/db/schema";
-import type { GradingConfig } from "@/lib/db/schema";
+import type { GradingConfig, AiAnalysisConfig } from "@/lib/db/schema";
+import { DEFAULT_AI_SYSTEM_PROMPT } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import {
@@ -67,6 +69,7 @@ const TABS = [
   { label: "Checkpoints", value: "checkpoints" },
   { label: "Grading", value: "grading" },
   { label: "Collaborators", value: "collaborators" },
+  { label: "AI Analysis", value: "ai-analysis" },
   { label: "Settings", value: "settings" },
 ];
 
@@ -824,6 +827,21 @@ export default async function CourseDetailPage({
             </Stack>
           </form>
         </Box>
+      )}
+
+      {/* AI Analysis tab */}
+      {tab === "ai-analysis" && (
+        <AiAnalysisTab
+          courseId={courseId}
+          config={
+            (course.aiAnalysisConfig as AiAnalysisConfig) ?? {
+              enabled: false,
+              provider: "openai",
+              model: "gpt-4o",
+              systemPrompt: DEFAULT_AI_SYSTEM_PROMPT,
+            }
+          }
+        />
       )}
 
       {/* Settings tab */}

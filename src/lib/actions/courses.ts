@@ -6,6 +6,7 @@ import type {
   GradingConfig,
   GradingCategory,
   GradeThreshold,
+  AiAnalysisConfig,
 } from "@/lib/db/schema";
 import { auth } from "@/lib/auth";
 import { eq, sql } from "drizzle-orm";
@@ -324,4 +325,19 @@ export async function setCheckpointCategoryMaxPoints(
   }
 
   await setGradingConfig(courseId, config);
+}
+
+export async function updateAiAnalysisConfig(
+  courseId: string,
+  config: AiAnalysisConfig
+) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  await db
+    .update(courses)
+    .set({ aiAnalysisConfig: config, updatedAt: new Date() })
+    .where(eq(courses.id, courseId));
+
+  revalidatePath(`/courses/${courseId}`);
 }

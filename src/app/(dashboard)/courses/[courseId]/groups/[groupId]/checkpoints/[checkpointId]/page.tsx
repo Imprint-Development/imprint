@@ -11,9 +11,10 @@ import {
   repositories,
   studentGroups,
   courses,
+  aiReports,
 } from "@/lib/db/schema";
 import { auth } from "@/lib/auth";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, desc } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { rerunGroupAnalysis } from "@/lib/actions/checkpoints";
 import {
@@ -22,6 +23,7 @@ import {
   type RepoWarning,
   type ReviewWarning,
 } from "./GroupAnalysisClient";
+import AiReportsSection, { type AiReportRow } from "./AiReportsSection";
 import Typography from "@mui/material/Typography";
 import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 import Box from "@mui/material/Box";
@@ -89,6 +91,7 @@ export default async function GroupCheckpointAnalysisPage({
   let repoWarnings: RepoWarning[] = [];
   let reviewWarnings: ReviewWarning[] = [];
   let executedPipelines: string[] = [];
+  let aiReportRows: AiReportRow[] = [];
 
   if (checkpoint.status === "complete" && repoIds.length > 0) {
     const analyses = await db
@@ -180,6 +183,37 @@ export default async function GroupCheckpointAnalysisPage({
       repoId: r.repoId,
       repoUrl: r.repoUrl,
       message: r.message,
+    }));
+
+    // AI reports — fetch all generations for this group+checkpoint, newest first
+    const rawAiReports = await db
+      .select({
+        id: aiReports.id,
+        studentId: aiReports.studentId,
+        studentName: students.displayName,
+        content: aiReports.content,
+        provider: aiReports.provider,
+        model: aiReports.model,
+        createdAt: aiReports.createdAt,
+      })
+      .from(aiReports)
+      .leftJoin(students, eq(students.id, aiReports.studentId))
+      .where(
+        and(
+          eq(aiReports.checkpointId, checkpointId),
+          eq(aiReports.groupId, groupId)
+        )
+      )
+      .orderBy(desc(aiReports.createdAt));
+
+    aiReportRows = rawAiReports.map((r) => ({
+      id: r.id,
+      studentId: r.studentId,
+      studentName: r.studentName ?? null,
+      content: r.content,
+      provider: r.provider,
+      model: r.model,
+      createdAt: r.createdAt,
     }));
   }
 
@@ -278,6 +312,14 @@ export default async function GroupCheckpointAnalysisPage({
           warnings={repoWarnings}
           reviewWarnings={reviewWarnings}
           executedPipelines={executedPipelines}
+        />
+      )}
+
+      {checkpoint.status === "complete" && (
+        <AiReportsSection
+          reports={aiReportRows}
+          checkpointName={checkpoint.name}
+          groupName={group.name}
         />
       )}
 
