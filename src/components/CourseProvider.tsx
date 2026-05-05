@@ -33,18 +33,22 @@ const CourseContext = createContext<CourseContextValue>({
 });
 
 const STORAGE_KEY = "imprint:selectedCourseId";
+const STORAGE_CHANGE_EVENT = "imprint:courseChanged";
 
 function subscribeStorage(callback: () => void) {
+  // Listen for same-tab changes via custom event and cross-tab changes via storage event
+  window.addEventListener(STORAGE_CHANGE_EVENT, callback);
   window.addEventListener("storage", callback);
-  return () => window.removeEventListener("storage", callback);
+  return () => {
+    window.removeEventListener(STORAGE_CHANGE_EVENT, callback);
+    window.removeEventListener("storage", callback);
+  };
 }
 
 function writeStorage(id: string) {
   localStorage.setItem(STORAGE_KEY, id);
-  // Notify useSyncExternalStore subscribers in the same tab
-  window.dispatchEvent(
-    new StorageEvent("storage", { key: STORAGE_KEY, newValue: id })
-  );
+  // Browsers do not fire "storage" for same-tab writes; dispatch a custom event instead
+  window.dispatchEvent(new CustomEvent(STORAGE_CHANGE_EVENT));
 }
 
 export function CourseProvider({
