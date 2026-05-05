@@ -61,6 +61,17 @@ const Avatar = styled(MuiAvatar)(({ theme }) => ({
 function CourseSelectContent() {
   const { courses, selectedCourseId, selectedCourse } = useCourse();
   const router = useRouter();
+  const pathname = usePathname();
+
+  function buildTarget(newCourseId: string) {
+    // If currently on a course-scoped page, keep the section (e.g. /grading, /checkpoints)
+    const match = pathname.match(/\/courses\/[^/]+(\/[^?]*)?/);
+    const section = match?.[1] ?? "/dashboard";
+    // Only keep the first path segment of the section to avoid landing on a
+    // specific resource that doesn't exist in the new course (e.g. /checkpoints/123)
+    const topSection = "/" + (section.split("/")[1] ?? "dashboard");
+    return `/courses/${newCourseId}${topSection}`;
+  }
 
   if (courses.length === 0) {
     return (
@@ -73,7 +84,7 @@ function CourseSelectContent() {
   return (
     <Select
       value={selectedCourseId ?? ""}
-      onChange={(e) => router.push(`/courses/${e.target.value}/dashboard`)}
+      onChange={(e) => router.push(buildTarget(e.target.value))}
       displayEmpty
       inputProps={{ "aria-label": "Select course" }}
       renderValue={() =>

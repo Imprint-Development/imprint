@@ -7,7 +7,6 @@ import FormControl from "@mui/material/FormControl";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import FormGroup from "@mui/material/FormGroup";
 import FormLabel from "@mui/material/FormLabel";
-import InputLabel from "@mui/material/InputLabel";
 import MenuItem from "@mui/material/MenuItem";
 import Select from "@mui/material/Select";
 import Checkbox from "@mui/material/Checkbox";
@@ -98,10 +97,8 @@ export default function DebugRunnerForm({
     <Box component="form" onSubmit={handleSubmit} sx={{ maxWidth: 560 }}>
       {/* Course filter */}
       <FormControl fullWidth size="small" sx={{ mb: 2 }}>
-        <InputLabel id="debug-course-label">Course (filter)</InputLabel>
+        <FormLabel sx={{ mb: 0.5 }}>Course (filter)</FormLabel>
         <Select
-          labelId="debug-course-label"
-          label="Course (filter)"
           value={courseId}
           onChange={(e) => {
             setCourseId(e.target.value);
@@ -122,14 +119,16 @@ export default function DebugRunnerForm({
       </FormControl>
 
       {/* Checkpoint */}
-      <FormControl fullWidth size="small" sx={{ mb: 2 }} required>
-        <InputLabel id="debug-cp-label">Checkpoint *</InputLabel>
+      <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+        <FormLabel sx={{ mb: 0.5 }}>Checkpoint *</FormLabel>
         <Select
-          labelId="debug-cp-label"
-          label="Checkpoint *"
           value={checkpointId}
           onChange={(e) => setCheckpointId(e.target.value)}
+          displayEmpty
         >
+          <MenuItem value="" disabled>
+            <em>Select a checkpoint</em>
+          </MenuItem>
           {filteredCheckpoints.length === 0 && (
             <MenuItem disabled value="">
               No checkpoints
@@ -161,10 +160,8 @@ export default function DebugRunnerForm({
 
       {/* Group (optional) */}
       <FormControl fullWidth size="small" sx={{ mb: 3 }}>
-        <InputLabel id="debug-group-label">Group (optional)</InputLabel>
+        <FormLabel sx={{ mb: 0.5 }}>Group (optional)</FormLabel>
         <Select
-          labelId="debug-group-label"
-          label="Group (optional)"
           value={groupId}
           onChange={(e) => setGroupId(e.target.value)}
           displayEmpty

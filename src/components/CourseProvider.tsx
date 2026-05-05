@@ -1,6 +1,12 @@
 "use client";
 
-import { createContext, useContext, useCallback, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useCallback,
+  useEffect,
+  type ReactNode,
+} from "react";
 import { usePathname } from "next/navigation";
 
 export interface CourseOption {
@@ -24,6 +30,8 @@ const CourseContext = createContext<CourseContextValue>({
   selectCourse: () => {},
 });
 
+const STORAGE_KEY = "imprint:selectedCourseId";
+
 // Extracts /courses/[id] from the current pathname
 function courseIdFromPathname(pathname: string): string | null {
   const match = pathname.match(/\/courses\/([^/]+)/);
@@ -40,13 +48,21 @@ export function CourseProvider({
   const pathname = usePathname();
   const courseIdFromUrl = courseIdFromPathname(pathname);
 
-  const selectedCourseId =
-    courseIdFromUrl && courses.some((c) => c.id === courseIdFromUrl)
-      ? courseIdFromUrl
-      : null;
+  // URL is the primary source of truth; fall back to last cached value from localStorage
+  const courseIdFromStorage =
+    typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
 
-  // Keep selectCourse in the API so CourseSyncer / CourseSelectModal don't break,
-  // but it's a no-op now — navigation is the source of truth.
+  const resolvedId = courseIdFromUrl ?? courseIdFromStorage;
+  const selectedCourseId =
+    resolvedId && courses.some((c) => c.id === resolvedId) ? resolvedId : null;
+
+  // Keep the cache up to date whenever the URL has a course
+  useEffect(() => {
+    if (courseIdFromUrl && courses.some((c) => c.id === courseIdFromUrl)) {
+      localStorage.setItem(STORAGE_KEY, courseIdFromUrl);
+    }
+  }, [courseIdFromUrl, courses]);
+
   const selectCourse = useCallback((_id: string) => {}, []);
 
   const selectedCourse = courses.find((c) => c.id === selectedCourseId) ?? null;
