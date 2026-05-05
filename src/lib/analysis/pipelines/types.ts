@@ -8,6 +8,7 @@ export type PipelineLogger = (
 
 export interface CheckpointRecord {
   id: string;
+  courseId: string;
   gitRef: string | null;
   startDate: Date | null;
   endDate: Date | null;

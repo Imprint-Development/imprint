@@ -10,6 +10,25 @@ import {
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
+export const DEFAULT_AI_SYSTEM_PROMPT = `You are an academic assessment assistant helping a lecturer evaluate student contributions to a software engineering group project. You will receive quantitative contribution metrics for one student covering a checkpoint period.
+
+Write a concise, professional Markdown report (2–4 paragraphs) that:
+1. Summarises the student's overall contribution level relative to the group
+2. Highlights notable patterns (consistent commits, test coverage, active review participation)
+3. Flags concerns (very low activity, commit spikes near deadlines only, no review participation)
+4. Gives a short qualitative summary suitable for academic feedback
+
+Be objective and evidence-based. Cite specific numbers. Do not speculate beyond what the data shows.`;
+
+export type AiAnalysisConfig = {
+  enabled: boolean;
+  provider: "openai" | "anthropic";
+  model: string;
+  systemPrompt: string;
+  /** Optional custom base URL — useful for OpenRouter, local Ollama, etc. */
+  baseUrl?: string;
+};
+
 export type GradingCategory = {
   id: string;
   name: string;
@@ -27,6 +46,8 @@ export type GradingConfig = {
   gradeThresholds: GradeThreshold[];
   // checkpointId -> categoryId -> override max points
   checkpointOverrides: Record<string, Record<string, { maxPoints: number }>>;
+  // checkpoint IDs excluded from grading (hidden columns, not counted in total)
+  ungradedCheckpoints: string[];
 };
 
 export const users = pgTable("users", {
@@ -84,7 +105,18 @@ export const courses = pgTable("courses", {
   gradingConfig: jsonb("grading_config")
     .$type<GradingConfig>()
     .notNull()
-    .default({ categories: [], gradeThresholds: [], checkpointOverrides: {} }),
+    .default({
+      categories: [],
+      gradeThresholds: [],
+      checkpointOverrides: {},
+      ungradedCheckpoints: [],
+    }),
+  aiAnalysisConfig: jsonb("ai_analysis_config")
+    .$type<AiAnalysisConfig>()
+    .notNull()
+    .default(
+      sql`'{"enabled":false,"provider":"openai","model":"gpt-4o","systemPrompt":""}'::jsonb`
+    ),
   createdBy: uuid("created_by")
     .references(() => users.id)
     .notNull(),
@@ -223,4 +255,27 @@ export const checkpointRepoMeta = pgTable("checkpoint_repo_meta", {
     .$type<string[]>()
     .notNull()
     .default([]),
+});
+
+/**
+ * AI-generated reports for each student (and one group-level summary) per
+ * checkpoint run. Multiple rows per student are kept so history is preserved
+ * across re-runs. studentId = null means it is a group-level summary report.
+ */
+export const aiReports = pgTable("ai_reports", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  checkpointId: uuid("checkpoint_id")
+    .references(() => checkpoints.id, { onDelete: "cascade" })
+    .notNull(),
+  groupId: uuid("group_id")
+    .references(() => studentGroups.id, { onDelete: "cascade" })
+    .notNull(),
+  studentId: uuid("student_id").references(() => students.id, {
+    onDelete: "cascade",
+  }),
+  content: text("content").notNull(),
+  provider: text("provider").notNull(),
+  model: text("model").notNull(),
+  systemPrompt: text("system_prompt").notNull(),
+  createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
 });

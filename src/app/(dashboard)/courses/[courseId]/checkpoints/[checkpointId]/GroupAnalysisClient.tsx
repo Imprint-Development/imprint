@@ -1,8 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import type {
+  AnalysisRow,
+  RepoWarning,
+  ReviewWarning,
+} from "@/lib/types/analysis";
+export type { AnalysisRow, RepoWarning, ReviewWarning };
 import Box from "@mui/material/Box";
-import Paper from "@mui/material/Paper";
 import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
 import Typography from "@mui/material/Typography";
@@ -27,36 +32,8 @@ import Collapse from "@mui/material/Collapse";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import MuiTooltip from "@mui/material/Tooltip";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from "recharts";
-
-export interface AnalysisRow {
-  studentName: string;
-  repoId: string;
-  repoUrl: string;
-  codeMetrics: Record<string, number>;
-  testMetrics: Record<string, number>;
-  reviewMetrics: Record<string, number>;
-}
-
-export interface RepoWarning {
-  repoId: string;
-  repoUrl: string;
-  unidentifiedAuthors: string[];
-}
-
-export interface ReviewWarning {
-  repoId: string;
-  repoUrl: string;
-  message: string;
-}
+import { useTheme } from "@mui/material/styles";
+import { BarChart } from "@mui/x-charts/BarChart";
 
 interface Props {
   rows: AnalysisRow[];
@@ -129,7 +106,7 @@ function getUniqueRepos(rows: AnalysisRow[]): { id: string; url: string }[] {
   return repos;
 }
 
-/* ---------- Contributions Tab ---------- */
+/* ---------- Collapsible warnings ---------- */
 
 function CollapsibleWarnings({
   children,
@@ -158,6 +135,8 @@ function CollapsibleWarnings({
   );
 }
 
+/* ---------- Contributions Tab ---------- */
+
 function ContributionsTab({
   rows,
   warnings,
@@ -165,13 +144,15 @@ function ContributionsTab({
   rows: AnalysisRow[];
   warnings: RepoWarning[];
 }) {
-  const barData = rows.map((d) => ({
-    name: d.studentName,
-    "Code Added": d.codeMetrics.linesAdded ?? 0,
-    "Code Removed": d.codeMetrics.linesRemoved ?? 0,
-    "Test Added": d.testMetrics.linesAdded ?? 0,
-    "Test Removed": d.testMetrics.linesRemoved ?? 0,
-  }));
+  const theme = useTheme();
+  const colorPalette = [
+    (theme.vars || theme).palette.primary.dark,
+    (theme.vars || theme).palette.primary.main,
+    (theme.vars || theme).palette.primary.light,
+    (theme.vars || theme).palette.success.main,
+  ];
+
+  const names = rows.map((r) => r.studentName);
 
   return (
     <>
@@ -187,27 +168,64 @@ function ContributionsTab({
         ))}
       </CollapsibleWarnings>
 
-      <Card sx={{ mb: 3 }}>
+      <Card variant="outlined" sx={{ mb: 3 }}>
         <CardContent>
-          <Typography variant="h6" sx={{ mb: 2 }}>
+          <Typography variant="subtitle2" gutterBottom>
             Contribution Breakdown
           </Typography>
-          <ResponsiveContainer width="100%" height={350}>
-            <BarChart data={barData}>
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="Code Added" stackId="added" fill="#1976d2" />
-              <Bar dataKey="Test Added" stackId="added" fill="#388e3c" />
-              <Bar dataKey="Code Removed" stackId="removed" fill="#90caf9" />
-              <Bar dataKey="Test Removed" stackId="removed" fill="#a5d6a7" />
-            </BarChart>
-          </ResponsiveContainer>
+          <BarChart
+            borderRadius={6}
+            colors={colorPalette}
+            xAxis={[
+              {
+                scaleType: "band",
+                data: names,
+                categoryGapRatio: 0.4,
+                height: 28,
+              },
+            ]}
+            yAxis={[{ width: 48 }]}
+            series={[
+              {
+                id: "code-added",
+                label: "Code Added",
+                data: rows.map((r) => r.codeMetrics.linesAdded ?? 0),
+                stack: "added",
+              },
+              {
+                id: "test-added",
+                label: "Test Added",
+                data: rows.map((r) => r.testMetrics.linesAdded ?? 0),
+                stack: "added",
+              },
+              {
+                id: "code-removed",
+                label: "Code Removed",
+                data: rows.map((r) => r.codeMetrics.linesRemoved ?? 0),
+                stack: "removed",
+              },
+              {
+                id: "test-removed",
+                label: "Test Removed",
+                data: rows.map((r) => r.testMetrics.linesRemoved ?? 0),
+                stack: "removed",
+              },
+            ]}
+            height={300}
+            margin={{ left: 0, right: 0, top: 16, bottom: 0 }}
+            grid={{ horizontal: true }}
+          />
         </CardContent>
       </Card>
 
-      <TableContainer component={Paper} variant="outlined">
+      <TableContainer
+        sx={{
+          border: "1px solid",
+          borderColor: "divider",
+          borderRadius: 1,
+          overflow: "hidden",
+        }}
+      >
         <Table size="small">
           <TableHead>
             <TableRow>
@@ -255,7 +273,13 @@ function ContributionsTab({
 /* ---------- Files Tab ---------- */
 
 function FilesTab({ rows }: { rows: AnalysisRow[] }) {
-  const fileData = rows
+  const theme = useTheme();
+  const colorPalette = [
+    (theme.vars || theme).palette.primary.main,
+    (theme.vars || theme).palette.success.main,
+  ];
+
+  const sorted = [...rows]
     .map((d) => ({
       name: d.studentName,
       codeFiles: d.codeMetrics.filesChanged ?? 0,
@@ -263,29 +287,54 @@ function FilesTab({ rows }: { rows: AnalysisRow[] }) {
       total:
         (d.codeMetrics.filesChanged ?? 0) + (d.testMetrics.filesChanged ?? 0),
     }))
-    .sort((a, b) => b.total - a.total);
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   return (
     <>
-      <Card sx={{ mb: 3 }}>
+      <Card variant="outlined" sx={{ mb: 3 }}>
         <CardContent>
-          <Typography variant="h6" sx={{ mb: 2 }}>
+          <Typography variant="subtitle2" gutterBottom>
             Files Changed per Student
           </Typography>
-          <ResponsiveContainer width="100%" height={350}>
-            <BarChart data={fileData}>
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="codeFiles" name="Code Files" fill="#1976d2" />
-              <Bar dataKey="testFiles" name="Test Files" fill="#388e3c" />
-            </BarChart>
-          </ResponsiveContainer>
+          <BarChart
+            borderRadius={6}
+            colors={colorPalette}
+            xAxis={[
+              {
+                scaleType: "band",
+                data: sorted.map((d) => d.name),
+                categoryGapRatio: 0.4,
+                height: 28,
+              },
+            ]}
+            yAxis={[{ width: 48 }]}
+            series={[
+              {
+                id: "code-files",
+                label: "Code Files",
+                data: sorted.map((d) => d.codeFiles),
+              },
+              {
+                id: "test-files",
+                label: "Test Files",
+                data: sorted.map((d) => d.testFiles),
+              },
+            ]}
+            height={280}
+            margin={{ left: 0, right: 0, top: 16, bottom: 0 }}
+            grid={{ horizontal: true }}
+          />
         </CardContent>
       </Card>
 
-      <TableContainer component={Paper} variant="outlined">
+      <TableContainer
+        sx={{
+          border: "1px solid",
+          borderColor: "divider",
+          borderRadius: 1,
+          overflow: "hidden",
+        }}
+      >
         <Table size="small">
           <TableHead>
             <TableRow>
@@ -296,7 +345,7 @@ function FilesTab({ rows }: { rows: AnalysisRow[] }) {
             </TableRow>
           </TableHead>
           <TableBody>
-            {fileData.map((d, i) => (
+            {sorted.map((d, i) => (
               <TableRow key={i}>
                 <TableCell>{d.name}</TableCell>
                 <TableCell align="right">{d.codeFiles}</TableCell>
@@ -325,16 +374,18 @@ function ReviewTab({
   rows: AnalysisRow[];
   reviewWarnings: ReviewWarning[];
 }) {
-  const hasData = rows.some((r) => Object.keys(r.reviewMetrics).length > 0);
+  const theme = useTheme();
+  const colorPalette = [
+    (theme.vars || theme).palette.primary.dark,
+    (theme.vars || theme).palette.primary.main,
+    (theme.vars || theme).palette.warning.main,
+    (theme.vars || theme).palette.secondary?.main ??
+      (theme.vars || theme).palette.primary.light,
+    (theme.vars || theme).palette.info.main,
+  ];
 
-  const barData = rows.map((d) => ({
-    name: d.studentName,
-    "PRs Reviewed": d.reviewMetrics.prsReviewed ?? 0,
-    Approvals: d.reviewMetrics.approvals ?? 0,
-    "Changes Requested": d.reviewMetrics.changesRequested ?? 0,
-    "Review Comments": d.reviewMetrics.reviewComments ?? 0,
-    "Issue Comments": d.reviewMetrics.issueComments ?? 0,
-  }));
+  const hasData = rows.some((r) => Object.keys(r.reviewMetrics).length > 0);
+  const names = rows.map((r) => r.studentName);
 
   return (
     <>
@@ -356,28 +407,67 @@ function ReviewTab({
         </Alert>
       ) : (
         <>
-          <Card sx={{ mb: 3 }}>
+          <Card variant="outlined" sx={{ mb: 3 }}>
             <CardContent>
-              <Typography variant="h6" sx={{ mb: 2 }}>
+              <Typography variant="subtitle2" gutterBottom>
                 PR Review Activity
               </Typography>
-              <ResponsiveContainer width="100%" height={350}>
-                <BarChart data={barData}>
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="PRs Reviewed" fill="#1976d2" />
-                  <Bar dataKey="Approvals" fill="#388e3c" />
-                  <Bar dataKey="Changes Requested" fill="#f57c00" />
-                  <Bar dataKey="Review Comments" fill="#7b1fa2" />
-                  <Bar dataKey="Issue Comments" fill="#0097a7" />
-                </BarChart>
-              </ResponsiveContainer>
+              <BarChart
+                borderRadius={6}
+                colors={colorPalette}
+                xAxis={[
+                  {
+                    scaleType: "band",
+                    data: names,
+                    categoryGapRatio: 0.4,
+                    height: 28,
+                  },
+                ]}
+                yAxis={[{ width: 48 }]}
+                series={[
+                  {
+                    id: "prs",
+                    label: "PRs Reviewed",
+                    data: rows.map((r) => r.reviewMetrics.prsReviewed ?? 0),
+                  },
+                  {
+                    id: "approvals",
+                    label: "Approvals",
+                    data: rows.map((r) => r.reviewMetrics.approvals ?? 0),
+                  },
+                  {
+                    id: "changes",
+                    label: "Changes Requested",
+                    data: rows.map(
+                      (r) => r.reviewMetrics.changesRequested ?? 0
+                    ),
+                  },
+                  {
+                    id: "review-comments",
+                    label: "Review Comments",
+                    data: rows.map((r) => r.reviewMetrics.reviewComments ?? 0),
+                  },
+                  {
+                    id: "issue-comments",
+                    label: "Issue Comments",
+                    data: rows.map((r) => r.reviewMetrics.issueComments ?? 0),
+                  },
+                ]}
+                height={300}
+                margin={{ left: 0, right: 0, top: 16, bottom: 0 }}
+                grid={{ horizontal: true }}
+              />
             </CardContent>
           </Card>
 
-          <TableContainer component={Paper} variant="outlined">
+          <TableContainer
+            sx={{
+              border: "1px solid",
+              borderColor: "divider",
+              borderRadius: 1,
+              overflow: "hidden",
+            }}
+          >
             <Table size="small">
               <TableHead>
                 <TableRow>
@@ -441,9 +531,9 @@ function AiChatTab() {
   };
 
   return (
-    <Card>
+    <Card variant="outlined">
       <CardContent>
-        <Typography variant="h6" sx={{ mb: 2 }}>
+        <Typography variant="subtitle2" gutterBottom>
           AI Analysis Chat
         </Typography>
         <Alert severity="info" sx={{ mb: 2 }}>
@@ -452,28 +542,25 @@ function AiChatTab() {
         </Alert>
         <Box
           sx={{
-            border: 1,
+            border: "1px solid",
             borderColor: "divider",
             borderRadius: 1,
             height: 300,
             overflowY: "auto",
             p: 2,
             mb: 2,
-            bgcolor: "grey.50",
+            bgcolor: "action.hover",
           }}
         >
           {messages.length === 0 && (
             <Typography color="text.secondary" variant="body2">
-              Ask a question about the student contributions...
+              Ask a question about the student contributions…
             </Typography>
           )}
           {messages.map((msg, i) => (
             <Box
               key={i}
-              sx={{
-                mb: 1,
-                textAlign: msg.role === "user" ? "right" : "left",
-              }}
+              sx={{ mb: 1, textAlign: msg.role === "user" ? "right" : "left" }}
             >
               <Typography
                 variant="body2"
@@ -482,8 +569,14 @@ function AiChatTab() {
                   px: 1.5,
                   py: 0.75,
                   borderRadius: 2,
-                  bgcolor: msg.role === "user" ? "primary.main" : "grey.200",
-                  color: msg.role === "user" ? "white" : "text.primary",
+                  bgcolor:
+                    msg.role === "user" ? "primary.main" : "background.paper",
+                  color:
+                    msg.role === "user"
+                      ? "primary.contrastText"
+                      : "text.primary",
+                  border: "1px solid",
+                  borderColor: msg.role === "user" ? "primary.main" : "divider",
                 }}
               >
                 {msg.text}
@@ -495,7 +588,7 @@ function AiChatTab() {
           <TextField
             size="small"
             fullWidth
-            placeholder="Ask about contributions..."
+            placeholder="Ask about contributions…"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSend()}
@@ -521,10 +614,11 @@ export function GroupAnalysisClient({
   const [selectedRepo, setSelectedRepo] = useState<string>("all");
   const [tab, setTab] = useState(0);
 
-  const filteredRows =
+  const filteredRows = (
     selectedRepo === "all"
       ? aggregateRows(rows)
-      : rows.filter((r) => r.repoId === selectedRepo);
+      : rows.filter((r) => r.repoId === selectedRepo)
+  ).sort((a, b) => a.studentName.localeCompare(b.studentName));
 
   const filteredWarnings =
     selectedRepo === "all"
@@ -555,7 +649,7 @@ export function GroupAnalysisClient({
         </Select>
       </FormControl>
 
-      {/* Tabs */}
+      {/* Analysis tabs */}
       <Tabs
         value={tab}
         onChange={(_, v) => setTab(v as number)}
@@ -573,7 +667,6 @@ export function GroupAnalysisClient({
               key={i}
               title={`Run the "${t.requiredPipeline}" pipeline to enable this tab`}
             >
-              {/* Tooltip requires a non-disabled wrapper to receive pointer events */}
               <span>{tabEl}</span>
             </MuiTooltip>
           );

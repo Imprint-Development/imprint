@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import * as React from "react";
+import { styled } from "@mui/material/styles";
+import MuiAvatar from "@mui/material/Avatar";
+import MuiListItemAvatar from "@mui/material/ListItemAvatar";
 import Box from "@mui/material/Box";
-import List from "@mui/material/List";
-import ListItemButton from "@mui/material/ListItemButton";
-import ListItemText from "@mui/material/ListItemText";
 import Typography from "@mui/material/Typography";
-import Divider from "@mui/material/Divider";
 import Chip from "@mui/material/Chip";
 import IconButton from "@mui/material/IconButton";
 import Dialog from "@mui/material/Dialog";
@@ -18,14 +18,41 @@ import Alert from "@mui/material/Alert";
 import AlertTitle from "@mui/material/AlertTitle";
 import Stack from "@mui/material/Stack";
 import Tooltip from "@mui/material/Tooltip";
+import Select, { selectClasses } from "@mui/material/Select";
+import MenuItem from "@mui/material/MenuItem";
+import ListSubheader from "@mui/material/ListSubheader";
+import ListItemText from "@mui/material/ListItemText";
+import Tabs from "@mui/material/Tabs";
+import Tab from "@mui/material/Tab";
 import WarningAmberRounded from "@mui/icons-material/WarningAmberRounded";
-import AppLink from "@/components/AppLink";
-import {
-  GroupAnalysisClient,
-  type AnalysisRow,
-  type RepoWarning,
-  type ReviewWarning,
-} from "../../groups/[groupId]/checkpoints/[checkpointId]/GroupAnalysisClient";
+import GroupsRounded from "@mui/icons-material/GroupsRounded";
+import { GroupAnalysisClient } from "./GroupAnalysisClient";
+import type {
+  AnalysisRow,
+  RepoWarning,
+  ReviewWarning,
+} from "@/lib/types/analysis";
+import AiReportsSection, { type AiReportRow } from "./AiReportsSection";
+import GroupAnalysisLogs from "@/components/GroupAnalysisLogs";
+import { ALL_PIPELINE_IDS } from "@/lib/analysis/pipelines/registry";
+import { rerunGroupAnalysis } from "@/lib/actions/checkpoints";
+
+// ── Styled primitives from template SelectContent ────────────────────────────
+
+const Avatar = styled(MuiAvatar)(({ theme }) => ({
+  width: 28,
+  height: 28,
+  backgroundColor: (theme.vars || theme).palette.background.paper,
+  color: (theme.vars || theme).palette.text.secondary,
+  border: `1px solid ${(theme.vars || theme).palette.divider}`,
+}));
+
+const ListItemAvatar = styled(MuiListItemAvatar)({
+  minWidth: 0,
+  marginRight: 12,
+});
+
+// ── Types ────────────────────────────────────────────────────────────────────
 
 export interface WarnLog {
   pipeline: string;
@@ -45,13 +72,20 @@ export interface GroupPaneData {
   reviewWarnings: ReviewWarning[];
   logWarningCount: number;
   warnLogs: WarnLog[];
+  aiReports: AiReportRow[];
+  checkpointStatus: string;
 }
 
 interface Props {
   groups: GroupPaneData[];
   courseId: string;
   checkpointId: string;
+  checkpointName: string;
+  checkpointStatus: string;
+  initialGroupId?: string;
 }
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
 function shortRepoLabel(url: string): string {
   try {
@@ -60,6 +94,8 @@ function shortRepoLabel(url: string): string {
     return url;
   }
 }
+
+// ── WarningsModal ─────────────────────────────────────────────────────────────
 
 function WarningsModal({
   groupName,
@@ -72,7 +108,6 @@ function WarningsModal({
   open: boolean;
   onClose: () => void;
 }) {
-  // Group logs by pipeline
   const byPipeline = new Map<string, WarnLog[]>();
   for (const log of warnLogs) {
     const list = byPipeline.get(log.pipeline) ?? [];
@@ -133,157 +168,136 @@ function WarningsModal({
   );
 }
 
+// ── GroupSelectContent — template SelectContent style ────────────────────────
+
+function GroupSelectContent({
+  groups,
+  selectedId,
+  onChange,
+}: {
+  groups: GroupPaneData[];
+  selectedId: string;
+  onChange: (id: string) => void;
+}) {
+  const selectedGroup = groups.find((g) => g.groupId === selectedId);
+
+  return (
+    <Select
+      value={selectedId}
+      onChange={(e) => onChange(e.target.value)}
+      inputProps={{ "aria-label": "Select group" }}
+      renderValue={() =>
+        selectedGroup ? (
+          <Stack direction="row" sx={{ alignItems: "center", gap: 1 }}>
+            <Avatar
+              alt={selectedGroup.groupName}
+              sx={{ width: 24, height: 24 }}
+            >
+              <GroupsRounded sx={{ fontSize: "0.85rem" }} />
+            </Avatar>
+            <span>{selectedGroup.groupName}</span>
+          </Stack>
+        ) : (
+          <em>Select group…</em>
+        )
+      }
+      fullWidth
+      sx={{
+        maxHeight: 56,
+        "&.MuiList-root": { p: "8px" },
+        [`& .${selectClasses.select}`]: {
+          display: "flex",
+          alignItems: "center",
+          gap: "2px",
+          pl: 1,
+        },
+      }}
+    >
+      {[
+        <ListSubheader key="__hdr" sx={{ pt: 0 }}>
+          Groups
+        </ListSubheader>,
+        ...groups.map((g) => (
+          <MenuItem key={g.groupId} value={g.groupId}>
+            <ListItemAvatar>
+              <Avatar alt={g.groupName}>
+                <GroupsRounded sx={{ fontSize: "1rem" }} />
+              </Avatar>
+            </ListItemAvatar>
+            <ListItemText
+              primary={g.groupName}
+              secondary={`${g.studentCount} student${g.studentCount !== 1 ? "s" : ""}${g.analysisRows.length === 0 ? " · empty" : ""}`}
+            />
+            {g.logWarningCount > 0 && (
+              <WarningAmberRounded
+                fontSize="small"
+                color="warning"
+                sx={{ pointerEvents: "none" }}
+              />
+            )}
+          </MenuItem>
+        )),
+      ]}
+    </Select>
+  );
+}
+
+// ── Main component ─────────────────────────────────────────────────────────────
+
+const GROUP_TABS = [
+  { label: "Overview", value: "overview" },
+  { label: "AI Analysis", value: "ai-analysis" },
+  { label: "Logs", value: "logs" },
+];
+
 export default function CheckpointGroupsPane({
   groups,
   courseId,
   checkpointId,
+  checkpointName,
+  checkpointStatus,
+  initialGroupId,
 }: Props) {
-  const [selectedId, setSelectedId] = useState<string | null>(
-    groups[0]?.groupId ?? null
+  const [selectedId, setSelectedId] = useState<string>(
+    (initialGroupId && groups.some((g) => g.groupId === initialGroupId)
+      ? initialGroupId
+      : groups[0]?.groupId) ?? ""
   );
-  const [warningsGroupId, setWarningsGroupId] = useState<string | null>(null);
+  const [warningsOpen, setWarningsOpen] = useState(false);
+  const [groupTab, setGroupTab] = useState("overview");
+
   const selected = groups.find((g) => g.groupId === selectedId) ?? null;
-  const warningsGroup =
-    groups.find((g) => g.groupId === warningsGroupId) ?? null;
+
+  const rerunWithIds = selected
+    ? rerunGroupAnalysis.bind(null, checkpointId, selected.groupId, courseId)
+    : null;
 
   return (
-    <Box
-      sx={{
-        display: "flex",
-        border: 1,
-        borderColor: "divider",
-        borderRadius: 1,
-        overflow: "hidden",
-        minHeight: 480,
-      }}
-    >
-      {/* Left: group list */}
-      <Box
-        sx={{
-          width: 220,
-          flexShrink: 0,
-          borderRight: 1,
-          borderColor: "divider",
-          overflowY: "auto",
-        }}
+    <Box>
+      {/* Group selector — template SelectContent style */}
+      <Stack
+        direction="row"
+        sx={{ alignItems: "center", mb: 3, gap: 1.5, flexWrap: "wrap" }}
       >
-        <Typography
-          variant="caption"
-          sx={{
-            px: 2,
-            py: 1.5,
-            display: "block",
-            color: "text.secondary",
-            fontWeight: 600,
-            textTransform: "uppercase",
-            letterSpacing: 0.5,
-          }}
-        >
-          Groups
-        </Typography>
-        <Divider />
-        <List disablePadding dense>
-          {groups.map((g) => (
-            <ListItemButton
-              key={g.groupId}
-              selected={g.groupId === selectedId}
-              onClick={() => setSelectedId(g.groupId)}
-              sx={{ py: 1.25 }}
-            >
-              <ListItemText
-                primary={
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                    <Typography
-                      variant="body2"
-                      noWrap
-                      sx={{ flex: 1, minWidth: 0 }}
-                    >
-                      {g.groupName}
-                    </Typography>
-                    {g.analysisRows.length === 0 && (
-                      <Chip label="empty" size="small" color="default" />
-                    )}
-                    {g.logWarningCount > 0 && (
-                      <Tooltip
-                        title={`${g.logWarningCount} warning${g.logWarningCount !== 1 ? "s" : ""}`}
-                      >
-                        <IconButton
-                          size="small"
-                          color="warning"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setWarningsGroupId(g.groupId);
-                          }}
-                          sx={{ flexShrink: 0 }}
-                        >
-                          <WarningAmberRounded fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                    )}
-                  </Box>
-                }
-                secondary={
-                  <>
-                    {`${g.studentCount} student${g.studentCount !== 1 ? "s" : ""}`}
-                    {g.analysedAt && (
-                      <>
-                        {" · "}
-                        {g.analysedAt.toLocaleString(undefined, {
-                          dateStyle: "short",
-                          timeStyle: "short",
-                        })}
-                      </>
-                    )}
-                  </>
-                }
-              />
-            </ListItemButton>
-          ))}
-        </List>
-      </Box>
+        <Box sx={{ flex: 1, minWidth: 200, maxWidth: 320 }}>
+          <GroupSelectContent
+            groups={groups}
+            selectedId={selectedId}
+            onChange={(id) => {
+              setSelectedId(id);
+              setGroupTab("overview");
+            }}
+          />
+        </Box>
 
-      {/* Right: analysis pane */}
-      <Box sx={{ flex: 1, p: 2.5, overflowY: "auto", minWidth: 0 }}>
-        {selected ? (
-          <>
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                mb: 2,
-              }}
-            >
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                  {selected.groupName}
-                </Typography>
-                {selected.logWarningCount > 0 && (
-                  <Tooltip
-                    title={`${selected.logWarningCount} warning${selected.logWarningCount !== 1 ? "s" : ""}`}
-                  >
-                    <IconButton
-                      size="small"
-                      color="warning"
-                      onClick={() => setWarningsGroupId(selected.groupId)}
-                    >
-                      <WarningAmberRounded fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                )}
-              </Box>
-              <AppLink
-                href={`/courses/${courseId}/groups/${selected.groupId}/checkpoints/${checkpointId}`}
-              >
-                Open full page ↗
-              </AppLink>
-            </Box>
+        {/* Meta: analysedAt + pipeline chips */}
+        {selected && (
+          <Stack
+            direction="row"
+            sx={{ alignItems: "center", gap: 1, flexWrap: "wrap", flex: 1 }}
+          >
             {selected.analysedAt && (
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{ display: "block", mb: 2 }}
-              >
+              <Typography variant="caption" color="text.secondary">
                 Analysed{" "}
                 {selected.analysedAt.toLocaleString(undefined, {
                   dateStyle: "medium",
@@ -291,44 +305,107 @@ export default function CheckpointGroupsPane({
                 })}
               </Typography>
             )}
-            {selected.executedPipelines.length > 0 && (
-              <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap", mb: 2 }}>
-                {selected.executedPipelines.map((p) => (
-                  <Chip key={p} label={p} size="small" variant="outlined" />
-                ))}
-              </Box>
-            )}
-            {selected.analysisRows.length === 0 ? (
-              <Typography variant="body2" color="text.secondary">
-                No analysis data found for this group.
-              </Typography>
-            ) : (
-              <GroupAnalysisClient
-                rows={selected.analysisRows}
-                warnings={selected.repoWarnings}
-                reviewWarnings={selected.reviewWarnings}
-                executedPipelines={selected.executedPipelines}
-              />
-            )}
-          </>
-        ) : (
-          <Typography
-            variant="body2"
-            color="text.secondary"
-            sx={{ pt: 6, textAlign: "center" }}
-          >
-            Select a group to view analysis results.
-          </Typography>
+            {selected.executedPipelines.map((p) => (
+              <Chip key={p} label={p} size="small" variant="outlined" />
+            ))}
+          </Stack>
         )}
-      </Box>
 
-      {/* Warnings modal */}
-      {warningsGroup && (
+        {/* Actions */}
+        <Stack
+          direction="row"
+          sx={{ alignItems: "center", gap: 1, flexShrink: 0 }}
+        >
+          {selected && selected.logWarningCount > 0 && (
+            <Tooltip
+              title={`${selected.logWarningCount} warning${selected.logWarningCount !== 1 ? "s" : ""}`}
+            >
+              <IconButton
+                size="small"
+                color="warning"
+                onClick={() => setWarningsOpen(true)}
+              >
+                <WarningAmberRounded fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
+          {selected && rerunWithIds && checkpointStatus === "complete" && (
+            <form action={rerunWithIds}>
+              <Button
+                type="submit"
+                variant="outlined"
+                color="warning"
+                size="small"
+              >
+                Re-run for Group
+              </Button>
+            </form>
+          )}
+        </Stack>
+      </Stack>
+
+      {selected ? (
+        <>
+          <Tabs
+            value={groupTab}
+            onChange={(_, v: string) => setGroupTab(v)}
+            sx={{ borderBottom: 1, borderColor: "divider", mb: 3 }}
+          >
+            {GROUP_TABS.map((t) => (
+              <Tab key={t.value} label={t.label} value={t.value} />
+            ))}
+          </Tabs>
+
+          {groupTab === "overview" && (
+            <>
+              {selected.analysisRows.length === 0 ? (
+                <Typography variant="body2" color="text.secondary">
+                  No analysis data found for this group.
+                </Typography>
+              ) : (
+                <GroupAnalysisClient
+                  rows={selected.analysisRows}
+                  warnings={selected.repoWarnings}
+                  reviewWarnings={selected.reviewWarnings}
+                  executedPipelines={selected.executedPipelines}
+                />
+              )}
+            </>
+          )}
+
+          {groupTab === "ai-analysis" && (
+            <AiReportsSection
+              reports={selected.aiReports}
+              checkpointName={checkpointName}
+              groupName={selected.groupName}
+              checkpointStatus={checkpointStatus}
+              courseId={courseId}
+              checkpointId={checkpointId}
+            />
+          )}
+
+          {groupTab === "logs" && (
+            <GroupAnalysisLogs
+              checkpointId={checkpointId}
+              groupId={selected.groupId}
+              groupName={selected.groupName}
+              pipelines={ALL_PIPELINE_IDS}
+              initialStatus={checkpointStatus}
+            />
+          )}
+        </>
+      ) : (
+        <Typography variant="body2" color="text.secondary">
+          No groups found.
+        </Typography>
+      )}
+
+      {selected && (
         <WarningsModal
-          groupName={warningsGroup.groupName}
-          warnLogs={warningsGroup.warnLogs}
-          open
-          onClose={() => setWarningsGroupId(null)}
+          groupName={selected.groupName}
+          warnLogs={selected.warnLogs}
+          open={warningsOpen}
+          onClose={() => setWarningsOpen(false)}
         />
       )}
     </Box>

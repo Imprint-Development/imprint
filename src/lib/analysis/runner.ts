@@ -9,6 +9,7 @@ import { eq, and } from "drizzle-orm";
 import type { LogLevel } from "./pipelines/types";
 import { runContributionsPipeline } from "./pipelines/contributions";
 import { runReviewPipeline } from "./pipelines/review";
+import { runAiReportPipeline } from "./pipelines/ai-report";
 import { ALL_PIPELINE_IDS } from "./pipelines/registry";
 
 /**
@@ -86,50 +87,68 @@ export async function runAnalysis(
             console.log(`[${pipeline}][${group.name}][${level}] ${message}`);
           };
 
+        // Split into two passes: non-AI pipelines run first in parallel,
+        // then ai-report runs after so checkpointAnalyses rows already exist.
+        const nonAiPipelines = enabledPipelines.filter(
+          (p) => p !== "ai-report"
+        );
+        const hasAiReport = enabledPipelines.includes("ai-report");
+
+        const runPipeline = async (pipelineId: string): Promise<void> => {
+          const log = makeLogger(pipelineId);
+          await log(
+            "info",
+            `Starting ${pipelineId} pipeline for group "${group.name}"`
+          );
+
+          switch (pipelineId) {
+            case "contributions":
+              await runContributionsPipeline({
+                checkpoint,
+                group,
+                ignoredEmails,
+                ignoredGithubUsernames,
+                log,
+              });
+              break;
+            case "review":
+              await runReviewPipeline({
+                checkpoint,
+                group,
+                ignoredEmails,
+                ignoredGithubUsernames,
+                log,
+              });
+              break;
+            case "ai-report":
+              await runAiReportPipeline({
+                checkpoint,
+                group,
+                ignoredEmails,
+                ignoredGithubUsernames,
+                log,
+              });
+              break;
+            default:
+              await log("warn", `Unknown pipeline "${pipelineId}" — skipped`);
+              return;
+          }
+
+          await log(
+            "info",
+            `${pipelineId} pipeline complete for group "${group.name}"`
+          );
+        };
+
+        // Pass 1: run contributions, review, etc. in parallel
         const pipelineResults = await Promise.allSettled(
-          enabledPipelines.map(async (pipelineId) => {
-            const log = makeLogger(pipelineId);
-            await log(
-              "info",
-              `Starting ${pipelineId} pipeline for group "${group.name}"`
-            );
-
-            switch (pipelineId) {
-              case "contributions":
-                await runContributionsPipeline({
-                  checkpoint,
-                  group,
-                  ignoredEmails,
-                  ignoredGithubUsernames,
-                  log,
-                });
-                break;
-              case "review":
-                await runReviewPipeline({
-                  checkpoint,
-                  group,
-                  ignoredEmails,
-                  ignoredGithubUsernames,
-                  log,
-                });
-                break;
-              default:
-                await log("warn", `Unknown pipeline "${pipelineId}" — skipped`);
-                return;
-            }
-
-            await log(
-              "info",
-              `${pipelineId} pipeline complete for group "${group.name}"`
-            );
-          })
+          nonAiPipelines.map(runPipeline)
         );
 
-        // Log pipeline-level failures but do NOT re-throw — other pipelines
-        // and groups should still produce their partial results.
+        // Log pass-1 failures but do NOT re-throw
         for (const [i, result] of pipelineResults.entries()) {
           if (result.status === "rejected") {
-            const pipelineId = enabledPipelines[i] ?? "unknown";
+            const pipelineId = nonAiPipelines[i] ?? "unknown";
             const runnerLog = makeLogger("runner");
             const msg =
               result.reason instanceof Error
@@ -142,6 +161,24 @@ export async function runAnalysis(
             console.error(
               `[runner][${pipelineId}][${group.name}] pipeline failed:`,
               result.reason
+            );
+          }
+        }
+
+        // Pass 2: ai-report runs after pass 1 so analyses are committed
+        if (hasAiReport) {
+          try {
+            await runPipeline("ai-report");
+          } catch (err) {
+            const runnerLog = makeLogger("runner");
+            const msg = err instanceof Error ? err.message : String(err);
+            await runnerLog(
+              "error",
+              `Pipeline "ai-report" failed for group "${group.name}": ${msg}`
+            );
+            console.error(
+              `[runner][ai-report][${group.name}] pipeline failed:`,
+              err
             );
           }
         }

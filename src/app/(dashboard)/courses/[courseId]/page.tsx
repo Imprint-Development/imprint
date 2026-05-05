@@ -1,8 +1,10 @@
 import AppLink from "@/components/AppLink";
 import ButtonLink from "@/components/ButtonLink";
+import CheckpointTable from "@/components/CheckpointTable";
 import ImportCsvButton from "@/components/ImportCsvButton";
 import ConfirmDeleteButton from "@/components/ConfirmDeleteButton";
 import TabNav from "@/components/TabNav";
+import AiAnalysisTab from "./AiAnalysisTab";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import {
@@ -13,7 +15,8 @@ import {
   users,
   checkpoints,
 } from "@/lib/db/schema";
-import type { GradingConfig } from "@/lib/db/schema";
+import type { GradingConfig, AiAnalysisConfig } from "@/lib/db/schema";
+import { DEFAULT_AI_SYSTEM_PROMPT } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import {
@@ -32,10 +35,11 @@ import {
   addGradeThreshold,
   removeGradeThreshold,
   setCheckpointCategoryMaxPoints,
+  toggleCheckpointUngraded,
 } from "@/lib/actions/courses";
-import { CHECKPOINT_STATUS_COLOR } from "@/lib/constants";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
+import Switch from "@mui/material/Switch";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Chip from "@mui/material/Chip";
@@ -53,7 +57,6 @@ import IconButton from "@mui/material/IconButton";
 import Divider from "@mui/material/Divider";
 import FormControl from "@mui/material/FormControl";
 import FormLabel from "@mui/material/FormLabel";
-import Paper from "@mui/material/Paper";
 import Select from "@mui/material/Select";
 import MenuItem from "@mui/material/MenuItem";
 import DeleteRounded from "@mui/icons-material/DeleteRounded";
@@ -67,6 +70,7 @@ const TABS = [
   { label: "Checkpoints", value: "checkpoints" },
   { label: "Grading", value: "grading" },
   { label: "Collaborators", value: "collaborators" },
+  { label: "AI Analysis", value: "ai-analysis" },
   { label: "Settings", value: "settings" },
 ];
 
@@ -151,7 +155,7 @@ export default async function CourseDetailPage({
   const addGradeThresholdWithId = addGradeThreshold.bind(null, courseId);
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box sx={{ p: { xs: 2, md: 3 } }}>
       <PageBreadcrumbs
         items={[
           { label: "Course management", href: "/courses" },
@@ -199,7 +203,14 @@ export default async function CourseDetailPage({
               No groups yet.
             </Typography>
           ) : (
-            <TableContainer component={Paper} variant="outlined">
+            <TableContainer
+              sx={{
+                border: "1px solid",
+                borderColor: "divider",
+                borderRadius: 1,
+                overflow: "hidden",
+              }}
+            >
               <Table size="small">
                 <TableHead>
                   <TableRow>
@@ -263,68 +274,11 @@ export default async function CourseDetailPage({
               No checkpoints yet.
             </Typography>
           ) : (
-            <TableContainer component={Paper} variant="outlined">
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Name</TableCell>
-                    <TableCell>Git Ref</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell>Start Date</TableCell>
-                    <TableCell>End Date</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {courseCheckpoints.map((cp) => (
-                    <TableRow key={cp.id} hover sx={{ position: "relative" }}>
-                      <TableCell>
-                        <AppLink
-                          href={`/courses/${courseId}/checkpoints/${cp.id}`}
-                          sx={{
-                            "&::after": {
-                              content: '""',
-                              position: "absolute",
-                              inset: 0,
-                            },
-                          }}
-                        >
-                          {cp.name}
-                        </AppLink>
-                      </TableCell>
-                      <TableCell>
-                        <Typography
-                          variant="body2"
-                          sx={{ fontFamily: "monospace" }}
-                        >
-                          {cp.gitRef ?? "—"}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          size="small"
-                          color={
-                            CHECKPOINT_STATUS_COLOR[
-                              cp.status as keyof typeof CHECKPOINT_STATUS_COLOR
-                            ] ?? "default"
-                          }
-                          label={cp.status}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        {cp.startDate
-                          ? new Date(cp.startDate).toLocaleDateString()
-                          : "—"}
-                      </TableCell>
-                      <TableCell>
-                        {cp.endDate
-                          ? new Date(cp.endDate).toLocaleDateString()
-                          : "—"}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+            <CheckpointTable
+              checkpoints={courseCheckpoints}
+              href={(cp) => `/courses/${courseId}/checkpoints/${cp.id}`}
+              columns={{ gitRef: true, startDate: true, endDate: true }}
+            />
           )}
         </Box>
       )}
@@ -360,9 +314,13 @@ export default async function CourseDetailPage({
                     />
                   ))}
                   <TableContainer
-                    component={Paper}
-                    variant="outlined"
-                    sx={{ mb: 2 }}
+                    sx={{
+                      border: "1px solid",
+                      borderColor: "divider",
+                      borderRadius: 1,
+                      overflow: "hidden",
+                      mb: 2,
+                    }}
                   >
                     <Table size="small">
                       <TableHead>
@@ -562,9 +520,13 @@ export default async function CourseDetailPage({
 
               {config.gradeThresholds.length > 0 && (
                 <TableContainer
-                  component={Paper}
-                  variant="outlined"
-                  sx={{ mb: 2 }}
+                  sx={{
+                    border: "1px solid",
+                    borderColor: "divider",
+                    borderRadius: 1,
+                    overflow: "hidden",
+                    mb: 2,
+                  }}
                 >
                   <Table size="small">
                     <TableHead>
@@ -671,7 +633,14 @@ export default async function CourseDetailPage({
                     default. Overridden values are highlighted in the grading
                     view.
                   </Typography>
-                  <TableContainer component={Paper} variant="outlined">
+                  <TableContainer
+                    sx={{
+                      border: "1px solid",
+                      borderColor: "divider",
+                      borderRadius: 1,
+                      overflow: "hidden",
+                    }}
+                  >
                     <Table size="small">
                       <TableHead>
                         <TableRow>
@@ -693,6 +662,16 @@ export default async function CourseDetailPage({
                               </Typography>
                             </TableCell>
                           ))}
+                          <TableCell sx={{ fontWeight: 700 }}>
+                            Ungraded
+                            <Typography
+                              component="span"
+                              variant="caption"
+                              sx={{ display: "block", color: "text.secondary" }}
+                            >
+                              skip in totals
+                            </Typography>
+                          </TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
@@ -753,6 +732,25 @@ export default async function CourseDetailPage({
                                 </TableCell>
                               );
                             })}
+                            <TableCell>
+                              <form
+                                action={toggleCheckpointUngraded.bind(
+                                  null,
+                                  courseId,
+                                  cp.id
+                                )}
+                              >
+                                <Switch
+                                  type="submit"
+                                  size="small"
+                                  checked={
+                                    config.ungradedCheckpoints?.includes(
+                                      cp.id
+                                    ) ?? false
+                                  }
+                                />
+                              </form>
+                            </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -770,7 +768,15 @@ export default async function CourseDetailPage({
           <Typography variant="h6" sx={{ mb: 2 }}>
             Collaborators
           </Typography>
-          <TableContainer component={Paper} variant="outlined" sx={{ mb: 2 }}>
+          <TableContainer
+            sx={{
+              border: "1px solid",
+              borderColor: "divider",
+              borderRadius: 1,
+              overflow: "hidden",
+              mb: 2,
+            }}
+          >
             <Table size="small">
               <TableHead>
                 <TableRow>
@@ -824,6 +830,29 @@ export default async function CourseDetailPage({
             </Stack>
           </form>
         </Box>
+      )}
+
+      {/* AI Analysis tab */}
+      {tab === "ai-analysis" && (
+        <AiAnalysisTab
+          courseId={courseId}
+          availableProviders={{
+            openai: !!process.env.OPENAI_API_KEY,
+            anthropic: !!process.env.ANTHROPIC_API_KEY,
+          }}
+          providerBaseUrls={{
+            openai: process.env.OPENAI_BASE_URL ?? "",
+            anthropic: process.env.ANTHROPIC_BASE_URL ?? "",
+          }}
+          config={
+            (course.aiAnalysisConfig as AiAnalysisConfig) ?? {
+              enabled: false,
+              provider: "openai",
+              model: "gpt-4o",
+              systemPrompt: DEFAULT_AI_SYSTEM_PROMPT,
+            }
+          }
+        />
       )}
 
       {/* Settings tab */}
