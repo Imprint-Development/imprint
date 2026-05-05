@@ -1,5 +1,10 @@
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
+import simpleGit from "simple-git";
+import path from "path";
+import os from "os";
+import fs from "fs/promises";
+import crypto from "crypto";
 import { db } from "@/lib/db";
 import {
   courses,
@@ -137,6 +142,269 @@ export function formatMetrics(
 }
 
 // ---------------------------------------------------------------------------
+// Git context extraction
+// ---------------------------------------------------------------------------
+
+/** Glob patterns for files that are never meaningful to diff. */
+const IGNORED_FILE_PATTERNS = [
+  /package-lock\.json$/,
+  /yarn\.lock$/,
+  /pnpm-lock\.yaml$/,
+  /composer\.lock$/,
+  /Gemfile\.lock$/,
+  /poetry\.lock$/,
+  /\.min\.(js|css)$/,
+  /(^|\/)dist\//,
+  /(^|\/)build\//,
+  /(^|\/)\.next\//,
+  /(^|\/)__generated__\//,
+  /(^|\/)coverage\//,
+  /\.map$/,
+  /\.snap$/, // jest snapshots — usually auto-generated
+];
+
+const MAX_COMMITS_PER_STUDENT = 100;
+const MAX_DIFF_LINES_PER_COMMIT = 150;
+
+function isIgnoredFile(filePath: string): boolean {
+  return IGNORED_FILE_PATTERNS.some((re) => re.test(filePath));
+}
+
+/**
+ * Strips hunks for ignored files from a unified diff and truncates
+ * the result to MAX_DIFF_LINES_PER_COMMIT lines.
+ */
+function processDiff(rawDiff: string): { diff: string; truncated: boolean } {
+  const lines = rawDiff.split("\n");
+  const filtered: string[] = [];
+  let skip = false;
+
+  for (const line of lines) {
+    if (line.startsWith("diff --git ")) {
+      // Determine the file path from "diff --git a/foo b/foo"
+      const match = line.match(/diff --git a\/.+ b\/(.+)$/);
+      skip = match ? isIgnoredFile(match[1]!) : false;
+    }
+    if (!skip) filtered.push(line);
+  }
+
+  if (filtered.length <= MAX_DIFF_LINES_PER_COMMIT) {
+    return { diff: filtered.join("\n"), truncated: false };
+  }
+  return {
+    diff:
+      filtered.slice(0, MAX_DIFF_LINES_PER_COMMIT).join("\n") +
+      `\n… (truncated, ${filtered.length - MAX_DIFF_LINES_PER_COMMIT} more lines)`,
+    truncated: true,
+  };
+}
+
+export interface RepoGitContext {
+  repoUrl: string;
+  /** Commits by each student, with message, stat summary and filtered diff. */
+  commitsByStudent: Record<
+    string,
+    {
+      hash: string;
+      date: string;
+      message: string;
+      stat: string;
+      diff: string;
+    }[]
+  >;
+  /** Files changed by each student (deduplicated) */
+  filesByStudent: Record<string, string[]>;
+  /** Full file tree at the checkout ref */
+  fileTree: string;
+}
+
+/**
+ * Clones `repoUrl`, checks out `gitRef`, then extracts per-student commit
+ * history (with full diffs) and the file tree within the checkpoint date window.
+ * Returns null (and logs a warning) if the clone fails.
+ */
+export async function extractRepoGitContext(
+  repoUrl: string,
+  gitRef: string | null,
+  startDate: Date | null,
+  endDate: Date | null,
+  studentEmailMap: Map<string, string[]>, // studentId -> [emails]
+  log: (level: "info" | "warn" | "error", msg: string) => Promise<void>
+): Promise<RepoGitContext | null> {
+  const tmpDir = path.join(
+    os.tmpdir(),
+    `imprint-ai-${crypto.randomBytes(8).toString("hex")}`
+  );
+
+  try {
+    await fs.mkdir(tmpDir, { recursive: true });
+    await log("info", `Cloning ${repoUrl} for AI context extraction`);
+
+    const git = simpleGit();
+    await git.clone(repoUrl, tmpDir);
+    const repoGit = simpleGit(tmpDir);
+
+    if (gitRef) {
+      await repoGit.checkout(gitRef);
+    }
+
+    // Build date range flags
+    const dateFlags: string[] = [];
+    if (startDate) dateFlags.push(`--after=${startDate.toISOString()}`);
+    if (endDate) dateFlags.push(`--before=${endDate.toISOString()}`);
+
+    // Build a map from email -> studentId for fast lookup
+    const emailToStudentId = new Map<string, string>();
+    for (const [studentId, emails] of studentEmailMap) {
+      for (const email of emails) {
+        emailToStudentId.set(email.toLowerCase(), studentId);
+      }
+    }
+
+    // Fetch all commits in the window with author email, hash, date, subject
+    const rawLog = await repoGit.raw([
+      "log",
+      "--use-mailmap",
+      "--format=%aE|||%H|||%cI|||%s",
+      "--no-merges",
+      ...dateFlags,
+    ]);
+
+    const commitsByStudent: RepoGitContext["commitsByStudent"] = {};
+    const filesByStudent: Record<string, Set<string>> = {};
+
+    const commitLines = rawLog
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean);
+
+    for (const line of commitLines) {
+      const [email, hash, date, ...subjectParts] = line.split("|||");
+      if (!email || !hash) continue;
+      const studentId = emailToStudentId.get(email.toLowerCase());
+      if (!studentId) continue;
+
+      if (!commitsByStudent[studentId]) commitsByStudent[studentId] = [];
+
+      // Cap at MAX_COMMITS_PER_STUDENT — git log returns newest-first so we
+      // hit this cap naturally and drop the oldest excess commits.
+      if (commitsByStudent[studentId].length >= MAX_COMMITS_PER_STUDENT)
+        continue;
+
+      const subject = subjectParts.join("|||").trim();
+
+      // Full unified diff for the commit (includes stat header)
+      const rawDiff = await repoGit.raw([
+        "show",
+        "--patch",
+        "--stat",
+        "--no-color",
+        hash,
+      ]);
+
+      // Extract the --stat summary line (last non-empty line before the diff)
+      const statLines = rawDiff
+        .split("\n")
+        .slice(0, rawDiff.indexOf("\ndiff --git") > -1 ? undefined : undefined)
+        .map((l) => l.trim())
+        .filter((l) => l.match(/\d+ file/));
+      const stat = statLines[statLines.length - 1] ?? "";
+
+      const { diff } = processDiff(rawDiff);
+
+      // Collect changed files (from diff --git headers)
+      const changedFiles = [...rawDiff.matchAll(/^diff --git a\/.+ b\/(.+)$/gm)]
+        .map((m) => m[1]!)
+        .filter((f) => !isIgnoredFile(f));
+
+      commitsByStudent[studentId].push({
+        hash: hash.slice(0, 8),
+        date: date ?? "",
+        message: subject,
+        stat,
+        diff,
+      });
+
+      if (!filesByStudent[studentId]) filesByStudent[studentId] = new Set();
+      for (const f of changedFiles) filesByStudent[studentId].add(f);
+    }
+
+    // File tree at HEAD (just paths, no content)
+    const treeRaw = await repoGit.raw(["ls-tree", "-r", "--name-only", "HEAD"]);
+    const fileTree = treeRaw.trim();
+
+    const studentCount = Object.keys(commitsByStudent).length;
+    const totalCommits = Object.values(commitsByStudent).reduce(
+      (s, c) => s + c.length,
+      0
+    );
+    await log(
+      "info",
+      `Git context extracted: ${commitLines.length} commits scanned, ${totalCommits} matched to ${studentCount} students`
+    );
+
+    return {
+      repoUrl,
+      commitsByStudent,
+      filesByStudent: Object.fromEntries(
+        Object.entries(filesByStudent).map(([k, v]) => [k, [...v]])
+      ),
+      fileTree,
+    };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    await log("warn", `Failed to extract git context from ${repoUrl}: ${msg}`);
+    return null;
+  } finally {
+    await fs.rm(tmpDir, { recursive: true, force: true });
+  }
+}
+
+/**
+ * Formats the git context for a single student into a readable string
+ * for inclusion in the LLM prompt.
+ */
+export function formatGitContext(
+  studentId: string,
+  context: RepoGitContext
+): string {
+  const commits = context.commitsByStudent[studentId] ?? [];
+  const files = context.filesByStudent[studentId] ?? [];
+
+  if (commits.length === 0)
+    return "No commits found for this student in the checkpoint window.";
+
+  const lines: string[] = [];
+  lines.push(`Commits (${commits.length} total):`);
+  for (const c of commits) {
+    lines.push(`\n[${c.hash}] ${c.date.slice(0, 10)} — ${c.message}`);
+    if (c.stat) lines.push(`  ${c.stat}`);
+    if (c.diff) lines.push(c.diff);
+  }
+
+  if (files.length > 0) {
+    lines.push(`\nFiles touched (${files.length} unique):`);
+    const shown = files.slice(0, 60);
+    for (const f of shown) lines.push(`  ${f}`);
+    if (files.length > 60) lines.push(`  … and ${files.length - 60} more`);
+  }
+
+  return lines.join("\n");
+}
+
+/**
+ * Formats the repository file tree, capped to avoid token bloat.
+ */
+export function formatFileTree(fileTree: string, maxLines = 200): string {
+  const lines = fileTree.split("\n").filter(Boolean);
+  if (lines.length <= maxLines) return lines.join("\n");
+  return (
+    lines.slice(0, maxLines).join("\n") +
+    `\n… (${lines.length - maxLines} more files)`
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Pipeline entry point
 // ---------------------------------------------------------------------------
 
@@ -204,6 +472,8 @@ export async function runAiReportPipeline(
     .select({
       studentId: checkpointAnalyses.studentId,
       studentName: students.displayName,
+      studentEmail: students.email,
+      studentGitEmails: students.gitEmails,
       codeMetrics: checkpointAnalyses.codeMetrics,
       testMetrics: checkpointAnalyses.testMetrics,
       reviewMetrics: checkpointAnalyses.reviewMetrics,
@@ -230,6 +500,8 @@ export async function runAiReportPipeline(
     string,
     {
       studentName: string;
+      studentEmail: string;
+      studentGitEmails: string[];
       codeMetrics: Metrics;
       testMetrics: Metrics;
       reviewMetrics: Metrics;
@@ -242,6 +514,8 @@ export async function runAiReportPipeline(
     if (!existing) {
       byStudent.set(row.studentId, {
         studentName: row.studentName,
+        studentEmail: row.studentEmail,
+        studentGitEmails: (row.studentGitEmails as string[]) ?? [],
         codeMetrics: row.codeMetrics as Metrics,
         testMetrics: row.testMetrics as Metrics,
         reviewMetrics: row.reviewMetrics as Metrics,
@@ -264,6 +538,8 @@ export async function runAiReportPipeline(
       };
       byStudent.set(row.studentId, {
         studentName: existing.studentName,
+        studentEmail: existing.studentEmail,
+        studentGitEmails: existing.studentGitEmails,
         codeMetrics: add(existing.codeMetrics, row.codeMetrics as Metrics),
         testMetrics: add(existing.testMetrics, row.testMetrics as Metrics),
         reviewMetrics: add(
@@ -276,7 +552,68 @@ export async function runAiReportPipeline(
 
   const studentEntries = Array.from(byStudent.entries());
 
-  // 4. Generate per-student reports
+  // Build email map for git context extraction
+  const studentEmailMap = new Map<string, string[]>(
+    studentEntries.map(([studentId, data]) => [
+      studentId,
+      [data.studentEmail, ...data.studentGitEmails],
+    ])
+  );
+
+  // 4. Extract git context from each repo (one clone per repo)
+  const gitContexts: RepoGitContext[] = [];
+  for (const repo of groupRepos) {
+    const ctx = await extractRepoGitContext(
+      repo.url,
+      checkpoint.gitRef,
+      checkpoint.startDate,
+      checkpoint.endDate,
+      studentEmailMap,
+      log
+    );
+    if (ctx) gitContexts.push(ctx);
+  }
+
+  // Merge git contexts across repos per student
+  const mergedCommits: Record<
+    string,
+    {
+      hash: string;
+      date: string;
+      message: string;
+      stat: string;
+      diff: string;
+    }[]
+  > = {};
+  const mergedFiles: Record<string, Set<string>> = {};
+  const allFileTrees: string[] = [];
+
+  for (const ctx of gitContexts) {
+    for (const [studentId, commits] of Object.entries(ctx.commitsByStudent)) {
+      if (!mergedCommits[studentId]) mergedCommits[studentId] = [];
+      mergedCommits[studentId].push(...commits);
+    }
+    for (const [studentId, files] of Object.entries(ctx.filesByStudent)) {
+      if (!mergedFiles[studentId]) mergedFiles[studentId] = new Set();
+      for (const f of files) mergedFiles[studentId].add(f);
+    }
+    if (ctx.fileTree) allFileTrees.push(ctx.fileTree);
+  }
+
+  const mergedFileTree = [
+    ...new Set(allFileTrees.join("\n").split("\n").filter(Boolean)),
+  ].join("\n");
+
+  const mergedGitContext: RepoGitContext = {
+    repoUrl: groupRepos.map((r) => r.url).join(", "),
+    commitsByStudent: mergedCommits,
+    filesByStudent: Object.fromEntries(
+      Object.entries(mergedFiles).map(([k, v]) => [k, [...v]])
+    ),
+    fileTree: mergedFileTree,
+  };
+
+  // 5. Generate per-student reports
   await log("info", `Generating reports for ${studentEntries.length} students`);
 
   const studentReportParts: string[] = [];
@@ -284,14 +621,22 @@ export async function runAiReportPipeline(
   for (const [studentId, data] of studentEntries) {
     await log("info", `Generating report for ${data.studentName}`);
     try {
+      const metricsSection = formatMetrics(
+        data.studentName,
+        data.codeMetrics,
+        data.testMetrics,
+        data.reviewMetrics
+      );
+      const gitSection = formatGitContext(studentId, mergedGitContext);
+      const repoTreeSection = mergedGitContext.fileTree
+        ? `\nRepository file tree:\n${formatFileTree(mergedGitContext.fileTree)}`
+        : "";
+
       const userMessage =
         `Generate a contribution report for the following student in group "${group.name}".\n\n` +
-        formatMetrics(
-          data.studentName,
-          data.codeMetrics,
-          data.testMetrics,
-          data.reviewMetrics
-        );
+        `## Aggregated metrics\n${metricsSection}\n\n` +
+        `## Git history\n${gitSection}` +
+        repoTreeSection;
 
       const content = await callLlm(
         config.provider,
@@ -311,15 +656,7 @@ export async function runAiReportPipeline(
         systemPrompt: effectiveSystemPrompt,
       });
 
-      studentReportParts.push(
-        `### ${data.studentName}\n\n` +
-          formatMetrics(
-            data.studentName,
-            data.codeMetrics,
-            data.testMetrics,
-            data.reviewMetrics
-          )
-      );
+      studentReportParts.push(`### ${data.studentName}\n\n${metricsSection}`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       await log(
@@ -329,21 +666,23 @@ export async function runAiReportPipeline(
     }
   }
 
-  // 5. Generate group summary
+  // 6. Generate group summary
   await log("info", "Generating group summary report");
   try {
     const groupMessage =
       `Write a group-level summary report for group "${group.name}". ` +
       `For each student, briefly characterise their contribution, then close with an overall assessment of group health and collaboration.\n\n` +
       studentEntries
-        .map(([, data]) =>
-          formatMetrics(
+        .map(([studentId, data]) => {
+          const metrics = formatMetrics(
             data.studentName,
             data.codeMetrics,
             data.testMetrics,
             data.reviewMetrics
-          )
-        )
+          );
+          const git = formatGitContext(studentId, mergedGitContext);
+          return `## ${data.studentName}\n${metrics}\n\nGit history:\n${git}`;
+        })
         .join("\n\n---\n\n");
 
     const groupContent = await callLlm(
