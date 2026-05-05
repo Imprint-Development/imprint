@@ -23,7 +23,7 @@ import { DEFAULT_AI_SYSTEM_PROMPT } from "@/lib/db/schema";
 import {
   OPENAI_MODELS,
   ANTHROPIC_MODELS,
-} from "@/lib/analysis/pipelines/ai-report";
+} from "@/lib/analysis/pipelines/ai-report-constants";
 
 interface Props {
   courseId: string;
