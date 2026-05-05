@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import NextLink from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { styled } from "@mui/material/styles";
 import MuiAvatar from "@mui/material/Avatar";
 import MuiDrawer, { drawerClasses } from "@mui/material/Drawer";
@@ -17,8 +17,8 @@ import ListSubheader from "@mui/material/ListSubheader";
 import MenuItem from "@mui/material/MenuItem";
 import Select, { selectClasses } from "@mui/material/Select";
 import Stack from "@mui/material/Stack";
-import Typography from "@mui/material/Typography";
 import Tooltip from "@mui/material/Tooltip";
+import Typography from "@mui/material/Typography";
 import HomeRounded from "@mui/icons-material/HomeRounded";
 import SchoolRounded from "@mui/icons-material/SchoolRounded";
 import GradingRounded from "@mui/icons-material/GradingRounded";
@@ -59,8 +59,8 @@ const Avatar = styled(MuiAvatar)(({ theme }) => ({
 // ── CourseSelectContent — mirrors template SelectContent ────────────────────
 
 function CourseSelectContent() {
-  const { courses, selectedCourseId, selectedCourse, selectCourse } =
-    useCourse();
+  const { courses, selectedCourseId, selectedCourse } = useCourse();
+  const router = useRouter();
 
   if (courses.length === 0) {
     return (
@@ -73,7 +73,7 @@ function CourseSelectContent() {
   return (
     <Select
       value={selectedCourseId ?? ""}
-      onChange={(e) => selectCourse(e.target.value)}
+      onChange={(e) => router.push(`/courses/${e.target.value}/dashboard`)}
       displayEmpty
       inputProps={{ "aria-label": "Select course" }}
       renderValue={() =>
