@@ -1,5 +1,5 @@
 -- Add AI analysis configuration to courses
-ALTER TABLE "courses" ADD COLUMN "ai_analysis_config" jsonb NOT NULL DEFAULT '{"enabled":false,"provider":"openai","model":"gpt-4o","systemPrompt":""}'::jsonb;
+ALTER TABLE "courses" ADD COLUMN "ai_analysis_config" jsonb NOT NULL DEFAULT '{"enabled":false,"provider":"openai","model":"gpt-4o","systemPrompt":""}'::jsonb;--> statement-breakpoint
 
 -- AI-generated reports per student (and one group summary) per checkpoint run.
 -- Multiple rows are kept intentionally so history is preserved across re-runs.
@@ -14,4 +14,7 @@ CREATE TABLE "ai_reports" (
 	"model" text NOT NULL,
 	"system_prompt" text NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL
-);
+);--> statement-breakpoint
+
+-- Add ungradedCheckpoints to grading_config default
+ALTER TABLE "courses" ALTER COLUMN "grading_config" SET DEFAULT '{"categories":[],"gradeThresholds":[],"checkpointOverrides":{},"ungradedCheckpoints":[]}'::jsonb;

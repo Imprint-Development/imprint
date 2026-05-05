@@ -15,6 +15,13 @@
       "when": 1777700000000,
       "tag": "0011_per_person_grading_config",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1746444000000,
+      "tag": "0012_ai_analysis_and_grading_config",
+      "breakpoints": true
     }
   ]
 }
