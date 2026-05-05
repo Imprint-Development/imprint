@@ -151,7 +151,7 @@ const mainNavItems: NavItem[] = [
     label: "Grading",
     href: "/grading",
     icon: <GradingRounded />,
-    buildHref: (id) => (id ? `/grading/${id}` : null),
+    courseScoped: true,
   },
 ];
 

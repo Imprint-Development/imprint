@@ -69,6 +69,7 @@ export default function AiAnalysisTab({
   }
 
   function handleSave() {
+    if (isPending) return;
     setError(null);
     setSaved(false);
     startTransition(async () => {
@@ -251,7 +252,7 @@ export default function AiAnalysisTab({
           <Button
             variant="contained"
             onClick={handleSave}
-            disabled={isPending || noneAvailable}
+            disabled={noneAvailable}
           >
             {isPending ? "Saving…" : "Save Configuration"}
           </Button>

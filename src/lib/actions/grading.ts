@@ -44,7 +44,7 @@ export async function saveGrade(formData: FormData) {
       set: { points, notes, gradedBy },
     });
 
-  revalidatePath("/grading");
+  revalidatePath(`/courses`); // grading index fallback
 }
 
 export async function saveGrades(
@@ -77,7 +77,7 @@ export async function saveGrades(
       });
   }
 
-  revalidatePath(`/grading/${courseId}`);
+  revalidatePath(`/courses/${courseId}/grading`);
 }
 
 export async function exportGradesCSV(courseId: string): Promise<string> {

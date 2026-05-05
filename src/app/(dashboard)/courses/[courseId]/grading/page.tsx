@@ -40,13 +40,13 @@ export default async function CourseGradingPage({
         eq(courseCollaborators.userId, session.user.id)
       )
     );
-  if (!membership) redirect("/grading");
+  if (!membership) redirect("/courses");
 
   const [course] = await db
     .select()
     .from(courses)
     .where(eq(courses.id, courseId));
-  if (!course) redirect("/grading");
+  if (!course) redirect("/courses");
 
   const config: GradingConfig = {
     ...course.gradingConfig,

@@ -6,7 +6,6 @@ import Box from "@mui/material/Box";
 import Sidebar, { SideMenuMobile } from "@/components/Sidebar";
 import Header from "@/components/Header";
 import { CourseProvider, type CourseOption } from "@/components/CourseProvider";
-import CourseSelectModal from "@/components/CourseSelectModal";
 
 interface DashboardShellProps {
   user: { name: string; email: string; isAdmin: boolean };
@@ -62,7 +61,6 @@ export default function DashboardShell({
           </Box>
         </Box>
       </Box>
-      <CourseSelectModal />
     </CourseProvider>
   );
 }
