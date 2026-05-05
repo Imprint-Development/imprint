@@ -5,7 +5,6 @@ import NextLink from "next/link";
 import { usePathname } from "next/navigation";
 import { styled } from "@mui/material/styles";
 import MuiAvatar from "@mui/material/Avatar";
-import MuiListItemAvatar from "@mui/material/ListItemAvatar";
 import MuiDrawer, { drawerClasses } from "@mui/material/Drawer";
 import Box from "@mui/material/Box";
 import Divider from "@mui/material/Divider";
@@ -56,11 +55,6 @@ const Avatar = styled(MuiAvatar)(({ theme }) => ({
   color: (theme.vars || theme).palette.text.secondary,
   border: `1px solid ${(theme.vars || theme).palette.divider}`,
 }));
-
-const ListItemAvatar = styled(MuiListItemAvatar)({
-  minWidth: 0,
-  marginRight: 12,
-});
 
 // ── CourseSelectContent — mirrors template SelectContent ────────────────────
 
@@ -116,11 +110,6 @@ function CourseSelectContent() {
         </ListSubheader>,
         ...courses.map((c: CourseOption) => (
           <MenuItem key={c.id} value={c.id}>
-            <ListItemAvatar>
-              <Avatar alt={c.name}>
-                <SchoolOutlined sx={{ fontSize: "1rem" }} />
-              </Avatar>
-            </ListItemAvatar>
             <ListItemText primary={c.name} secondary={c.semester} />
           </MenuItem>
         )),
