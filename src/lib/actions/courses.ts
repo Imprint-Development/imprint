@@ -6,6 +6,7 @@ import type {
   GradingConfig,
   GradingCategory,
   GradeThreshold,
+  AiAnalysisConfig,
 } from "@/lib/db/schema";
 import { auth } from "@/lib/auth";
 import { eq, sql } from "drizzle-orm";
@@ -327,6 +328,41 @@ export async function setCheckpointCategoryMaxPoints(
   } else {
     config.checkpointOverrides[checkpointId] ??= {};
     config.checkpointOverrides[checkpointId][categoryId] = { maxPoints };
+  }
+
+  await setGradingConfig(courseId, config);
+}
+
+export async function updateAiAnalysisConfig(
+  courseId: string,
+  config: AiAnalysisConfig
+) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  await db
+    .update(courses)
+    .set({ aiAnalysisConfig: config, updatedAt: new Date() })
+    .where(eq(courses.id, courseId));
+
+  revalidatePath(`/courses/${courseId}`);
+}
+
+export async function toggleCheckpointUngraded(
+  courseId: string,
+  checkpointId: string
+) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  const config = await getGradingConfig(courseId);
+  config.ungradedCheckpoints ??= [];
+
+  const idx = config.ungradedCheckpoints.indexOf(checkpointId);
+  if (idx === -1) {
+    config.ungradedCheckpoints.push(checkpointId);
+  } else {
+    config.ungradedCheckpoints.splice(idx, 1);
   }
 
   await setGradingConfig(courseId, config);

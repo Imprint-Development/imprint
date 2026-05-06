@@ -1,13 +1,13 @@
 "use client";
 
 import { useState, Fragment } from "react";
+import NextLink from "next/link";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";
 import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
-import Paper from "@mui/material/Paper";
 import Box from "@mui/material/Box";
 import Collapse from "@mui/material/Collapse";
 import IconButton from "@mui/material/IconButton";
@@ -20,7 +20,6 @@ import KeyboardArrowUpRounded from "@mui/icons-material/KeyboardArrowUpRounded";
 import WarningAmberRounded from "@mui/icons-material/WarningAmberRounded";
 import CheckCircleRounded from "@mui/icons-material/CheckCircleRounded";
 import Tooltip from "@mui/material/Tooltip";
-import AppLink from "@/components/AppLink";
 
 export interface GroupRowData {
   id: string;
@@ -37,14 +36,19 @@ function CollapsibleRow({
   courseId: string;
 }) {
   const [open, setOpen] = useState(false);
+  const href = `/courses/${courseId}/groups/${group.id}`;
 
   return (
     <Fragment>
       <TableRow
         hover
-        sx={{ "& > *": { borderBottom: open ? "unset" : undefined } }}
+        sx={{
+          position: "relative",
+          "& > *": { borderBottom: open ? "unset" : undefined },
+        }}
       >
-        <TableCell sx={{ width: 40, pr: 0 }}>
+        {/* Expand toggle — sits above the row overlay */}
+        <TableCell sx={{ width: 40, pr: 0, position: "relative", zIndex: 1 }}>
           <IconButton size="small" onClick={() => setOpen(!open)}>
             {open ? (
               <KeyboardArrowUpRounded fontSize="small" />
@@ -53,14 +57,34 @@ function CollapsibleRow({
             )}
           </IconButton>
         </TableCell>
+
+        {/* Name cell carries the full-row ::after overlay */}
         <TableCell>
-          <AppLink href={`/courses/${courseId}/groups/${group.id}`}>
-            {group.name}
-          </AppLink>
+          <NextLink
+            href={href}
+            style={{
+              textDecoration: "none",
+              color: "inherit",
+              fontWeight: 500,
+            }}
+          >
+            <span
+              style={{ position: "absolute", inset: 0, zIndex: 0 }}
+              aria-hidden
+            />
+            <span style={{ position: "relative", zIndex: 1 }}>
+              {group.name}
+            </span>
+          </NextLink>
         </TableCell>
-        <TableCell align="right">{group.students.length}</TableCell>
-        <TableCell align="right">{group.repos.length}</TableCell>
-        <TableCell align="center">
+
+        <TableCell align="right" sx={{ position: "relative", zIndex: 1 }}>
+          {group.students.length}
+        </TableCell>
+        <TableCell align="right" sx={{ position: "relative", zIndex: 1 }}>
+          {group.repos.length}
+        </TableCell>
+        <TableCell align="center" sx={{ position: "relative", zIndex: 1 }}>
           {group.repos.length === 0 ? (
             <Tooltip title="No repositories added">
               <WarningAmberRounded color="warning" fontSize="small" />
@@ -76,11 +100,11 @@ function CollapsibleRow({
           )}
         </TableCell>
       </TableRow>
+
       <TableRow>
         <TableCell sx={{ py: 0 }} colSpan={5}>
           <Collapse in={open} timeout="auto" unmountOnExit>
             <Box sx={{ py: 2, pl: 5 }}>
-              {/* Members */}
               <Typography
                 variant="subtitle2"
                 color="text.secondary"
@@ -108,7 +132,6 @@ function CollapsibleRow({
                 </Stack>
               )}
 
-              {/* Repositories */}
               <Typography
                 variant="subtitle2"
                 color="text.secondary"
@@ -150,8 +173,16 @@ export default function GroupsTable({
   groups: GroupRowData[];
   courseId: string;
 }) {
+  const sorted = [...groups].sort((a, b) => a.name.localeCompare(b.name));
   return (
-    <TableContainer component={Paper} variant="outlined">
+    <TableContainer
+      sx={{
+        border: "1px solid",
+        borderColor: "divider",
+        borderRadius: 1,
+        overflow: "hidden",
+      }}
+    >
       <Table size="small">
         <TableHead>
           <TableRow>
@@ -163,7 +194,7 @@ export default function GroupsTable({
           </TableRow>
         </TableHead>
         <TableBody>
-          {groups.map((group) => (
+          {sorted.map((group) => (
             <CollapsibleRow key={group.id} group={group} courseId={courseId} />
           ))}
         </TableBody>

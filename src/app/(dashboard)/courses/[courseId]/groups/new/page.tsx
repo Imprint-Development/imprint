@@ -44,7 +44,7 @@ export default async function NewGroupPage({
   const createGroupWithId = createGroup.bind(null, courseId);
 
   return (
-    <Box sx={{ p: 3, maxWidth: 600 }}>
+    <Box sx={{ p: { xs: 2, md: 3 }, maxWidth: 600 }}>
       <PageBreadcrumbs
         items={[
           { label: "Groups", href: `/courses/${courseId}/groups` },

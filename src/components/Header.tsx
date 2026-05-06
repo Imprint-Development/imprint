@@ -1,10 +1,31 @@
 "use client";
 
+import * as React from "react";
+import { styled } from "@mui/material/styles";
 import AppBar from "@mui/material/AppBar";
-import Toolbar from "@mui/material/Toolbar";
-import IconButton from "@mui/material/IconButton";
+import Stack from "@mui/material/Stack";
+import MuiToolbar from "@mui/material/Toolbar";
+import { tabsClasses } from "@mui/material/Tabs";
 import Typography from "@mui/material/Typography";
-import MenuRounded from "@mui/icons-material/MenuRounded";
+import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
+import ColorModeIconDropdown from "@/components/ColorModeIconDropdown";
+import MenuButton from "@/components/MenuButton";
+
+const Toolbar = styled(MuiToolbar)({
+  width: "100%",
+  padding: "12px",
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "start",
+  justifyContent: "center",
+  gap: "12px",
+  flexShrink: 0,
+  [`& ${tabsClasses.list}`]: {
+    gap: "8px",
+    p: "8px",
+    pb: 0,
+  },
+});
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -14,28 +35,44 @@ export default function Header({ onMenuClick }: HeaderProps) {
   return (
     <AppBar
       position="fixed"
-      color="inherit"
-      elevation={0}
       sx={{
-        display: { xs: "flex", md: "none" },
+        display: { xs: "auto", md: "none" },
+        boxShadow: 0,
+        bgcolor: "background.paper",
+        backgroundImage: "none",
         borderBottom: "1px solid",
         borderColor: "divider",
-        zIndex: (theme) => theme.zIndex.drawer + 1,
+        top: "var(--template-frame-height, 0px)",
       }}
     >
-      <Toolbar variant="dense">
-        <IconButton
-          edge="start"
-          onClick={onMenuClick}
-          size="small"
-          sx={{ mr: 1 }}
+      <Toolbar variant="regular">
+        <Stack
+          direction="row"
+          sx={{ alignItems: "center", flexGrow: 1, width: "100%", gap: 1 }}
         >
-          <MenuRounded />
-        </IconButton>
-        <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-          Imprint
-        </Typography>
+          <Stack
+            direction="row"
+            spacing={1}
+            sx={{ justifyContent: "center", mr: "auto" }}
+          >
+            <Typography
+              variant="h4"
+              component="h1"
+              sx={{ color: "text.primary" }}
+            >
+              Imprint
+            </Typography>
+          </Stack>
+          <ColorModeIconDropdown />
+          <MenuButton aria-label="menu" onClick={onMenuClick}>
+            <MenuRoundedIcon />
+          </MenuButton>
+        </Stack>
       </Toolbar>
     </AppBar>
   );
 }
+
+// Re-export so DashboardShell can use it without importing SideMenuMobile separately
+export { default as MenuButton } from "@/components/MenuButton";
+export type { MenuButtonProps } from "@/components/MenuButton";
