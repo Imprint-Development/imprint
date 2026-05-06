@@ -1,6 +1,4 @@
 {
-  "id": "61e1c704-cfb5-494a-807a-89081188596b",
-  "prevId": "003ad856-4d33-4d2a-b924-91ca3a2f008e",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -109,6 +107,115 @@
           ]
         }
       },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.ai_reports": {
+      "name": "ai_reports",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "checkpoint_id": {
+          "name": "checkpoint_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "group_id": {
+          "name": "group_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "student_id": {
+          "name": "student_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "content": {
+          "name": "content",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider": {
+          "name": "provider",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "model": {
+          "name": "model",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "system_prompt": {
+          "name": "system_prompt",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "ai_reports_checkpoint_id_checkpoints_id_fk": {
+          "name": "ai_reports_checkpoint_id_checkpoints_id_fk",
+          "tableFrom": "ai_reports",
+          "tableTo": "checkpoints",
+          "columnsFrom": [
+            "checkpoint_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "ai_reports_group_id_student_groups_id_fk": {
+          "name": "ai_reports_group_id_student_groups_id_fk",
+          "tableFrom": "ai_reports",
+          "tableTo": "student_groups",
+          "columnsFrom": [
+            "group_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "ai_reports_student_id_students_id_fk": {
+          "name": "ai_reports_student_id_students_id_fk",
+          "tableFrom": "ai_reports",
+          "tableTo": "students",
+          "columnsFrom": [
+            "student_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -605,7 +712,14 @@
           "type": "jsonb",
           "primaryKey": false,
           "notNull": true,
-          "default": "'{\"categories\":[],\"gradeThresholds\":[],\"checkpointOverrides\":{}}'::jsonb"
+          "default": "'{\"categories\":[],\"gradeThresholds\":[],\"checkpointOverrides\":{},\"ungradedCheckpoints\":[]}'::jsonb"
+        },
+        "ai_analysis_config": {
+          "name": "ai_analysis_config",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{\"enabled\":false,\"provider\":\"openai\",\"model\":\"gpt-4o\",\"systemPrompt\":\"\"}'::jsonb"
         },
         "created_by": {
           "name": "created_by",
@@ -705,7 +819,56 @@
           "default": "now()"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "grades_per_checkpoint_unique": {
+          "name": "grades_per_checkpoint_unique",
+          "columns": [
+            {
+              "expression": "student_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "category_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "checkpoint_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "where": "\"checkpoint_id\" IS NOT NULL"
+        },
+        "grades_standalone_unique": {
+          "name": "grades_standalone_unique",
+          "columns": [
+            {
+              "expression": "student_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "category_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "where": "\"checkpoint_id\" IS NULL"
+        }
+      },
       "foreignKeys": {
         "grades_student_id_students_id_fk": {
           "name": "grades_student_id_students_id_fk",
@@ -955,31 +1118,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.system_settings": {
-      "name": "system_settings",
-      "schema": "",
-      "columns": {
-        "key": {
-          "name": "key",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "value": {
-          "name": "value",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.users": {
       "name": "users",
       "schema": "",
@@ -1009,13 +1147,6 @@
           "primaryKey": false,
           "notNull": false,
           "default": "'lecturer'"
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'active'"
         },
         "github_id": {
           "name": "github_id",
@@ -1074,8 +1205,10 @@
   "policies": {},
   "views": {},
   "_meta": {
-    "columns": {},
     "schemas": {},
-    "tables": {}
-  }
+    "tables": {},
+    "columns": {}
+  },
+  "id": "772a4707-8c81-470e-8516-f930a62f5662",
+  "prevId": "61e1c704-cfb5-494a-807a-89081188596b"
 }

@@ -10,7 +10,7 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
-RUN apk add --no-cache su-exec tzdata shadow \
+RUN apk add --no-cache su-exec tzdata shadow git \
   && addgroup --system --gid 1001 appgroup \
   && adduser --system --uid 1001 -G appgroup appuser
 

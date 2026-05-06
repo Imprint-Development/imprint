@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { users, systemSettings } from "@/lib/db/schema";
 import { analysisQueue } from "@/lib/queue";
 import { redirect } from "next/navigation";
-import { eq } from "drizzle-orm";
+import { eq, asc } from "drizzle-orm";
 import TabNav from "@/components/TabNav";
 import Typography from "@mui/material/Typography";
 import Table from "@mui/material/Table";
@@ -12,7 +12,6 @@ import TableCell from "@mui/material/TableCell";
 import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
-import Paper from "@mui/material/Paper";
 import Chip from "@mui/material/Chip";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
@@ -75,7 +74,7 @@ export default async function AdminPage({
       createdAt: users.createdAt,
     })
     .from(users)
-    .orderBy(users.createdAt);
+    .orderBy(asc(users.name));
 
   // ── Settings ─────────────────────────────────────────────────────────────
   const [privateModeSetting] = await db
@@ -136,7 +135,7 @@ export default async function AdminPage({
   );
 
   return (
-    <Box>
+    <Box sx={{ p: { xs: 2, md: 3 } }}>
       <Typography variant="h5" sx={{ mb: 0.5 }}>
         Admin
       </Typography>
@@ -157,7 +156,14 @@ export default async function AdminPage({
               >
                 Pending approval ({lockedUsers.length})
               </Typography>
-              <TableContainer component={Paper} variant="outlined">
+              <TableContainer
+                sx={{
+                  border: "1px solid",
+                  borderColor: "divider",
+                  borderRadius: 1,
+                  overflow: "hidden",
+                }}
+              >
                 <Table size="small">
                   <TableHead>
                     <TableRow>
@@ -193,7 +199,14 @@ export default async function AdminPage({
             <Typography variant="subtitle2" sx={{ mb: 1 }}>
               All users
             </Typography>
-            <TableContainer component={Paper} variant="outlined">
+            <TableContainer
+              sx={{
+                border: "1px solid",
+                borderColor: "divider",
+                borderRadius: 1,
+                overflow: "hidden",
+              }}
+            >
               <Table size="small">
                 <TableHead>
                   <TableRow>
@@ -257,7 +270,14 @@ export default async function AdminPage({
               empty.
             </Typography>
           ) : (
-            <TableContainer component={Paper} variant="outlined">
+            <TableContainer
+              sx={{
+                border: "1px solid",
+                borderColor: "divider",
+                borderRadius: 1,
+                overflow: "hidden",
+              }}
+            >
               <Table size="small">
                 <TableHead>
                   <TableRow>

@@ -1,11 +1,11 @@
 "use client";
 
 import * as React from "react";
+import { alpha } from "@mui/material/styles";
 import Box from "@mui/material/Box";
-import Sidebar from "@/components/Sidebar";
+import Sidebar, { SideMenuMobile } from "@/components/Sidebar";
 import Header from "@/components/Header";
 import { CourseProvider, type CourseOption } from "@/components/CourseProvider";
-import CourseSelectModal from "@/components/CourseSelectModal";
 
 interface DashboardShellProps {
   user: { name: string; email: string; isAdmin: boolean };
@@ -22,43 +22,49 @@ export default function DashboardShell({
   children,
   lockedUsersCount = 0,
 }: DashboardShellProps) {
-  const [drawerOpen, setDrawerOpen] = React.useState(false);
+  const [mobileOpen, setMobileOpen] = React.useState(false);
+  const toggleDrawer = (open: boolean) => () => setMobileOpen(open);
 
   return (
     <CourseProvider courses={courses}>
-      <Box sx={{ display: "flex", height: "100dvh", overflow: "hidden" }}>
+      <Box sx={{ display: "flex" }}>
         <Sidebar
           user={user}
           signOutAction={signOutAction}
           isAdmin={user.isAdmin}
           lockedUsersCount={lockedUsersCount}
-          open={drawerOpen}
-          onClose={() => setDrawerOpen(false)}
         />
+        <Header onMenuClick={toggleDrawer(true)} />
+        <SideMenuMobile
+          open={mobileOpen}
+          toggleDrawer={toggleDrawer}
+          user={user}
+          signOutAction={signOutAction}
+          isAdmin={user.isAdmin}
+          lockedUsersCount={lockedUsersCount}
+        />
+        {/* Main content */}
         <Box
           component="main"
-          sx={{
-            flex: 1,
-            display: "flex",
-            flexDirection: "column",
-            minWidth: 0,
-            gap: 1,
+          sx={(theme) => ({
+            flexGrow: 1,
+            backgroundColor: theme.vars
+              ? `rgba(${theme.vars.palette.background.defaultChannel} / 1)`
+              : alpha(theme.palette.background.default, 1),
             overflow: "auto",
-          }}
+          })}
         >
-          <Header onMenuClick={() => setDrawerOpen(true)} />
           <Box
             sx={{
-              flex: 1,
-              p: 3,
-              pt: { xs: "calc(var(--Header-height, 52px) + 24px)", md: 3 },
+              mx: { xs: 2, md: 3 },
+              pb: 5,
+              mt: { xs: 8, md: 0 },
             }}
           >
             {children}
           </Box>
         </Box>
       </Box>
-      <CourseSelectModal />
     </CourseProvider>
   );
 }
