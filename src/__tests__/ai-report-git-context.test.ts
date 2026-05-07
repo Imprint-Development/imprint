@@ -226,6 +226,7 @@ describe("formatGroupSummaryStudentContext", () => {
     expect(result).toContain("feat: add login");
     expect(result).toContain("Files touched (3 unique):");
     expect(result).not.toContain("diff --git");
+    expect(result).not.toContain("export function login()");
   });
 
   it("returns a no-commits message when no commits exist", () => {
