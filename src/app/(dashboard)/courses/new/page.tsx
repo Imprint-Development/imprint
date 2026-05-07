@@ -19,7 +19,7 @@ export default async function NewCoursePage() {
   if (!session?.user?.id) redirect("/login");
 
   return (
-    <Box sx={{ p: 3, maxWidth: 600 }}>
+    <Box sx={{ p: { xs: 2, md: 3 }, maxWidth: 600 }}>
       <Breadcrumbs sx={{ mb: 2 }}>
         <AppLink href="/">
           <HomeRounded fontSize="small" />
