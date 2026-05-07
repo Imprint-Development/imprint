@@ -30,13 +30,14 @@ cp .env.example .env
 
 Edit `.env` and fill in the values:
 
-| Variable             | Description                                                              |
-| -------------------- | ------------------------------------------------------------------------ |
-| `DATABASE_URL`       | Postgres connection string. Default works with the Docker Compose setup. |
-| `AUTH_SECRET`        | Random secret for signing sessions. Generate one with `npx auth secret`. |
-| `AUTH_GITHUB_ID`     | GitHub OAuth App client ID (see below).                                  |
-| `AUTH_GITHUB_SECRET` | GitHub OAuth App client secret (see below).                              |
-| `REDIS_URL`          | Redis connection string. Default works with the Docker Compose setup.    |
+| Variable               | Description                                                                                      |
+| ---------------------- | ------------------------------------------------------------------------------------------------ |
+| `DATABASE_URL`         | Postgres connection string. Default works with the Docker Compose setup.                         |
+| `AUTH_SECRET`          | Random secret for signing sessions. Generate one with `npx auth secret`.                         |
+| `AUTH_GITHUB_ID`       | GitHub OAuth App client ID (see below).                                                          |
+| `AUTH_GITHUB_SECRET`   | GitHub OAuth App client secret (see below).                                                      |
+| `REDIS_URL`            | Redis connection string. Default works with the Docker Compose setup.                            |
+| `LOCAL_LOGIN_ENABLED`  | Set to `true` to enable local admin login outside of `NODE_ENV=development` (e.g. Vercel previews). |
 
 ### 4. Create a GitHub OAuth App (optional for local dev)
 
@@ -85,7 +86,7 @@ In development mode, the login page shows an additional **"Sign in as Local Admi
 
 This creates (or reuses) a local user with email `admin@localhost` and role `admin`. No GitHub OAuth App is needed for this to work — just the database.
 
-This login method is only available when `NODE_ENV=development` and is not compiled into production builds.
+This login method is enabled automatically when `NODE_ENV=development`. It can also be enabled in other environments (e.g. Vercel preview deployments) by setting `LOCAL_LOGIN_ENABLED=true`.
 
 ## Common Commands
 
