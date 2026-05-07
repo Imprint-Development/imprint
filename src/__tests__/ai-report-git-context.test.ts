@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   formatGitContext,
+  formatGroupSummaryStudentContext,
   formatFileTree,
   extractRepoGitContext,
   type RepoGitContext,
@@ -183,6 +184,80 @@ describe("formatGitContext", () => {
     expect(result).toContain("src/file0.ts");
     expect(result).toContain("src/file59.ts");
     expect(result).not.toContain("src/file60.ts");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// formatGroupSummaryStudentContext
+// ---------------------------------------------------------------------------
+
+describe("formatGroupSummaryStudentContext", () => {
+  const ctx: RepoGitContext = {
+    repoUrl: "https://github.com/org/repo",
+    commitsByStudent: {
+      "student-1": [
+        {
+          hash: "abc12345",
+          date: "2024-03-01T10:00:00Z",
+          message: "feat: add login",
+          stat: "3 files changed, 80 insertions(+)",
+          diff: "diff --git a/src/login.ts b/src/login.ts\n+export function login() {}",
+        },
+        {
+          hash: "def67890",
+          date: "2024-03-05T14:00:00Z",
+          message: "fix: null pointer",
+          stat: "1 file changed, 2 insertions(+), 1 deletion(-)",
+          diff: "diff --git a/src/utils.ts b/src/utils.ts\n-const x = null\n+const x = undefined",
+        },
+      ],
+      "student-2": [],
+    },
+    filesByStudent: {
+      "student-1": ["src/login.ts", "src/utils.ts", "README.md"],
+      "student-2": [],
+    },
+    fileTree: "src/login.ts\nsrc/utils.ts\nREADME.md",
+  };
+
+  it("returns concise context without embedding diffs", () => {
+    const result = formatGroupSummaryStudentContext("student-1", ctx);
+    expect(result).toContain("Commits: 2 total");
+    expect(result).toContain("feat: add login");
+    expect(result).toContain("Files touched (3 unique):");
+    expect(result).not.toContain("diff --git");
+  });
+
+  it("returns a no-commits message when no commits exist", () => {
+    const result = formatGroupSummaryStudentContext("student-2", ctx);
+    expect(result).toMatch(/no commits/i);
+  });
+
+  it("caps commit and file lists and reports overflow", () => {
+    const bigCtx: RepoGitContext = {
+      ...ctx,
+      commitsByStudent: {
+        "student-1": Array.from({ length: 20 }, (_, i) => ({
+          hash: `hash-${i}`,
+          date: "2024-03-01T10:00:00Z",
+          message: `commit ${i}`,
+          stat: "",
+          diff: `diff --git a/src/file${i}.ts b/src/file${i}.ts\n+line`,
+        })),
+      },
+      filesByStudent: {
+        "student-1": Array.from({ length: 50 }, (_, i) => `src/file${i}.ts`),
+      },
+    };
+
+    const result = formatGroupSummaryStudentContext("student-1", bigCtx);
+    expect(result).toContain("20 total");
+    expect(result).toContain("and 5 more commits");
+    expect(result).toContain("and 10 more files");
+    expect(result).toContain("commit 14");
+    expect(result).not.toContain("commit 15");
+    expect(result).toContain("src/file39.ts");
+    expect(result).not.toContain("src/file40.ts");
   });
 });
 

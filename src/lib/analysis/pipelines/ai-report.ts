@@ -165,6 +165,10 @@ const IGNORED_FILE_PATTERNS = [
 
 const MAX_COMMITS_PER_STUDENT = 100;
 const MAX_DIFF_LINES_PER_COMMIT = 150;
+const MAX_GROUP_SUMMARY_COMMITS_PER_STUDENT = 15;
+const MAX_GROUP_SUMMARY_FILES_PER_STUDENT = 40;
+const MAX_GROUP_SUMMARY_SECTION_CHARS = 7000;
+const MAX_GROUP_SUMMARY_PROMPT_CHARS = 120000;
 
 function isIgnoredFile(filePath: string): boolean {
   return IGNORED_FILE_PATTERNS.some((re) => re.test(filePath));
@@ -390,6 +394,56 @@ export function formatGitContext(
   }
 
   return lines.join("\n");
+}
+
+function truncateText(text: string, maxChars: number): string {
+  if (text.length <= maxChars) return text;
+  if (maxChars <= 0) return "";
+
+  const suffix = `\n… (truncated ${text.length - maxChars} chars)`;
+  if (suffix.length >= maxChars) return text.slice(0, maxChars);
+  return text.slice(0, maxChars - suffix.length) + suffix;
+}
+
+/**
+ * Formats compact git context for group summaries.
+ * Avoids full diffs to keep prompts within model limits.
+ */
+export function formatGroupSummaryStudentContext(
+  studentId: string,
+  context: RepoGitContext
+): string {
+  const commits = context.commitsByStudent[studentId] ?? [];
+  const files = context.filesByStudent[studentId] ?? [];
+
+  if (commits.length === 0) {
+    return "No commits found for this student in the checkpoint window.";
+  }
+
+  const lines: string[] = [];
+  lines.push(`Commits: ${commits.length} total`);
+  lines.push("Recent commits:");
+
+  const shownCommits = commits.slice(0, MAX_GROUP_SUMMARY_COMMITS_PER_STUDENT);
+  for (const c of shownCommits) {
+    lines.push(
+      `- [${c.hash}] ${c.date.slice(0, 10)} — ${c.message}${c.stat ? ` (${c.stat})` : ""}`
+    );
+  }
+  if (commits.length > shownCommits.length) {
+    lines.push(`- … and ${commits.length - shownCommits.length} more commits`);
+  }
+
+  if (files.length > 0) {
+    const shownFiles = files.slice(0, MAX_GROUP_SUMMARY_FILES_PER_STUDENT);
+    lines.push(`Files touched (${files.length} unique):`);
+    lines.push(shownFiles.map((f) => `- ${f}`).join("\n"));
+    if (files.length > shownFiles.length) {
+      lines.push(`- … and ${files.length - shownFiles.length} more files`);
+    }
+  }
+
+  return truncateText(lines.join("\n"), MAX_GROUP_SUMMARY_SECTION_CHARS);
 }
 
 /**
@@ -687,7 +741,7 @@ export async function runAiReportPipeline(
   // 6. Generate group summary
   await log("info", "Generating group summary report");
   try {
-    const groupMessage =
+    let groupMessage =
       `Write a group-level summary report for group "${group.name}". ` +
       `For each student, briefly characterise their contribution, then close with an overall assessment of group health and collaboration.\n\n` +
       studentEntries
@@ -698,10 +752,21 @@ export async function runAiReportPipeline(
             data.testMetrics,
             data.reviewMetrics
           );
-          const git = formatGitContext(studentId, mergedGitContext);
+          const git = formatGroupSummaryStudentContext(
+            studentId,
+            mergedGitContext
+          );
           return `## ${data.studentName}\n${metrics}\n\nGit history:\n${git}`;
         })
         .join("\n\n---\n\n");
+
+    if (groupMessage.length > MAX_GROUP_SUMMARY_PROMPT_CHARS) {
+      await log(
+        "warn",
+        `Group summary prompt too large (${groupMessage.length} chars); truncating to ${MAX_GROUP_SUMMARY_PROMPT_CHARS} chars`
+      );
+      groupMessage = truncateText(groupMessage, MAX_GROUP_SUMMARY_PROMPT_CHARS);
+    }
 
     await log(
       "info",
