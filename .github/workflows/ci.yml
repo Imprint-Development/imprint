@@ -163,6 +163,9 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            APP_VERSION=${{ steps.meta.outputs.version }}
+            APP_SHA=${{ github.sha }}
           cache-from: type=registry,ref=ghcr.io/${{ env.REPO_LC }}:buildcache
           cache-to: type=registry,ref=ghcr.io/${{ env.REPO_LC }}:buildcache,mode=max
 
