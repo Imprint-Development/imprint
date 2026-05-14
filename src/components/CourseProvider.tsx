@@ -5,6 +5,7 @@ import {
   useContext,
   useCallback,
   useEffect,
+  useSyncExternalStore,
   type ReactNode,
 } from "react";
 import { usePathname } from "next/navigation";
@@ -48,9 +49,13 @@ export function CourseProvider({
   const pathname = usePathname();
   const courseIdFromUrl = courseIdFromPathname(pathname);
 
-  // URL is the primary source of truth; fall back to last cached value from localStorage
-  const courseIdFromStorage =
-    typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
+  // useSyncExternalStore ensures SSR returns null while the client reads localStorage,
+  // preventing hydration mismatches from synchronous localStorage access during render.
+  const courseIdFromStorage = useSyncExternalStore(
+    () => () => {},
+    () => localStorage.getItem(STORAGE_KEY),
+    () => null
+  );
 
   const resolvedId = courseIdFromUrl ?? courseIdFromStorage;
   const selectedCourseId =

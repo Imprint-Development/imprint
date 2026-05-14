@@ -310,6 +310,10 @@ interface SidebarContentProps {
   isAdmin?: boolean;
 }
 
+const appVersion = process.env.NEXT_PUBLIC_APP_VERSION ?? "";
+const appSha = process.env.NEXT_PUBLIC_APP_SHA ?? "";
+const displayVersion = /^\d/.test(appVersion) ? `v${appVersion}` : appVersion;
+
 function SidebarContent({ user, signOutAction, isAdmin }: SidebarContentProps) {
   return (
     <>
@@ -333,6 +337,26 @@ function SidebarContent({ user, signOutAction, isAdmin }: SidebarContentProps) {
       >
         <MenuContent isAdmin={isAdmin} />
       </Box>
+      <Tooltip
+        title={appSha || ""}
+        placement="top"
+        disableHoverListener={!appSha}
+      >
+        <Typography
+          variant="caption"
+          sx={{
+            display: "block",
+            textAlign: "center",
+            py: 0.75,
+            color: "text.disabled",
+            borderTop: "1px solid",
+            borderColor: "divider",
+            cursor: appSha ? "default" : "unset",
+          }}
+        >
+          Imprint {displayVersion}
+        </Typography>
+      </Tooltip>
       <UserFooter user={user} signOutAction={signOutAction} />
     </>
   );
