@@ -1,10 +1,11 @@
 import ButtonLink from "@/components/ButtonLink";
 import RerunButton from "@/components/RerunButton";
+import ConfirmDeleteButton from "@/components/ConfirmDeleteButton";
 import CheckpointTable from "@/components/CheckpointTable";
 import { db } from "@/lib/db";
 import { checkpoints, courses } from "@/lib/db/schema";
 import { auth } from "@/lib/auth";
-import { triggerAnalysis } from "@/lib/actions/checkpoints";
+import { triggerAnalysis, abortAnalysis } from "@/lib/actions/checkpoints";
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import Typography from "@mui/material/Typography";
@@ -68,13 +69,20 @@ export default async function CheckpointsPage({
           href={(cp) => `/courses/${courseId}/checkpoints/${cp.id}`}
           columns={{ gitRef: true, startDate: true, endDate: true }}
           renderActions={(cp) =>
-            cp.status !== "analyzing" ? (
+            cp.status === "analyzing" ? (
+              <ConfirmDeleteButton
+                title="Abort Analysis"
+                description="Stop the running analysis? The checkpoint will revert to pending and can be re-run."
+                action={abortAnalysis.bind(null, cp.id, courseId)}
+                buttonLabel="Abort"
+              />
+            ) : (
               <RerunButton
                 action={triggerAnalysis.bind(null, cp.id, courseId)}
                 enabledPipelines={cp.enabledPipelines ?? []}
                 isPending={cp.status === "pending"}
               />
-            ) : null
+            )
           }
         />
       )}

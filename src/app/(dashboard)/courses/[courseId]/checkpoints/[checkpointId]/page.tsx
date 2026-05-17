@@ -24,7 +24,11 @@ import {
 import { auth } from "@/lib/auth";
 import { eq, and, inArray, or, gte, max, like, desc } from "drizzle-orm";
 import { redirect } from "next/navigation";
-import { triggerAnalysis, deleteCheckpoint } from "@/lib/actions/checkpoints";
+import {
+  triggerAnalysis,
+  deleteCheckpoint,
+  abortAnalysis,
+} from "@/lib/actions/checkpoints";
 import { CHECKPOINT_STATUS_COLOR } from "@/lib/constants";
 import type {
   AnalysisRow,
@@ -338,6 +342,7 @@ export default async function CheckpointDetailPage({
     checkpointId,
     courseId
   );
+  const abortAnalysisWithIds = abortAnalysis.bind(null, checkpointId, courseId);
 
   // Most recent analysis run across all groups
   const lastRunAt = groupPaneData.reduce<Date | null>((max, g) => {
@@ -378,6 +383,14 @@ export default async function CheckpointDetailPage({
             action={triggerAnalysisWithIds}
             enabledPipelines={checkpoint.enabledPipelines}
             isPending={checkpoint.status === "pending"}
+          />
+        )}
+        {checkpoint.status === "analyzing" && (
+          <ConfirmDeleteButton
+            title="Abort Analysis"
+            description="Stop the running analysis? The checkpoint will revert to pending and can be re-run."
+            action={abortAnalysisWithIds}
+            buttonLabel="Abort"
           />
         )}
       </Stack>
@@ -445,14 +458,24 @@ export default async function CheckpointDetailPage({
           )}
 
           {checkpoint.status === "analyzing" && (
-            <Alert severity="info" sx={{ mb: 3 }}>
-              Analysis is running in the background.{" "}
-              <AppLink
-                href={`/courses/${courseId}/checkpoints/${checkpointId}?tab=overview`}
-              >
-                View logs
-              </AppLink>
-            </Alert>
+            <Stack spacing={2} sx={{ mb: 3 }}>
+              <Alert severity="info">
+                Analysis is running in the background.{" "}
+                <AppLink
+                  href={`/courses/${courseId}/checkpoints/${checkpointId}?tab=overview`}
+                >
+                  View logs
+                </AppLink>
+              </Alert>
+              <Box>
+                <ConfirmDeleteButton
+                  title="Abort Analysis"
+                  description="Stop the running analysis? The checkpoint will revert to pending and can be re-run."
+                  action={abortAnalysisWithIds}
+                  buttonLabel="Abort"
+                />
+              </Box>
+            </Stack>
           )}
 
           {checkpoint.status === "failed" && (

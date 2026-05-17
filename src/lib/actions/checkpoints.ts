@@ -89,6 +89,38 @@ export async function discardAnalysis(checkpointId: string, courseId: string) {
   revalidatePath(`/courses/${courseId}/checkpoints/${checkpointId}`);
 }
 
+export async function abortAnalysis(checkpointId: string, courseId: string) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  // Remove any queued (not-yet-started) jobs for this checkpoint
+  try {
+    const waitingJobs = await analysisQueue.getJobs([
+      "waiting",
+      "delayed",
+      "prioritized",
+    ]);
+    await Promise.all(
+      waitingJobs
+        .filter((job) => job.data.checkpointId === checkpointId)
+        .map((job) => job.remove())
+    );
+  } catch {
+    // Redis may be unavailable — proceed with status update anyway
+  }
+
+  // Mark checkpoint as pending so the UI updates immediately.
+  // The runner's finally block will see status is no longer "analyzing"
+  // and will leave it alone.
+  await db
+    .update(checkpoints)
+    .set({ status: "pending" })
+    .where(eq(checkpoints.id, checkpointId));
+
+  revalidatePath(`/courses/${courseId}/checkpoints/${checkpointId}`);
+  revalidatePath(`/courses/${courseId}/checkpoints`);
+}
+
 export async function rerunGroupAnalysis(
   checkpointId: string,
   groupId: string,

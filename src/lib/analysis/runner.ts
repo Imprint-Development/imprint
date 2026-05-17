@@ -5,7 +5,7 @@ import {
   studentGroups,
   checkpointLogs,
 } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, ne } from "drizzle-orm";
 import type { LogLevel } from "./pipelines/types";
 import { runContributionsPipeline } from "./pipelines/contributions";
 import { runReviewPipeline } from "./pipelines/review";
@@ -205,11 +205,14 @@ export async function runAnalysis(
       err
     );
   } finally {
-    // Always write the final status so the checkpoint never stays "analyzing"
+    // Only update status if the checkpoint is still "analyzing".
+    // If the run was aborted (status reset to "pending"), leave it alone.
     await db
       .update(checkpoints)
       .set({ status: failed ? "failed" : "complete" })
-      .where(eq(checkpoints.id, checkpointId));
+      .where(
+        and(eq(checkpoints.id, checkpointId), ne(checkpoints.status, "pending"))
+      );
     console.log(
       `[runner] Checkpoint ${checkpointId} status set to ${failed ? "failed" : "complete"}`
     );
