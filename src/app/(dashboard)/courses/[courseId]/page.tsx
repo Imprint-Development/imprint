@@ -4,6 +4,7 @@ import CheckpointTable from "@/components/CheckpointTable";
 import ImportCsvButton from "@/components/ImportCsvButton";
 import ConfirmDeleteButton from "@/components/ConfirmDeleteButton";
 import TabNav from "@/components/TabNav";
+import AddCollaboratorForm from "@/components/AddCollaboratorForm";
 import AiAnalysisTab from "./AiAnalysisTab";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -815,20 +816,7 @@ export default async function CourseDetailPage({
             </Table>
           </TableContainer>
           <Divider sx={{ my: 2 }} />
-          <form action={addCollaboratorWithId}>
-            <Stack direction="row" spacing={1}>
-              <TextField
-                name="email"
-                placeholder="Email address"
-                type="email"
-                size="small"
-                sx={{ flex: 1, maxWidth: 400 }}
-              />
-              <Button type="submit" size="small" variant="contained">
-                Add
-              </Button>
-            </Stack>
-          </form>
+          <AddCollaboratorForm action={addCollaboratorWithId} />
         </Box>
       )}
 
