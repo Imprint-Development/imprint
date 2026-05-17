@@ -14,6 +14,10 @@ ENV BUILD_STANDALONE=true
 # DATABASE_URL must be defined at build time only if pages use static generation
 # with DB access. For this app all data fetching is at runtime, so a stub suffices.
 ENV DATABASE_URL=postgresql://localhost/stub
+ARG APP_VERSION
+ARG APP_SHA
+ENV APP_VERSION=$APP_VERSION
+ENV APP_SHA=$APP_SHA
 RUN npm run build
 
 # Stage 3: production runtime

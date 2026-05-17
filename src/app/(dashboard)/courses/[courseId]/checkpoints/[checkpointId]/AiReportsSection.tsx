@@ -19,6 +19,7 @@ import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import GroupsIcon from "@mui/icons-material/Groups";
 import PersonIcon from "@mui/icons-material/Person";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import AppLink from "@/components/AppLink";
 
 export interface AiReportRow {
@@ -133,9 +134,31 @@ function ReportCard({
             overflow: "auto",
             mb: 1,
           },
+          "& table": {
+            borderCollapse: "collapse",
+            width: "100%",
+            mb: 2,
+            fontSize: "0.9em",
+          },
+          "& th, & td": {
+            border: 1,
+            borderColor: "divider",
+            px: 1.5,
+            py: 0.75,
+            textAlign: "left",
+          },
+          "& th": {
+            bgcolor: "action.hover",
+            fontWeight: 600,
+          },
+          "& tr:nth-of-type(even) td": {
+            bgcolor: "action.selected",
+          },
         }}
       >
-        <ReactMarkdown>{report.content}</ReactMarkdown>
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+          {report.content}
+        </ReactMarkdown>
       </Box>
     </Box>
   );

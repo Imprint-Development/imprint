@@ -16,7 +16,9 @@ export default function LoginPage() {
     });
   }
 
-  const showDevLogin = process.env.NODE_ENV === "development";
+  const showDevLogin =
+    process.env.NODE_ENV === "development" ||
+    process.env.LOCAL_LOGIN_ENABLED === "true";
 
   return (
     <LoginClient
