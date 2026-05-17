@@ -6,6 +6,7 @@ import {
   checkpointAnalyses,
   checkpointRepoMeta,
   checkpointLogs,
+  courseCollaborators,
 } from "@/lib/db/schema";
 import { auth } from "@/lib/auth";
 import { eq, and } from "drizzle-orm";
@@ -13,6 +14,24 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { analysisQueue } from "@/lib/queue";
 import { ALL_PIPELINE_IDS } from "@/lib/analysis/pipelines/registry";
+
+async function requireCollaborator(courseId: string) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  const [membership] = await db
+    .select()
+    .from(courseCollaborators)
+    .where(
+      and(
+        eq(courseCollaborators.courseId, courseId),
+        eq(courseCollaborators.userId, session.user.id)
+      )
+    );
+
+  if (!membership) throw new Error("Forbidden");
+  return session;
+}
 
 export async function createCheckpoint(courseId: string, formData: FormData) {
   const session = await auth();
@@ -90,8 +109,7 @@ export async function discardAnalysis(checkpointId: string, courseId: string) {
 }
 
 export async function abortAnalysis(checkpointId: string, courseId: string) {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
+  await requireCollaborator(courseId);
 
   // Remove any queued (not-yet-started) jobs for this checkpoint
   try {
@@ -105,8 +123,12 @@ export async function abortAnalysis(checkpointId: string, courseId: string) {
         .filter((job) => job.data.checkpointId === checkpointId)
         .map((job) => job.remove())
     );
-  } catch {
-    // Redis may be unavailable — proceed with status update anyway
+  } catch (err) {
+    // Redis may be unavailable — log and proceed with status update anyway
+    console.error(
+      `[abortAnalysis] Failed to remove queued jobs for checkpoint ${checkpointId}:`,
+      err
+    );
   }
 
   // Mark checkpoint as pending so the UI updates immediately.
