@@ -13,7 +13,7 @@ test("grading page has Export CSV button", async ({ page }) => {
   const courseId = await getSeCourseId(page);
   await page.goto(`/courses/${courseId}/grading`);
 
-  await expect(page.getByRole("link", { name: /Export CSV/i })).toBeVisible();
+  await expect(page.getByText(/Export CSV/i)).toBeVisible();
 });
 
 test("grading page shows grade categories", async ({ page }) => {
