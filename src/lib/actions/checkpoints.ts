@@ -29,7 +29,7 @@ async function requireCollaborator(courseId: string) {
       )
     );
 
-  if (!membership) throw new Error("Forbidden");
+  if (!membership) throw new Error("Not a collaborator on this course");
   return session;
 }
 

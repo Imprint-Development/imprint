@@ -207,10 +207,10 @@ export async function runAnalysis(
   } finally {
     // Only update status if the checkpoint is still "analyzing".
     // If the run was aborted (status reset to "pending"), leave it alone.
-    const finalStatus = failed ? "failed" : "complete";
+    const targetStatus = failed ? "failed" : "complete";
     const result = await db
       .update(checkpoints)
-      .set({ status: finalStatus })
+      .set({ status: targetStatus })
       .where(
         and(eq(checkpoints.id, checkpointId), ne(checkpoints.status, "pending"))
       )
@@ -218,7 +218,7 @@ export async function runAnalysis(
 
     if (result.length > 0) {
       console.log(
-        `[runner] Checkpoint ${checkpointId} status set to ${finalStatus}`
+        `[runner] Checkpoint ${checkpointId} status set to ${targetStatus}`
       );
     } else {
       console.log(
