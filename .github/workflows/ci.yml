@@ -103,8 +103,18 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/imprint
+      REDIS_URL: redis://localhost:6379
       AUTH_SECRET: ci-e2e-test-secret-not-for-production
       # Dummy values — GitHub OAuth is not exercised in e2e tests
       AUTH_GITHUB_ID: ci-unused
