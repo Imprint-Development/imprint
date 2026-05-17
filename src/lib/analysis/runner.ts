@@ -5,7 +5,7 @@ import {
   studentGroups,
   checkpointLogs,
 } from "@/lib/db/schema";
-import { eq, and, ne } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import type { LogLevel } from "./pipelines/types";
 import { runContributionsPipeline } from "./pipelines/contributions";
 import { runReviewPipeline } from "./pipelines/review";
@@ -21,12 +21,28 @@ import { ALL_PIPELINE_IDS } from "./pipelines/registry";
  * "complete" as long as the run finishes (even with pipeline-level errors).
  * It is only marked "failed" when an unexpected error prevents the run from
  * completing at all (e.g. the checkpoint record cannot be loaded).
+ *
+ * @param runId  Token stored in checkpoint.currentRunId at dispatch time. The
+ *               runner compares this value before processing each group so that
+ *               a superseded run (due to abort or re-trigger) stops writing
+ *               data to the database rather than clobbering a newer run.
  */
 export async function runAnalysis(
   checkpointId: string,
+  runId: string,
   groupIdFilter?: string
 ): Promise<void> {
   let failed = false;
+
+  /** Returns true while this run is still the current one for the checkpoint. */
+  const isCurrentRun = async (): Promise<boolean> => {
+    const [row] = await db
+      .select({ currentRunId: checkpoints.currentRunId })
+      .from(checkpoints)
+      .where(eq(checkpoints.id, checkpointId))
+      .limit(1);
+    return row?.currentRunId === runId;
+  };
 
   try {
     const [checkpoint] = await db
@@ -69,6 +85,14 @@ export async function runAnalysis(
     // Run all groups in parallel; within each group run all pipelines in parallel.
     const groupResults = await Promise.allSettled(
       allGroups.map(async (group) => {
+        // Check before starting each group to detect abort / re-trigger
+        if (!(await isCurrentRun())) {
+          console.log(
+            `[runner] Run ${runId} superseded for checkpoint ${checkpointId} — skipping group "${group.name}"`
+          );
+          return;
+        }
+
         const makeLogger =
           (pipeline: string) =>
           async (
@@ -205,14 +229,18 @@ export async function runAnalysis(
       err
     );
   } finally {
-    // Only update status if the checkpoint is still "analyzing".
-    // If the run was aborted (status reset to "pending"), leave it alone.
+    // Only update status if this run is still the current one. If the run was
+    // aborted (currentRunId cleared) or superseded by a new trigger (different
+    // runId), leave the checkpoint alone.
     const targetStatus = failed ? "failed" : "complete";
     const result = await db
       .update(checkpoints)
-      .set({ status: targetStatus })
+      .set({ status: targetStatus, currentRunId: null })
       .where(
-        and(eq(checkpoints.id, checkpointId), ne(checkpoints.status, "pending"))
+        and(
+          eq(checkpoints.id, checkpointId),
+          eq(checkpoints.currentRunId, runId)
+        )
       )
       .returning({ status: checkpoints.status });
 
@@ -222,7 +250,7 @@ export async function runAnalysis(
       );
     } else {
       console.log(
-        `[runner] Checkpoint ${checkpointId} was aborted; status left as pending`
+        `[runner] Run ${runId} was superseded for checkpoint ${checkpointId}; status unchanged`
       );
     }
   }

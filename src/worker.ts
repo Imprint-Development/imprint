@@ -17,9 +17,9 @@ const worker = new Worker<AnalysisJobData>(
   "analysis",
   async (job) => {
     console.log(
-      `[worker] Processing job ${job.id} — checkpoint ${job.data.checkpointId}`
+      `[worker] Processing job ${job.id} — checkpoint ${job.data.checkpointId} run ${job.data.runId}`
     );
-    await runAnalysis(job.data.checkpointId, job.data.groupId);
+    await runAnalysis(job.data.checkpointId, job.data.runId, job.data.groupId);
     console.log(`[worker] Job ${job.id} complete`);
   },
   { connection, concurrency: 2 }

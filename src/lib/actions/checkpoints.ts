@@ -68,13 +68,15 @@ export async function triggerAnalysis(
     .delete(checkpointLogs)
     .where(eq(checkpointLogs.checkpointId, checkpointId));
 
+  const runId = crypto.randomUUID();
+
   await db
     .update(checkpoints)
-    .set({ status: "analyzing", enabledPipelines })
+    .set({ status: "analyzing", enabledPipelines, currentRunId: runId })
     .where(eq(checkpoints.id, checkpointId));
 
   // Enqueue the analysis job — the worker will update status when done
-  await analysisQueue.add("analyze", { checkpointId, courseId });
+  await analysisQueue.add("analyze", { checkpointId, courseId, runId });
 
   revalidatePath(`/courses/${courseId}/checkpoints/${checkpointId}`);
 }
@@ -131,12 +133,11 @@ export async function abortAnalysis(checkpointId: string, courseId: string) {
     );
   }
 
-  // Mark checkpoint as pending so the UI updates immediately.
-  // The runner's finally block will see status is no longer "analyzing"
-  // and will leave it alone.
+  // Clear the run token and reset status to pending. Any active runner will see
+  // its runId no longer matches currentRunId and will stop writing data.
   await db
     .update(checkpoints)
-    .set({ status: "pending" })
+    .set({ status: "pending", currentRunId: null })
     .where(eq(checkpoints.id, checkpointId));
 
   revalidatePath(`/courses/${courseId}/checkpoints/${checkpointId}`);
@@ -161,14 +162,21 @@ export async function rerunGroupAnalysis(
       )
     );
 
+  const runId = crypto.randomUUID();
+
   // Mark checkpoint as analyzing so the UI reflects in-progress state
   await db
     .update(checkpoints)
-    .set({ status: "analyzing" })
+    .set({ status: "analyzing", currentRunId: runId })
     .where(eq(checkpoints.id, checkpointId));
 
   // Enqueue a targeted job — the worker will restore status to complete/failed
-  await analysisQueue.add("analyze-group", { checkpointId, courseId, groupId });
+  await analysisQueue.add("analyze-group", {
+    checkpointId,
+    courseId,
+    groupId,
+    runId,
+  });
 
   revalidatePath(
     `/courses/${courseId}/groups/${groupId}/checkpoints/${checkpointId}`

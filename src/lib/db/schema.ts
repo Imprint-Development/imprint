@@ -184,6 +184,9 @@ export const checkpoints = pgTable("checkpoints", {
     .notNull()
     .default(sql`ARRAY['contributions']::text[]`),
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow(),
+  /** Identifies the current active run. Runners compare this to their own token
+   *  to detect if they have been superseded by an abort or a new trigger. */
+  currentRunId: text("current_run_id"),
 });
 
 export const checkpointAnalyses = pgTable("checkpoint_analyses", {
