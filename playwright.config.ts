@@ -32,10 +32,12 @@ export default defineConfig({
     command: "npm start",
     url: "http://localhost:3000",
     reuseExistingServer: !process.env.CI,
-    // LOCAL_LOGIN_ENABLED shows the credentials form; other vars (DATABASE_URL,
-    // AUTH_SECRET) are inherited from the CI job env or from .env.local locally.
+    // LOCAL_LOGIN_ENABLED shows the credentials form; DATABASE_URL and
+    // AUTH_SECRET are inherited from the CI job env or from .env.local locally.
+    // AUTH_URL tells Auth.js which host to trust (required in v5).
     env: {
       LOCAL_LOGIN_ENABLED: "true",
+      AUTH_URL: "http://localhost:3000",
     },
   },
 });

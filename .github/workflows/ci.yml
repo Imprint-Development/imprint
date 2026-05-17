@@ -109,6 +109,7 @@ jobs:
       # Dummy values — GitHub OAuth is not exercised in e2e tests
       AUTH_GITHUB_ID: ci-unused
       AUTH_GITHUB_SECRET: ci-unused
+      AUTH_URL: http://localhost:3000
       LOCAL_LOGIN_ENABLED: "true"
       NEXT_TELEMETRY_DISABLED: 1
     steps:
