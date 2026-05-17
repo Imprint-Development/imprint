@@ -106,7 +106,7 @@ export async function addIgnoredGitEmail(courseId: string, formData: FormData) {
     })
     .where(eq(courses.id, courseId));
 
-  revalidatePath(`/courses/${courseId}/edit`);
+  revalidatePath(`/courses/${courseId}`);
 }
 
 export async function removeIgnoredGitEmail(courseId: string, email: string) {
@@ -120,7 +120,7 @@ export async function removeIgnoredGitEmail(courseId: string, email: string) {
     })
     .where(eq(courses.id, courseId));
 
-  revalidatePath(`/courses/${courseId}/edit`);
+  revalidatePath(`/courses/${courseId}`);
 }
 
 export async function addIgnoredGithubUsername(

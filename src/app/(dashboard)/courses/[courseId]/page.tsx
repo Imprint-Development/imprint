@@ -914,7 +914,7 @@ export default async function CourseDetailPage({
                       <Chip
                         size="small"
                         label={email}
-                        onDelete={undefined}
+                        onDelete={() => {}}
                         deleteIcon={
                           <IconButton
                             type="submit"
@@ -971,7 +971,7 @@ export default async function CourseDetailPage({
                       <Chip
                         size="small"
                         label={username}
-                        onDelete={undefined}
+                        onDelete={() => {}}
                         deleteIcon={
                           <IconButton
                             type="submit"
