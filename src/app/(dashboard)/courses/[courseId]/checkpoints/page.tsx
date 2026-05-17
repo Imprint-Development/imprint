@@ -1,6 +1,6 @@
 import ButtonLink from "@/components/ButtonLink";
 import RerunButton from "@/components/RerunButton";
-import ConfirmDeleteButton from "@/components/ConfirmDeleteButton";
+import AbortButton from "@/components/AbortButton";
 import CheckpointTable from "@/components/CheckpointTable";
 import { db } from "@/lib/db";
 import { checkpoints, courses } from "@/lib/db/schema";
@@ -70,12 +70,7 @@ export default async function CheckpointsPage({
           columns={{ gitRef: true, startDate: true, endDate: true }}
           renderActions={(cp) =>
             cp.status === "analyzing" ? (
-              <ConfirmDeleteButton
-                title="Abort Analysis"
-                description="Stop the running analysis? The checkpoint will revert to pending and can be re-run."
-                action={abortAnalysis.bind(null, cp.id, courseId)}
-                buttonLabel="Abort"
-              />
+              <AbortButton action={abortAnalysis.bind(null, cp.id, courseId)} />
             ) : (
               <RerunButton
                 action={triggerAnalysis.bind(null, cp.id, courseId)}

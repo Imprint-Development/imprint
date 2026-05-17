@@ -1,4 +1,5 @@
 import AppLink from "@/components/AppLink";
+import AbortButton from "@/components/AbortButton";
 import ConfirmDeleteButton from "@/components/ConfirmDeleteButton";
 import RerunButton from "@/components/RerunButton";
 import TabNav from "@/components/TabNav";
@@ -386,12 +387,7 @@ export default async function CheckpointDetailPage({
           />
         )}
         {checkpoint.status === "analyzing" && (
-          <ConfirmDeleteButton
-            title="Abort Analysis"
-            description="Stop the running analysis? The checkpoint will revert to pending and can be re-run."
-            action={abortAnalysisWithIds}
-            buttonLabel="Abort"
-          />
+          <AbortButton action={abortAnalysisWithIds} />
         )}
       </Stack>
 
@@ -468,12 +464,7 @@ export default async function CheckpointDetailPage({
                 </AppLink>
               </Alert>
               <Box>
-                <ConfirmDeleteButton
-                  title="Abort Analysis"
-                  description="Stop the running analysis? The checkpoint will revert to pending and can be re-run."
-                  action={abortAnalysisWithIds}
-                  buttonLabel="Abort"
-                />
+                <AbortButton action={abortAnalysisWithIds} />
               </Box>
             </Stack>
           )}
