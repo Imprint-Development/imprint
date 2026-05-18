@@ -24,7 +24,10 @@ test("clicking a course navigates to the course settings page", async ({
     .getByRole("link", { name: "Software Engineering Praktikum" })
     .click();
   await expect(page).toHaveURL(/\/courses\/[^/]+/);
-  await expect(page.getByText("Software Engineering Praktikum")).toBeVisible();
+  // Course name appears in sidebar selector, breadcrumbs, and page heading; target the heading
+  await expect(
+    page.getByRole("heading", { name: "Software Engineering Praktikum" })
+  ).toBeVisible();
 });
 
 test("course checkpoints page lists seeded checkpoints", async ({ page }) => {
