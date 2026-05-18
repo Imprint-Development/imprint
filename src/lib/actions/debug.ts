@@ -61,9 +61,10 @@ export async function debugRunPipeline(
 
   // Temporarily override enabledPipelines on the checkpoint so the runner
   // respects the admin's selection, then restore after the job is enqueued.
+  const runId = crypto.randomUUID();
   await db
     .update(checkpoints)
-    .set({ enabledPipelines: pipelines })
+    .set({ enabledPipelines: pipelines, currentRunId: runId })
     .where(eq(checkpoints.id, checkpointId));
 
   const jobName = groupId ? "analyze-group" : "analyze";
@@ -71,6 +72,7 @@ export async function debugRunPipeline(
     checkpointId,
     courseId: cp.courseId,
     groupId,
+    runId,
   });
 
   return { ok: true, jobId: job.id };
