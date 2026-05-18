@@ -1,7 +1,9 @@
 import { test as setup, expect } from "@playwright/test";
 import path from "path";
+import fs from "fs";
 
 const authFile = path.join(__dirname, ".auth/user.json");
+fs.mkdirSync(path.dirname(authFile), { recursive: true });
 
 setup("authenticate as admin", async ({ page }) => {
   await page.goto("/login");

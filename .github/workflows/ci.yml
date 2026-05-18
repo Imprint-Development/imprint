@@ -150,6 +150,38 @@ jobs:
 
       - name: Run E2E tests
         run: npm run test:e2e
+        continue-on-error: true
+
+      - name: Print E2E failures
+        if: always()
+        run: |
+          if [ -f test-results/results.json ]; then
+            node -e "
+              const r = JSON.parse(require('fs').readFileSync('test-results/results.json','utf8'));
+              let failed = 0;
+              function scan(s) {
+                (s.suites||[]).forEach(scan);
+                (s.specs||[]).forEach(spec => {
+                  (spec.tests||[]).forEach(t => {
+                    (t.results||[]).forEach(res => {
+                      if (res.status !== 'passed' && res.status !== 'skipped') {
+                        failed++;
+                        console.log('FAIL:', spec.title);
+                        const msg = res.error && res.error.message ? res.error.message.slice(0,600) : res.status;
+                        console.log('  ', msg.replace(/\n/g, '\n   '));
+                      }
+                    });
+                  });
+                });
+              }
+              (r.suites||[]).forEach(scan);
+              if (!failed) console.log('All tests passed or no results found');
+              process.exit(failed > 0 ? 1 : 0);
+            "
+          else
+            echo 'No test-results/results.json found — check webServer startup logs above'
+            exit 1
+          fi
 
       - name: Upload Playwright report
         if: failure()

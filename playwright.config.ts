@@ -6,7 +6,12 @@ export default defineConfig({
   fullyParallel: false,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI
-    ? [["list"], ["html", { open: "never" }], ["github"]]
+    ? [
+        ["list"],
+        ["html", { open: "never" }],
+        ["github"],
+        ["json", { outputFile: "test-results/results.json" }],
+      ]
     : [["html"]],
   use: {
     baseURL: "http://localhost:3000",
@@ -31,6 +36,7 @@ export default defineConfig({
   webServer: {
     command: "npm start",
     url: "http://localhost:3000",
+    timeout: 120_000,
     reuseExistingServer: !process.env.CI,
     // LOCAL_LOGIN_ENABLED shows the credentials form; DATABASE_URL and
     // AUTH_SECRET are inherited from the CI job env or from .env.local locally.

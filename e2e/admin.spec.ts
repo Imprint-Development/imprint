@@ -4,7 +4,8 @@ test("admin can access the admin panel", async ({ page }) => {
   await page.goto("/admin");
   // Should land on the admin page, not be redirected away
   await expect(page).toHaveURL(/\/admin/);
-  await expect(page.getByText("Local Admin")).toBeVisible();
+  // "Local Admin" also appears in the sidebar user widget; .first() avoids strict-mode violation
+  await expect(page.getByText("Local Admin").first()).toBeVisible();
 });
 
 test("admin user table shows seeded lecturer accounts", async ({ page }) => {

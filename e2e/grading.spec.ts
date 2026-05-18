@@ -20,9 +20,10 @@ test("grading page shows grade categories", async ({ page }) => {
   const courseId = await getSeCourseId(page);
   await page.goto(`/courses/${courseId}/grading`);
 
-  await expect(page.getByText("Code Quality")).toBeVisible();
-  await expect(page.getByText("Testing")).toBeVisible();
-  await expect(page.getByText("Code Review")).toBeVisible();
+  // Each category appears once per graded checkpoint column; .first() avoids strict-mode violation
+  await expect(page.getByText("Code Quality").first()).toBeVisible();
+  await expect(page.getByText("Testing").first()).toBeVisible();
+  await expect(page.getByText("Code Review").first()).toBeVisible();
 });
 
 async function getSeCourseId(page: import("@playwright/test").Page) {
