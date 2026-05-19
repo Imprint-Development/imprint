@@ -13,11 +13,22 @@ export default async function DashboardLayout({
   const session = await auth();
   if (!session) redirect("/login");
 
-  const [dbUser] = await db
-    .select({ role: users.role, status: users.status })
-    .from(users)
-    .where(eq(users.id, session.user!.id!))
-    .limit(1);
+  const [[dbUser], userCourses] = await Promise.all([
+    db
+      .select({ role: users.role, status: users.status })
+      .from(users)
+      .where(eq(users.id, session.user!.id!))
+      .limit(1),
+    db
+      .select({
+        id: courses.id,
+        name: courses.name,
+        semester: courses.semester,
+      })
+      .from(courseCollaborators)
+      .innerJoin(courses, eq(courses.id, courseCollaborators.courseId))
+      .where(eq(courseCollaborators.userId, session.user!.id!)),
+  ]);
 
   // Redirect locked or banned users
   if (dbUser?.status === "locked") redirect("/locked");
@@ -28,16 +39,6 @@ export default async function DashboardLayout({
     email: session.user?.email ?? "",
     isAdmin: dbUser?.role === "admin",
   };
-
-  const userCourses = await db
-    .select({
-      id: courses.id,
-      name: courses.name,
-      semester: courses.semester,
-    })
-    .from(courseCollaborators)
-    .innerJoin(courses, eq(courses.id, courseCollaborators.courseId))
-    .where(eq(courseCollaborators.userId, session.user!.id!));
 
   // Count users waiting for approval (locked) — shown as badge on Admin nav
   let lockedUsersCount = 0;
