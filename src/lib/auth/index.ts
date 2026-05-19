@@ -3,7 +3,7 @@ import GitHub from "next-auth/providers/github";
 import Credentials from "next-auth/providers/credentials";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import { db } from "@/lib/db";
-import { users, accounts, sessions } from "@/lib/db/schema";
+import { users, accounts, sessions, systemSettings } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 
 import type { Provider } from "next-auth/providers";
@@ -16,11 +16,14 @@ declare module "next-auth" {
       email?: string | null;
       image?: string | null;
       role?: string | null;
+      status?: string | null;
     };
   }
 }
 
-const isLocalDev = process.env.NODE_ENV === "development";
+const isLocalLoginEnabled =
+  process.env.NODE_ENV === "development" ||
+  process.env.LOCAL_LOGIN_ENABLED === "true";
 
 const providers: Provider[] = [
   GitHub({
@@ -29,7 +32,7 @@ const providers: Provider[] = [
   }),
 ];
 
-if (isLocalDev) {
+if (isLocalLoginEnabled) {
   providers.push(
     Credentials({
       id: "local-credentials",
@@ -85,23 +88,35 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   }),
   providers,
   session: {
-    strategy: isLocalDev ? "jwt" : "database",
+    strategy: isLocalLoginEnabled ? "jwt" : "database",
   },
   pages: {
     signIn: "/login",
   },
   callbacks: {
+    async signIn({ user }) {
+      if (!user.id) return true;
+      // Block banned users
+      const [dbUser] = await db
+        .select({ status: users.status })
+        .from(users)
+        .where(eq(users.id, user.id))
+        .limit(1);
+      if (dbUser?.status === "banned") return false;
+      return true;
+    },
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        // Fetch role from DB on first sign-in
+        // Fetch role and status from DB on first sign-in
         if (user.id) {
           const [dbUser] = await db
-            .select({ role: users.role })
+            .select({ role: users.role, status: users.status })
             .from(users)
             .where(eq(users.id, user.id))
             .limit(1);
           token.role = dbUser?.role ?? "lecturer";
+          token.status = dbUser?.status ?? "active";
         }
       }
       return token;
@@ -110,17 +125,40 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (token?.id) {
         session.user.id = token.id as string;
         session.user.role = token.role as string | undefined;
+        session.user.status = token.status as string | undefined;
       } else if (user) {
         session.user.id = user.id;
-        // Fetch role from DB for database sessions
+        // Fetch role and status from DB for database sessions
         const [dbUser] = await db
-          .select({ role: users.role })
+          .select({ role: users.role, status: users.status })
           .from(users)
           .where(eq(users.id, user.id))
           .limit(1);
         session.user.role = dbUser?.role ?? "lecturer";
+        session.user.status = dbUser?.status ?? "active";
       }
       return session;
+    },
+  },
+  events: {
+    async createUser({ user }) {
+      if (!user.id) return;
+      // If private mode is enabled, lock new users automatically
+      try {
+        const [setting] = await db
+          .select({ value: systemSettings.value })
+          .from(systemSettings)
+          .where(eq(systemSettings.key, "privateModeEnabled"))
+          .limit(1);
+        if (setting?.value === true || setting?.value === "true") {
+          await db
+            .update(users)
+            .set({ status: "locked" })
+            .where(eq(users.id, user.id));
+        }
+      } catch {
+        // Ignore errors (e.g., table not yet created during migrations)
+      }
     },
   },
 });

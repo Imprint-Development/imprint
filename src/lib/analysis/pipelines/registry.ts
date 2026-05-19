@@ -1,6 +1,7 @@
 export const PIPELINE_REGISTRY = [
   { id: "contributions", label: "Contributions" },
   { id: "review", label: "Review" },
+  { id: "ai-report", label: "AI Report" },
 ] as const;
 
 export type PipelineId = (typeof PIPELINE_REGISTRY)[number]["id"];

@@ -2,7 +2,7 @@ import { auth, signOut } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { courses, courseCollaborators, users } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import DashboardShell from "@/components/DashboardShell";
 
 export default async function DashboardLayout({
@@ -15,7 +15,7 @@ export default async function DashboardLayout({
 
   const [[dbUser], userCourses] = await Promise.all([
     db
-      .select({ role: users.role })
+      .select({ role: users.role, status: users.status })
       .from(users)
       .where(eq(users.id, session.user!.id!))
       .limit(1),
@@ -30,11 +30,25 @@ export default async function DashboardLayout({
       .where(eq(courseCollaborators.userId, session.user!.id!)),
   ]);
 
+  // Redirect locked or banned users
+  if (dbUser?.status === "locked") redirect("/locked");
+  if (dbUser?.status === "banned") redirect("/login");
+
   const user = {
     name: session.user?.name ?? "User",
     email: session.user?.email ?? "",
     isAdmin: dbUser?.role === "admin",
   };
+
+  // Count users waiting for approval (locked) — shown as badge on Admin nav
+  let lockedUsersCount = 0;
+  if (dbUser?.role === "admin") {
+    const lockedUsers = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(and(eq(users.status, "locked"), eq(users.role, "lecturer")));
+    lockedUsersCount = lockedUsers.length;
+  }
 
   async function signOutAction() {
     "use server";
@@ -46,6 +60,7 @@ export default async function DashboardLayout({
       user={user}
       signOutAction={signOutAction}
       courses={userCourses}
+      lockedUsersCount={lockedUsersCount}
     >
       {children}
     </DashboardShell>

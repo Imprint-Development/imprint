@@ -17,7 +17,6 @@ import TextField from "@mui/material/TextField";
 import IconButton from "@mui/material/IconButton";
 import Divider from "@mui/material/Divider";
 import Chip from "@mui/material/Chip";
-import Paper from "@mui/material/Paper";
 import MuiLink from "@mui/material/Link";
 import DeleteRounded from "@mui/icons-material/DeleteRounded";
 import EditRounded from "@mui/icons-material/EditRounded";
@@ -56,6 +55,9 @@ interface Props {
   ) => Promise<void>;
 }
 
+// Stable noop used as onDelete so MUI Chip renders its delete icon.
+const noop = () => {};
+
 export default function MembersTab({
   groupId,
   courseId,
@@ -68,6 +70,9 @@ export default function MembersTab({
 }: Props) {
   const [mode, setMode] = useState<"view" | "edit">("view");
   const isEdit = mode === "edit";
+  const sorted = [...students].sort((a, b) =>
+    a.displayName.localeCompare(b.displayName)
+  );
 
   return (
     <Box>
@@ -97,7 +102,15 @@ export default function MembersTab({
       </Stack>
 
       {students.length > 0 && (
-        <TableContainer component={Paper} variant="outlined" sx={{ mb: 2 }}>
+        <TableContainer
+          sx={{
+            border: "1px solid",
+            borderColor: "divider",
+            borderRadius: 1,
+            overflow: "hidden",
+            mb: 2,
+          }}
+        >
           <Table size="small">
             <TableHead>
               <TableRow>
@@ -109,7 +122,7 @@ export default function MembersTab({
               </TableRow>
             </TableHead>
             <TableBody>
-              {students.map((student) => (
+              {sorted.map((student) => (
                 <TableRow key={student.id}>
                   <TableCell>{student.displayName}</TableCell>
                   <TableCell>{student.email}</TableCell>
@@ -184,7 +197,7 @@ export default function MembersTab({
                               <Chip
                                 size="small"
                                 label={alias}
-                                onDelete={undefined}
+                                onDelete={noop}
                                 deleteIcon={
                                   <IconButton
                                     type="submit"

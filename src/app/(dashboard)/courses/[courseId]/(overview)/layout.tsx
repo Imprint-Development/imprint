@@ -43,7 +43,9 @@ export default async function CourseOverviewLayout({
     { label: "Groups", href: `/courses/${courseId}/groups` },
     { label: "Checkpoints", href: `/courses/${courseId}/checkpoints` },
     { label: "Grading", href: `/courses/${courseId}/grading` },
+    { label: "Grading Config", href: `/courses/${courseId}/grading-config` },
     { label: "Collaborators", href: `/courses/${courseId}/collaborators` },
+    { label: "AI Analysis", href: `/courses/${courseId}/ai-analysis` },
     { label: "Settings", href: `/courses/${courseId}/settings` },
   ];
 

@@ -6,6 +6,7 @@ import type {
   GradingConfig,
   GradingCategory,
   GradeThreshold,
+  AiAnalysisConfig,
 } from "@/lib/db/schema";
 import { auth } from "@/lib/auth";
 import { eq, sql } from "drizzle-orm";
@@ -60,7 +61,11 @@ export async function deleteCourse(courseId: string) {
   redirect("/courses");
 }
 
-export async function addCollaborator(courseId: string, formData: FormData) {
+export async function addCollaborator(
+  courseId: string,
+  _prevState: { error: string | null },
+  formData: FormData
+): Promise<{ error: string | null }> {
   const session = await auth();
   if (!session?.user?.id) throw new Error("Unauthorized");
 
@@ -68,13 +73,15 @@ export async function addCollaborator(courseId: string, formData: FormData) {
 
   const [user] = await db.select().from(users).where(eq(users.email, email));
 
-  if (!user) throw new Error("User not found");
+  if (!user)
+    return { error: "No registered user found with that email address." };
 
   await db
     .insert(courseCollaborators)
     .values({ courseId, userId: user.id, role: "collaborator" });
 
   revalidatePath(`/courses/${courseId}`);
+  return { error: null };
 }
 
 export async function removeCollaborator(
@@ -105,7 +112,7 @@ export async function addIgnoredGitEmail(courseId: string, formData: FormData) {
     })
     .where(eq(courses.id, courseId));
 
-  revalidatePath(`/courses/${courseId}/edit`);
+  revalidatePath(`/courses/${courseId}`);
 }
 
 export async function removeIgnoredGitEmail(courseId: string, email: string) {
@@ -119,7 +126,7 @@ export async function removeIgnoredGitEmail(courseId: string, email: string) {
     })
     .where(eq(courses.id, courseId));
 
-  revalidatePath(`/courses/${courseId}/edit`);
+  revalidatePath(`/courses/${courseId}`);
 }
 
 export async function addIgnoredGithubUsername(
@@ -321,6 +328,41 @@ export async function setCheckpointCategoryMaxPoints(
   } else {
     config.checkpointOverrides[checkpointId] ??= {};
     config.checkpointOverrides[checkpointId][categoryId] = { maxPoints };
+  }
+
+  await setGradingConfig(courseId, config);
+}
+
+export async function updateAiAnalysisConfig(
+  courseId: string,
+  config: AiAnalysisConfig
+) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  await db
+    .update(courses)
+    .set({ aiAnalysisConfig: config, updatedAt: new Date() })
+    .where(eq(courses.id, courseId));
+
+  revalidatePath(`/courses/${courseId}`);
+}
+
+export async function toggleCheckpointUngraded(
+  courseId: string,
+  checkpointId: string
+) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  const config = await getGradingConfig(courseId);
+  config.ungradedCheckpoints ??= [];
+
+  const idx = config.ungradedCheckpoints.indexOf(checkpointId);
+  if (idx === -1) {
+    config.ungradedCheckpoints.push(checkpointId);
+  } else {
+    config.ungradedCheckpoints.splice(idx, 1);
   }
 
   await setGradingConfig(courseId, config);

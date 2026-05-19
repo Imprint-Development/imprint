@@ -39,7 +39,7 @@ export default async function NewCheckpointPage({
   const createCheckpointWithCourse = createCheckpoint.bind(null, courseId);
 
   return (
-    <Box sx={{ p: 3, maxWidth: 640, mx: "auto" }}>
+    <Box sx={{ p: { xs: 2, md: 3 }, maxWidth: 640, mx: "auto" }}>
       <PageBreadcrumbs
         items={[
           { label: "Checkpoints", href: `/courses/${courseId}/checkpoints` },

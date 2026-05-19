@@ -13,6 +13,13 @@ import { auth } from "@/lib/auth";
 import { eq, inArray, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
+export interface GradeEntry {
+  studentId: string;
+  categoryId: string;
+  checkpointId: string | null;
+  points: number;
+}
+
 export async function saveGrade(formData: FormData) {
   const session = await auth();
   if (!session?.user?.id) throw new Error("Unauthorized");
@@ -24,23 +31,53 @@ export async function saveGrade(formData: FormData) {
   const notes = (formData.get("notes") as string) || null;
   const gradedBy = session.user.id;
 
-  if (checkpointId) {
-    await db.execute(
-      sql`INSERT INTO grades (student_id, category_id, checkpoint_id, points, notes, graded_by, created_at)
-          VALUES (${studentId}::uuid, ${categoryId}, ${checkpointId}::uuid, ${points}, ${notes}, ${gradedBy}::uuid, NOW())
-          ON CONFLICT (student_id, category_id, checkpoint_id) WHERE checkpoint_id IS NOT NULL
-          DO UPDATE SET points = EXCLUDED.points, notes = EXCLUDED.notes, graded_by = EXCLUDED.graded_by, created_at = NOW()`
-    );
-  } else {
-    await db.execute(
-      sql`INSERT INTO grades (student_id, category_id, checkpoint_id, points, notes, graded_by, created_at)
-          VALUES (${studentId}::uuid, ${categoryId}, NULL, ${points}, ${notes}, ${gradedBy}::uuid, NOW())
-          ON CONFLICT (student_id, category_id) WHERE checkpoint_id IS NULL
-          DO UPDATE SET points = EXCLUDED.points, notes = EXCLUDED.notes, graded_by = EXCLUDED.graded_by, created_at = NOW()`
-    );
+  await db
+    .insert(grades)
+    .values({ studentId, categoryId, checkpointId, points, notes, gradedBy })
+    .onConflictDoUpdate({
+      target: checkpointId
+        ? [grades.studentId, grades.categoryId, grades.checkpointId]
+        : [grades.studentId, grades.categoryId],
+      targetWhere: checkpointId
+        ? sql`checkpoint_id IS NOT NULL`
+        : sql`checkpoint_id IS NULL`,
+      set: { points, notes, gradedBy },
+    });
+
+  revalidatePath(`/courses`); // grading index fallback
+}
+
+export async function saveGrades(
+  courseId: string,
+  entries: GradeEntry[]
+): Promise<void> {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  const gradedBy = session.user.id;
+
+  for (const entry of entries) {
+    await db
+      .insert(grades)
+      .values({
+        studentId: entry.studentId,
+        categoryId: entry.categoryId,
+        checkpointId: entry.checkpointId,
+        points: entry.points,
+        gradedBy,
+      })
+      .onConflictDoUpdate({
+        target: entry.checkpointId
+          ? [grades.studentId, grades.categoryId, grades.checkpointId]
+          : [grades.studentId, grades.categoryId],
+        targetWhere: entry.checkpointId
+          ? sql`checkpoint_id IS NOT NULL`
+          : sql`checkpoint_id IS NULL`,
+        set: { points: entry.points, gradedBy },
+      });
   }
 
-  revalidatePath("/grading");
+  revalidatePath(`/courses/${courseId}/grading`);
 }
 
 export async function exportGradesCSV(courseId: string): Promise<string> {

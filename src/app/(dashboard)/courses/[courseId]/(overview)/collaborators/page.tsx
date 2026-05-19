@@ -4,7 +4,6 @@ import { addCollaborator, removeCollaborator } from "@/lib/actions/courses";
 import { eq } from "drizzle-orm";
 import Typography from "@mui/material/Typography";
 import Chip from "@mui/material/Chip";
-import Stack from "@mui/material/Stack";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";
@@ -13,11 +12,10 @@ import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import Paper from "@mui/material/Paper";
 import Box from "@mui/material/Box";
-import TextField from "@mui/material/TextField";
-import Button from "@mui/material/Button";
 import IconButton from "@mui/material/IconButton";
 import Divider from "@mui/material/Divider";
 import DeleteRounded from "@mui/icons-material/DeleteRounded";
+import AddCollaboratorForm from "@/components/AddCollaboratorForm";
 
 export default async function CollaboratorsTabPage({
   params,
@@ -77,20 +75,7 @@ export default async function CollaboratorsTabPage({
 
       <Divider sx={{ my: 2 }} />
 
-      <form action={addCollaboratorWithId}>
-        <Stack direction="row" spacing={1}>
-          <TextField
-            name="email"
-            placeholder="Email address"
-            type="email"
-            size="small"
-            sx={{ flex: 1, maxWidth: 400 }}
-          />
-          <Button type="submit" size="small" variant="contained">
-            Add
-          </Button>
-        </Stack>
-      </form>
+      <AddCollaboratorForm action={addCollaboratorWithId} />
     </Box>
   );
 }

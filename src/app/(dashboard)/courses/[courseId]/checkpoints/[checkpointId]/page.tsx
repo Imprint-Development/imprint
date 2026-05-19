@@ -19,9 +19,10 @@ import {
   checkpointAnalyses,
   checkpointRepoMeta,
   checkpointLogs,
+  aiReports,
 } from "@/lib/db/schema";
 import { auth } from "@/lib/auth";
-import { eq, and, inArray, or, max, like } from "drizzle-orm";
+import { eq, and, inArray, or, max, like, desc } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { triggerAnalysis, deleteCheckpoint } from "@/lib/actions/checkpoints";
 import { CHECKPOINT_STATUS_COLOR } from "@/lib/constants";
@@ -29,7 +30,8 @@ import type {
   AnalysisRow,
   RepoWarning,
   ReviewWarning,
-} from "../../groups/[groupId]/checkpoints/[checkpointId]/GroupAnalysisClient";
+} from "@/lib/types/analysis";
+import type { AiReportRow } from "./AiReportsSection";
 import Typography from "@mui/material/Typography";
 import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 import Card from "@mui/material/Card";
@@ -50,13 +52,13 @@ export default async function CheckpointDetailPage({
   searchParams,
 }: {
   params: Promise<{ courseId: string; checkpointId: string }>;
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; group?: string }>;
 }) {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
   const { courseId, checkpointId } = await params;
-  const { tab = "overview" } = await searchParams;
+  const { tab = "overview", group: initialGroupId } = await searchParams;
 
   // Parallel fetch: course, checkpoint, and groups in one round-trip each
   const [[course], [checkpoint], groups] = await Promise.all([
@@ -81,66 +83,92 @@ export default async function CheckpointDetailPage({
     // No groups yet — nothing to query
     groupPaneData = [];
   } else if (checkpoint.status === "complete") {
-    // ── Batch round 1: 5 queries in parallel, all keyed by groupId ──────────
-    const [allStudents, allRepos, pipelineRows, runStartRows, allWarnLogRows] =
-      await Promise.all([
-        db.select().from(students).where(inArray(students.groupId, groupIds)),
-        db
-          .select()
-          .from(repositories)
-          .where(inArray(repositories.groupId, groupIds)),
-        db
-          .selectDistinct({
-            pipeline: checkpointLogs.pipeline,
-            groupId: checkpointLogs.groupId,
-          })
-          .from(checkpointLogs)
-          .where(
-            and(
-              eq(checkpointLogs.checkpointId, checkpointId),
-              inArray(checkpointLogs.groupId, groupIds)
-            )
-          ),
-        db
-          .select({
-            groupId: checkpointLogs.groupId,
-            runStart: max(checkpointLogs.createdAt),
-          })
-          .from(checkpointLogs)
-          .where(
-            and(
-              eq(checkpointLogs.checkpointId, checkpointId),
-              inArray(checkpointLogs.groupId, groupIds),
-              eq(checkpointLogs.level, "info"),
-              like(checkpointLogs.message, "Starting%")
+    // ── Batch round 1: 6 queries in parallel, all keyed by groupId ──────────
+    const [
+      allStudents,
+      allRepos,
+      pipelineRows,
+      runStartRows,
+      allWarnLogRows,
+      allAiReportRows,
+    ] = await Promise.all([
+      db.select().from(students).where(inArray(students.groupId, groupIds)),
+      db
+        .select()
+        .from(repositories)
+        .where(inArray(repositories.groupId, groupIds)),
+      db
+        .selectDistinct({
+          pipeline: checkpointLogs.pipeline,
+          groupId: checkpointLogs.groupId,
+        })
+        .from(checkpointLogs)
+        .where(
+          and(
+            eq(checkpointLogs.checkpointId, checkpointId),
+            inArray(checkpointLogs.groupId, groupIds)
+          )
+        ),
+      db
+        .select({
+          groupId: checkpointLogs.groupId,
+          runStart: max(checkpointLogs.createdAt),
+        })
+        .from(checkpointLogs)
+        .where(
+          and(
+            eq(checkpointLogs.checkpointId, checkpointId),
+            inArray(checkpointLogs.groupId, groupIds),
+            eq(checkpointLogs.level, "info"),
+            like(checkpointLogs.message, "Starting%")
+          )
+        )
+        .groupBy(checkpointLogs.groupId),
+      db
+        .select({
+          groupId: checkpointLogs.groupId,
+          pipeline: checkpointLogs.pipeline,
+          level: checkpointLogs.level,
+          message: checkpointLogs.message,
+          repoUrl: repositories.url,
+          createdAt: checkpointLogs.createdAt,
+        })
+        .from(checkpointLogs)
+        .leftJoin(
+          repositories,
+          eq(repositories.id, checkpointLogs.repositoryId)
+        )
+        .where(
+          and(
+            eq(checkpointLogs.checkpointId, checkpointId),
+            inArray(checkpointLogs.groupId, groupIds),
+            or(
+              eq(checkpointLogs.level, "warn"),
+              eq(checkpointLogs.level, "error")
             )
           )
-          .groupBy(checkpointLogs.groupId),
-        db
-          .select({
-            groupId: checkpointLogs.groupId,
-            pipeline: checkpointLogs.pipeline,
-            level: checkpointLogs.level,
-            message: checkpointLogs.message,
-            repoUrl: repositories.url,
-            createdAt: checkpointLogs.createdAt,
-          })
-          .from(checkpointLogs)
-          .leftJoin(
-            repositories,
-            eq(repositories.id, checkpointLogs.repositoryId)
+        ),
+      db
+        .select({
+          id: aiReports.id,
+          studentId: aiReports.studentId,
+          studentName: students.displayName,
+          content: aiReports.content,
+          provider: aiReports.provider,
+          model: aiReports.model,
+          createdAt: aiReports.createdAt,
+          groupId: aiReports.groupId,
+        })
+        .from(aiReports)
+        .leftJoin(students, eq(students.id, aiReports.studentId))
+        .where(
+          and(
+            eq(aiReports.checkpointId, checkpointId),
+            inArray(aiReports.groupId, groupIds)
           )
-          .where(
-            and(
-              eq(checkpointLogs.checkpointId, checkpointId),
-              inArray(checkpointLogs.groupId, groupIds),
-              or(
-                eq(checkpointLogs.level, "warn"),
-                eq(checkpointLogs.level, "error")
-              )
-            )
-          ),
-      ]);
+        )
+        .orderBy(desc(aiReports.createdAt)),
+    ]);
 
     // Build lookup maps from round-1 results
     const studentsByGroup = new Map<string, typeof allStudents>();
@@ -169,6 +197,22 @@ export default async function CheckpointDetailPage({
     for (const row of runStartRows) {
       if (row.groupId && row.runStart)
         runStartByGroup.set(row.groupId, row.runStart);
+    }
+
+    const aiReportsByGroup = new Map<string, AiReportRow[]>();
+    for (const r of allAiReportRows) {
+      if (!r.groupId) continue;
+      const arr = aiReportsByGroup.get(r.groupId) ?? [];
+      arr.push({
+        id: r.id,
+        studentId: r.studentId,
+        studentName: r.studentName ?? null,
+        content: r.content,
+        provider: r.provider,
+        model: r.model,
+        createdAt: r.createdAt,
+      });
+      aiReportsByGroup.set(r.groupId, arr);
     }
 
     // ── Batch round 2: 3 queries in parallel, keyed by repoId ───────────────
@@ -357,6 +401,8 @@ export default async function CheckpointDetailPage({
         reviewWarnings,
         logWarningCount: warnLogs.length,
         warnLogs,
+        aiReports: aiReportsByGroup.get(group.id) ?? [],
+        checkpointStatus: checkpoint.status,
       };
     });
   } else {
@@ -382,6 +428,8 @@ export default async function CheckpointDetailPage({
       reviewWarnings: [] as ReviewWarning[],
       logWarningCount: 0,
       warnLogs: [],
+      aiReports: [],
+      checkpointStatus: checkpoint.status,
     }));
   }
 
@@ -409,7 +457,7 @@ export default async function CheckpointDetailPage({
   ];
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box sx={{ p: { xs: 2, md: 3 } }}>
       <PageBreadcrumbs
         items={[
           {
@@ -536,6 +584,9 @@ export default async function CheckpointDetailPage({
               groups={groupPaneData}
               courseId={courseId}
               checkpointId={checkpointId}
+              checkpointName={checkpoint.name}
+              checkpointStatus={checkpoint.status}
+              initialGroupId={initialGroupId}
             />
           )}
         </Box>

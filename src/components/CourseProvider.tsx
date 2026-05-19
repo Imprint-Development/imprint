@@ -3,11 +3,12 @@
 import {
   createContext,
   useContext,
-  useSyncExternalStore,
-  useEffect,
   useCallback,
+  useEffect,
+  useSyncExternalStore,
   type ReactNode,
 } from "react";
+import { usePathname } from "next/navigation";
 
 export interface CourseOption {
   id: string;
@@ -19,9 +20,8 @@ interface CourseContextValue {
   courses: CourseOption[];
   selectedCourseId: string | null;
   selectedCourse: CourseOption | null;
+  /** @deprecated navigate to /courses/[id]/dashboard instead */
   selectCourse: (id: string) => void;
-  /** True when we need to show the picker modal */
-  needsSelection: boolean;
 }
 
 const CourseContext = createContext<CourseContextValue>({
@@ -29,22 +29,14 @@ const CourseContext = createContext<CourseContextValue>({
   selectedCourseId: null,
   selectedCourse: null,
   selectCourse: () => {},
-  needsSelection: false,
 });
 
 const STORAGE_KEY = "imprint:selectedCourseId";
 
-function subscribeStorage(callback: () => void) {
-  window.addEventListener("storage", callback);
-  return () => window.removeEventListener("storage", callback);
-}
-
-function writeStorage(id: string) {
-  localStorage.setItem(STORAGE_KEY, id);
-  // Notify useSyncExternalStore subscribers in the same tab
-  window.dispatchEvent(
-    new StorageEvent("storage", { key: STORAGE_KEY, newValue: id })
-  );
+// Extracts /courses/[id] from the current pathname
+function courseIdFromPathname(pathname: string): string | null {
+  const match = pathname.match(/\/courses\/([^/]+)/);
+  return match?.[1] ?? null;
 }
 
 export function CourseProvider({
@@ -54,48 +46,35 @@ export function CourseProvider({
   courses: CourseOption[];
   children: ReactNode;
 }) {
-  // Read from localStorage — useSyncExternalStore handles SSR (server snapshot = null)
-  // and re-renders the component on the client once the real value is available.
-  const storedId = useSyncExternalStore(
-    subscribeStorage,
+  const pathname = usePathname();
+  const courseIdFromUrl = courseIdFromPathname(pathname);
+
+  // useSyncExternalStore ensures SSR returns null while the client reads localStorage,
+  // preventing hydration mismatches from synchronous localStorage access during render.
+  const courseIdFromStorage = useSyncExternalStore(
+    () => () => {},
     () => localStorage.getItem(STORAGE_KEY),
     () => null
   );
 
+  const resolvedId = courseIdFromUrl ?? courseIdFromStorage;
   const selectedCourseId =
-    storedId && courses.some((c) => c.id === storedId) ? storedId : null;
+    resolvedId && courses.some((c) => c.id === resolvedId) ? resolvedId : null;
 
-  // Auto-select when there is exactly one course; write to the external store only
+  // Keep the cache up to date whenever the URL has a course
   useEffect(() => {
-    if (!storedId && courses.length === 1) {
-      writeStorage(courses[0].id);
+    if (courseIdFromUrl && courses.some((c) => c.id === courseIdFromUrl)) {
+      localStorage.setItem(STORAGE_KEY, courseIdFromUrl);
     }
-  }, [storedId, courses]);
+  }, [courseIdFromUrl, courses]);
 
-  const selectCourse = useCallback(
-    (id: string) => {
-      if (courses.some((c) => c.id === id)) {
-        writeStorage(id);
-      }
-    },
-    [courses]
-  );
+  const selectCourse = useCallback((_id: string) => {}, []);
 
   const selectedCourse = courses.find((c) => c.id === selectedCourseId) ?? null;
 
-  // useSyncExternalStore returns the server snapshot (null) during SSR and switches to
-  // the real localStorage value after hydration, so needsSelection is safe to derive here.
-  const needsSelection = !selectedCourse && courses.length > 0;
-
   return (
     <CourseContext.Provider
-      value={{
-        courses,
-        selectedCourseId,
-        selectedCourse,
-        selectCourse,
-        needsSelection,
-      }}
+      value={{ courses, selectedCourseId, selectedCourse, selectCourse }}
     >
       {children}
     </CourseContext.Provider>
