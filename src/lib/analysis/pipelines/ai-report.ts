@@ -670,10 +670,6 @@ export async function runAiReportPipeline(
   // 5. Generate per-student reports
   await log("info", `Generating reports for ${studentEntries.length} students`);
 
-  // Collect all generated reports in memory; insert them all at once at the end
-  // so either every report for the group is persisted or none are.
-  const reportValues: (typeof aiReports.$inferInsert)[] = [];
-
   const studentReportParts: string[] = [];
 
   for (const [studentId, data] of studentEntries) {
@@ -718,7 +714,7 @@ export async function runAiReportPipeline(
         );
       }
 
-      reportValues.push({
+      await db.insert(aiReports).values({
         checkpointId: checkpoint.id,
         groupId: group.id,
         studentId,
@@ -794,7 +790,7 @@ export async function runAiReportPipeline(
       );
     }
 
-    reportValues.push({
+    await db.insert(aiReports).values({
       checkpointId: checkpoint.id,
       groupId: group.id,
       studentId: null,
@@ -810,17 +806,6 @@ export async function runAiReportPipeline(
         : JSON.stringify(err);
     await log("error", `Failed to generate group summary: ${msg}`);
     console.error(`[ai-report] Error generating group summary:`, err);
-  }
-
-  // Persist all collected reports atomically — either all reports for this group
-  // are written or none are. Chunked inserts keep each statement within the
-  // PostgreSQL parameter limit.
-  if (reportValues.length > 0) {
-    const CHUNK = 500;
-    await db.transaction(async (tx) => {
-      for (let i = 0; i < reportValues.length; i += CHUNK)
-        await tx.insert(aiReports).values(reportValues.slice(i, i + CHUNK));
-    });
   }
 
   await log("info", "AI report pipeline complete");
