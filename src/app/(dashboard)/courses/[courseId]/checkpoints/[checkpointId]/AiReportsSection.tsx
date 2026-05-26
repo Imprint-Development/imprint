@@ -214,8 +214,7 @@ export default function AiReportsSection({
 }: Props) {
   const [activeTab, setActiveTab] = useState<string>("__group__");
 
-  // Not yet run
-  if (checkpointStatus !== "complete") {
+  if (reports.length === 0 && checkpointStatus !== "complete") {
     return (
       <Alert severity="warning">
         Analysis has not completed yet.{" "}
