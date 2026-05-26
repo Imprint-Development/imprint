@@ -82,8 +82,10 @@ jobs:
           NEXT_TELEMETRY_DISABLED: 1
           DATABASE_URL: postgresql://localhost/stub
 
-  check-migrations:
-    name: Check Migrations
+  # Combines migration validation + E2E tests so they share a single
+  # PostgreSQL service container instead of spinning one up per job.
+  integration:
+    name: Migrations & E2E Tests
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -101,6 +103,25 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/imprint
+      REDIS_URL: redis://localhost:6379
+      AUTH_SECRET: ci-e2e-test-secret-not-for-production
+      # Dummy values — GitHub OAuth is not exercised in e2e tests
+      AUTH_GITHUB_ID: ci-unused
+      AUTH_GITHUB_SECRET: ci-unused
+      AUTH_URL: http://localhost:3000
+      LOCAL_LOGIN_ENABLED: "true"
+      NEXT_TELEMETRY_DISABLED: 1
     steps:
       - uses: actions/checkout@v4
 
@@ -117,13 +138,63 @@ jobs:
 
       - name: Run migrations
         run: npm run db:migrate
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/imprint
+
+      - name: Seed database
+        run: npm run db:seed
+
+      - name: Build app
+        run: npm run build
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        run: npm run test:e2e
+        continue-on-error: true
+
+      - name: Print E2E failures
+        if: always()
+        run: |
+          if [ -f test-results/results.json ]; then
+            node -e "
+              const r = JSON.parse(require('fs').readFileSync('test-results/results.json','utf8'));
+              let failed = 0;
+              function scan(s) {
+                (s.suites||[]).forEach(scan);
+                (s.specs||[]).forEach(spec => {
+                  (spec.tests||[]).forEach(t => {
+                    (t.results||[]).forEach(res => {
+                      if (res.status !== 'passed' && res.status !== 'skipped') {
+                        failed++;
+                        console.log('FAIL:', spec.title);
+                        const msg = res.error && res.error.message ? res.error.message.slice(0,600) : res.status;
+                        console.log('  ', msg.replace(/\n/g, '\n   '));
+                      }
+                    });
+                  });
+                });
+              }
+              (r.suites||[]).forEach(scan);
+              if (!failed) console.log('All tests passed or no results found');
+              process.exit(failed > 0 ? 1 : 0);
+            "
+          else
+            echo 'No test-results/results.json found — check webServer startup logs above'
+            exit 1
+          fi
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
 
   publish-web:
     name: Publish Web Image
     runs-on: ubuntu-latest
-    needs: [lint-typecheck-format, test, build, check-migrations]
+    needs: [lint-typecheck-format, test, build, integration]
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
     permissions:
       contents: read
@@ -172,7 +243,7 @@ jobs:
   publish-worker:
     name: Publish Worker Image
     runs-on: ubuntu-latest
-    needs: [lint-typecheck-format, test, build, check-migrations]
+    needs: [lint-typecheck-format, test, build, integration]
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
     permissions:
       contents: read

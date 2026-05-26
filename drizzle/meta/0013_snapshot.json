@@ -571,12 +571,6 @@
           "primaryKey": false,
           "notNull": false,
           "default": "now()"
-        },
-        "current_run_id": {
-          "name": "current_run_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
         }
       },
       "indexes": {},
@@ -1178,6 +1172,13 @@
           "primaryKey": false,
           "notNull": false,
           "default": "now()"
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'active'"
         }
       },
       "indexes": {},
@@ -1202,6 +1203,31 @@
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
+    },
+    "public.system_settings": {
+      "name": "system_settings",
+      "schema": "",
+      "columns": {
+        "key": {
+          "name": "key",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "value": {
+          "name": "value",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     }
   },
   "enums": {},
@@ -1215,6 +1241,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "5da6c8e2-94d4-4b3c-b676-6edf827b57d1",
+  "id": "3a7f8c21-d4e5-4b9f-a1c2-8e5f3d2b6791",
   "prevId": "772a4707-8c81-470e-8516-f930a62f5662"
 }

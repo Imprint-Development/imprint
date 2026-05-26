@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { styled } from "@mui/material/styles";
 import MuiAvatar from "@mui/material/Avatar";
 import MuiDrawer, { drawerClasses } from "@mui/material/Drawer";
+import Badge from "@mui/material/Badge";
 import Box from "@mui/material/Box";
 import Divider from "@mui/material/Divider";
 import List from "@mui/material/List";
@@ -172,7 +173,13 @@ const secondaryNavItems: NavItem[] = [
 
 // ── MenuContent — mirrors template MenuContent ──────────────────────────────
 
-function MenuContent({ isAdmin }: { isAdmin?: boolean }) {
+function MenuContent({
+  isAdmin,
+  lockedUsersCount = 0,
+}: {
+  isAdmin?: boolean;
+  lockedUsersCount?: number;
+}) {
   const pathname = usePathname();
   const { selectedCourseId } = useCourse();
 
@@ -206,7 +213,15 @@ function MenuContent({ isAdmin }: { isAdmin?: boolean }) {
 
   const adminItems: NavItem[] = isAdmin
     ? [
-        { label: "Admin", href: "/admin", icon: <AdminPanelSettingsRounded /> },
+        {
+          label: "Admin",
+          href: "/admin",
+          icon: (
+            <Badge badgeContent={lockedUsersCount} color="warning" max={99}>
+              <AdminPanelSettingsRounded />
+            </Badge>
+          ),
+        },
         { label: "Debug", href: "/admin/debug", icon: <BugReportRounded /> },
       ]
     : [];
@@ -308,13 +323,19 @@ interface SidebarContentProps {
   user: { name: string; email: string };
   signOutAction: () => Promise<void>;
   isAdmin?: boolean;
+  lockedUsersCount?: number;
 }
 
 const appVersion = process.env.NEXT_PUBLIC_APP_VERSION ?? "";
 const appSha = process.env.NEXT_PUBLIC_APP_SHA ?? "";
 const displayVersion = /^\d/.test(appVersion) ? `v${appVersion}` : appVersion;
 
-function SidebarContent({ user, signOutAction, isAdmin }: SidebarContentProps) {
+function SidebarContent({
+  user,
+  signOutAction,
+  isAdmin,
+  lockedUsersCount = 0,
+}: SidebarContentProps) {
   return (
     <>
       <Box
@@ -335,7 +356,7 @@ function SidebarContent({ user, signOutAction, isAdmin }: SidebarContentProps) {
           flexDirection: "column",
         }}
       >
-        <MenuContent isAdmin={isAdmin} />
+        <MenuContent isAdmin={isAdmin} lockedUsersCount={lockedUsersCount} />
       </Box>
       <Tooltip
         title={appSha || ""}
@@ -370,6 +391,7 @@ interface SideMenuMobileProps {
   user: { name: string; email: string };
   signOutAction: () => Promise<void>;
   isAdmin?: boolean;
+  lockedUsersCount?: number;
 }
 
 export function SideMenuMobile({
@@ -378,6 +400,7 @@ export function SideMenuMobile({
   user,
   signOutAction,
   isAdmin,
+  lockedUsersCount = 0,
 }: SideMenuMobileProps) {
   return (
     <MuiDrawer
@@ -397,6 +420,7 @@ export function SideMenuMobile({
           user={user}
           signOutAction={signOutAction}
           isAdmin={isAdmin}
+          lockedUsersCount={lockedUsersCount}
         />
       </Stack>
     </MuiDrawer>
@@ -409,12 +433,14 @@ interface SidebarProps {
   user: { name: string; email: string };
   signOutAction: () => Promise<void>;
   isAdmin?: boolean;
+  lockedUsersCount?: number;
 }
 
 export default function Sidebar({
   user,
   signOutAction,
   isAdmin,
+  lockedUsersCount = 0,
 }: SidebarProps) {
   return (
     <Drawer
@@ -430,6 +456,7 @@ export default function Sidebar({
         user={user}
         signOutAction={signOutAction}
         isAdmin={isAdmin}
+        lockedUsersCount={lockedUsersCount}
       />
     </Drawer>
   );

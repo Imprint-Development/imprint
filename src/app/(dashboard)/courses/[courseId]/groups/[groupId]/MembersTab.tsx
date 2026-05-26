@@ -55,6 +55,9 @@ interface Props {
   ) => Promise<void>;
 }
 
+// Stable noop used as onDelete so MUI Chip renders its delete icon.
+const noop = () => {};
+
 export default function MembersTab({
   groupId,
   courseId,
@@ -194,7 +197,7 @@ export default function MembersTab({
                               <Chip
                                 size="small"
                                 label={alias}
-                                onDelete={undefined}
+                                onDelete={noop}
                                 deleteIcon={
                                   <IconButton
                                     type="submit"

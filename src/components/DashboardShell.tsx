@@ -12,6 +12,7 @@ interface DashboardShellProps {
   signOutAction: () => Promise<void>;
   courses: CourseOption[];
   children: React.ReactNode;
+  lockedUsersCount?: number;
 }
 
 export default function DashboardShell({
@@ -19,6 +20,7 @@ export default function DashboardShell({
   signOutAction,
   courses,
   children,
+  lockedUsersCount = 0,
 }: DashboardShellProps) {
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const toggleDrawer = (open: boolean) => () => setMobileOpen(open);
@@ -30,6 +32,7 @@ export default function DashboardShell({
           user={user}
           signOutAction={signOutAction}
           isAdmin={user.isAdmin}
+          lockedUsersCount={lockedUsersCount}
         />
         <Header onMenuClick={toggleDrawer(true)} />
         <SideMenuMobile
@@ -38,6 +41,7 @@ export default function DashboardShell({
           user={user}
           signOutAction={signOutAction}
           isAdmin={user.isAdmin}
+          lockedUsersCount={lockedUsersCount}
         />
         {/* Main content */}
         <Box
