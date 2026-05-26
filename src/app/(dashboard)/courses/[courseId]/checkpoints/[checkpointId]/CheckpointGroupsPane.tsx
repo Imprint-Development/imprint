@@ -258,15 +258,19 @@ export default function CheckpointGroupsPane({
   checkpointStatus,
   initialGroupId,
 }: Props) {
+  const sortedGroups = [...groups].sort((a, b) =>
+    a.groupName.localeCompare(b.groupName)
+  );
+
   const [selectedId, setSelectedId] = useState<string>(
-    (initialGroupId && groups.some((g) => g.groupId === initialGroupId)
+    (initialGroupId && sortedGroups.some((g) => g.groupId === initialGroupId)
       ? initialGroupId
-      : groups[0]?.groupId) ?? ""
+      : sortedGroups[0]?.groupId) ?? ""
   );
   const [warningsOpen, setWarningsOpen] = useState(false);
   const [groupTab, setGroupTab] = useState("overview");
 
-  const selected = groups.find((g) => g.groupId === selectedId) ?? null;
+  const selected = sortedGroups.find((g) => g.groupId === selectedId) ?? null;
 
   const rerunWithIds = selected
     ? rerunGroupAnalysis.bind(null, checkpointId, selected.groupId, courseId)
@@ -281,7 +285,7 @@ export default function CheckpointGroupsPane({
       >
         <Box sx={{ flex: 1, minWidth: 200, maxWidth: 320 }}>
           <GroupSelectContent
-            groups={groups}
+            groups={sortedGroups}
             selectedId={selectedId}
             onChange={(id) => {
               setSelectedId(id);
