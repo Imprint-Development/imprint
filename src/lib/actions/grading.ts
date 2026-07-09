@@ -97,6 +97,10 @@ export async function exportGradesCSV(courseId: string): Promise<string> {
     .select()
     .from(checkpoints)
     .where(eq(checkpoints.courseId, courseId));
+  const ungradedIds = new Set(config.ungradedCheckpoints ?? []);
+  const gradedCheckpoints = courseCheckpoints.filter(
+    (checkpoint) => !ungradedIds.has(checkpoint.id)
+  );
 
   const groups = await db
     .select()
@@ -135,7 +139,7 @@ export async function exportGradesCSV(courseId: string): Promise<string> {
   for (const cat of standaloneCategories) {
     headers.push(`${cat.name} (/${cat.maxPoints})`);
   }
-  for (const cp of courseCheckpoints) {
+  for (const cp of gradedCheckpoints) {
     for (const cat of perCheckpointCategories) {
       const max = effMax(cat.id, cp.id, cat.maxPoints);
       headers.push(`${cp.name} - ${cat.name} (/${max})`);
@@ -147,7 +151,7 @@ export async function exportGradesCSV(courseId: string): Promise<string> {
 
   const maxPossible =
     standaloneCategories.reduce((s, c) => s + c.maxPoints, 0) +
-    courseCheckpoints.reduce(
+    gradedCheckpoints.reduce(
       (cpSum, cp) =>
         cpSum +
         perCheckpointCategories.reduce(
@@ -179,7 +183,7 @@ export async function exportGradesCSV(courseId: string): Promise<string> {
       row.push(String(pts));
     }
 
-    for (const cp of courseCheckpoints) {
+    for (const cp of gradedCheckpoints) {
       for (const cat of perCheckpointCategories) {
         const g = studentGrades.find(
           (g) => g.categoryId === cat.id && g.checkpointId === cp.id
