@@ -68,6 +68,10 @@ export async function GET(
     .select()
     .from(checkpoints)
     .where(eq(checkpoints.courseId, courseId));
+  const ungradedIds = new Set(config.ungradedCheckpoints ?? []);
+  const gradedCheckpoints = courseCheckpoints.filter(
+    (checkpoint) => !ungradedIds.has(checkpoint.id)
+  );
 
   const groups = await db
     .select()
@@ -100,7 +104,7 @@ export async function GET(
 
   const maxPossible =
     standaloneCategories.reduce((s, c) => s + c.maxPoints, 0) +
-    courseCheckpoints.reduce(
+    gradedCheckpoints.reduce(
       (cpSum, cp) =>
         cpSum +
         perCpCategories.reduce(
@@ -115,7 +119,7 @@ export async function GET(
   for (const cat of standaloneCategories) {
     headers.push(`${cat.name} (/${cat.maxPoints})`);
   }
-  for (const cp of courseCheckpoints) {
+  for (const cp of gradedCheckpoints) {
     for (const cat of perCpCategories) {
       const max = effMax(cat.id, cp.id, cat.maxPoints);
       headers.push(`${cp.name} - ${cat.name} (/${max})`);
@@ -147,7 +151,7 @@ export async function GET(
       row.push(String(pts));
     }
 
-    for (const cp of courseCheckpoints) {
+    for (const cp of gradedCheckpoints) {
       for (const cat of perCpCategories) {
         const g = studentGrades.find(
           (g) => g.categoryId === cat.id && g.checkpointId === cp.id
