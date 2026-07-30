@@ -7,6 +7,10 @@ import CheckpointGroupsPane, {
   type GroupPaneData,
   type WarnLog,
 } from "./CheckpointGroupsPane";
+import {
+  shouldLoadCheckpointGroupPaneData,
+  shouldRenderCheckpointGroupsPane,
+} from "./checkpoint-group-pane-visibility";
 import RunAnalysisForm from "./RunAnalysisForm";
 import { db } from "@/lib/db";
 import { ALL_PIPELINE_IDS } from "@/lib/analysis/pipelines/registry";
@@ -80,10 +84,11 @@ export default async function CheckpointDetailPage({
     .from(studentGroups)
     .where(eq(studentGroups.courseId, courseId));
 
-  // Build per-group analysis pane data when the checkpoint is complete
+  // Build per-group analysis pane data whenever a run has started so
+  // previously completed groups stay visible during targeted reruns.
   let groupPaneData: GroupPaneData[] = [];
 
-  if (checkpoint.status === "complete") {
+  if (shouldLoadCheckpointGroupPaneData(checkpoint.status)) {
     groupPaneData = await Promise.all(
       groups.map(async (group) => {
         const studentList = await db
@@ -350,6 +355,10 @@ export default async function CheckpointDetailPage({
   const executedPipelines = [
     ...new Set(groupPaneData.flatMap((g) => g.executedPipelines)),
   ];
+  const showCheckpointGroupsPane = shouldRenderCheckpointGroupsPane(
+    checkpoint.status,
+    groupPaneData
+  );
 
   return (
     <Box sx={{ p: { xs: 2, md: 3 } }}>
@@ -446,7 +455,8 @@ export default async function CheckpointDetailPage({
 
           {checkpoint.status === "analyzing" && (
             <Alert severity="info" sx={{ mb: 3 }}>
-              Analysis is running in the background.{" "}
+              Analysis is running in the background. Existing results remain
+              available below.{" "}
               <AppLink
                 href={`/courses/${courseId}/checkpoints/${checkpointId}?tab=overview`}
               >
@@ -474,7 +484,7 @@ export default async function CheckpointDetailPage({
             </Stack>
           )}
 
-          {checkpoint.status === "complete" && (
+          {showCheckpointGroupsPane && (
             <CheckpointGroupsPane
               groups={groupPaneData}
               courseId={courseId}
