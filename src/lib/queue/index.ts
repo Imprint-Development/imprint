@@ -27,6 +27,9 @@ export const redisConnection = new IORedis(
 export interface AnalysisJobData {
   checkpointId: string;
   courseId: string;
+  /** Identifies the run token stored in checkpoint.currentRunId at dispatch time.
+   *  The runner uses this to detect if it has been superseded. */
+  runId: string;
   /** When set, only this group will be re-analyzed */
   groupId?: string;
 }

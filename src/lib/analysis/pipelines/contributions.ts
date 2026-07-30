@@ -123,24 +123,12 @@ export async function runContributionsPipeline(
     return;
   }
 
-  // Clear any existing analysis data for this group's repos for this checkpoint
   const repoIds = groupRepos.map((r) => r.id);
-  await db
-    .delete(checkpointAnalyses)
-    .where(
-      and(
-        eq(checkpointAnalyses.checkpointId, checkpoint.id),
-        inArray(checkpointAnalyses.repositoryId, repoIds)
-      )
-    );
-  await db
-    .delete(checkpointRepoMeta)
-    .where(
-      and(
-        eq(checkpointRepoMeta.checkpointId, checkpoint.id),
-        inArray(checkpointRepoMeta.repositoryId, repoIds)
-      )
-    );
+
+  // Collect all results in memory first; the DB is only written once all
+  // repos have been processed successfully (atomic replace).
+  const metaValues: (typeof checkpointRepoMeta.$inferInsert)[] = [];
+  const analysisValues: (typeof checkpointAnalyses.$inferInsert)[] = [];
 
   for (const repo of groupRepos) {
     await log("info", `Cloning ${repo.url}`);
@@ -194,7 +182,7 @@ export async function runContributionsPipeline(
         );
       }
 
-      await db.insert(checkpointRepoMeta).values({
+      metaValues.push({
         checkpointId: checkpoint.id,
         repositoryId: repo.id,
         unidentifiedAuthors,
@@ -227,7 +215,7 @@ export async function runContributionsPipeline(
             }
           : emptyStats();
 
-        await db.insert(checkpointAnalyses).values({
+        analysisValues.push({
           checkpointId: checkpoint.id,
           studentId: student.id,
           repositoryId: repo.id,
@@ -245,4 +233,35 @@ export async function runContributionsPipeline(
       await fs.rm(tmpDir, { recursive: true, force: true }).catch(() => {});
     }
   }
+
+  // Atomically replace previous analysis data with the freshly computed results.
+  // If anything above threw, we never reach here and the old rows are preserved.
+  // Inserts are chunked to stay well within the PostgreSQL parameter limit.
+  const CHUNK = 500;
+  await db.transaction(async (tx) => {
+    await tx
+      .delete(checkpointAnalyses)
+      .where(
+        and(
+          eq(checkpointAnalyses.checkpointId, checkpoint.id),
+          inArray(checkpointAnalyses.repositoryId, repoIds)
+        )
+      );
+    await tx
+      .delete(checkpointRepoMeta)
+      .where(
+        and(
+          eq(checkpointRepoMeta.checkpointId, checkpoint.id),
+          inArray(checkpointRepoMeta.repositoryId, repoIds)
+        )
+      );
+    for (let i = 0; i < metaValues.length; i += CHUNK)
+      await tx
+        .insert(checkpointRepoMeta)
+        .values(metaValues.slice(i, i + CHUNK));
+    for (let i = 0; i < analysisValues.length; i += CHUNK)
+      await tx
+        .insert(checkpointAnalyses)
+        .values(analysisValues.slice(i, i + CHUNK));
+  });
 }

@@ -341,28 +341,18 @@ export async function runReviewPipeline(
     );
   }
 
-  // Persist metrics — upsert into existing checkpointAnalyses rows
+  // Persist metrics atomically — either all review data for this group is
+  // written or nothing is (failure before this point leaves old rows intact).
   const repoIds = groupRepos.map((r) => r.id);
 
-  for (const student of groupStudents) {
-    const metrics = metricsMap.get(student.id) ?? emptyReviewMetrics();
+  await db.transaction(async (tx) => {
+    for (const student of groupStudents) {
+      const metrics = metricsMap.get(student.id) ?? emptyReviewMetrics();
 
-    // Find the existing analysis row(s) for this student/checkpoint and update
-    const existingRows = await db
-      .select({ id: checkpointAnalyses.id })
-      .from(checkpointAnalyses)
-      .where(
-        and(
-          eq(checkpointAnalyses.checkpointId, checkpoint.id),
-          eq(checkpointAnalyses.studentId, student.id),
-          inArray(checkpointAnalyses.repositoryId, repoIds)
-        )
-      );
-
-    if (existingRows.length > 0) {
-      await db
-        .update(checkpointAnalyses)
-        .set({ reviewMetrics: metrics })
+      // Find the existing analysis row(s) for this student/checkpoint and update
+      const existingRows = await tx
+        .select({ id: checkpointAnalyses.id })
+        .from(checkpointAnalyses)
         .where(
           and(
             eq(checkpointAnalyses.checkpointId, checkpoint.id),
@@ -370,23 +360,36 @@ export async function runReviewPipeline(
             inArray(checkpointAnalyses.repositoryId, repoIds)
           )
         );
-    } else {
-      // No contributions row yet — insert a minimal row so the data isn't lost
-      for (const repo of groupRepos) {
-        await db.insert(checkpointAnalyses).values({
-          checkpointId: checkpoint.id,
-          studentId: student.id,
-          repositoryId: repo.id,
-          codeMetrics: null,
-          testMetrics: null,
-          docMetrics: null,
-          cicdMetrics: null,
-          reviewMetrics: metrics,
-          boardMetrics: null,
-        });
+
+      if (existingRows.length > 0) {
+        await tx
+          .update(checkpointAnalyses)
+          .set({ reviewMetrics: metrics })
+          .where(
+            and(
+              eq(checkpointAnalyses.checkpointId, checkpoint.id),
+              eq(checkpointAnalyses.studentId, student.id),
+              inArray(checkpointAnalyses.repositoryId, repoIds)
+            )
+          );
+      } else {
+        // No contributions row yet — insert a minimal row so the data isn't lost
+        for (const repo of groupRepos) {
+          await tx.insert(checkpointAnalyses).values({
+            checkpointId: checkpoint.id,
+            studentId: student.id,
+            repositoryId: repo.id,
+            codeMetrics: null,
+            testMetrics: null,
+            docMetrics: null,
+            cicdMetrics: null,
+            reviewMetrics: metrics,
+            boardMetrics: null,
+          });
+        }
       }
     }
-  }
+  });
 
   await log("info", "Review pipeline complete");
 
