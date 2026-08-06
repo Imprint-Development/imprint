@@ -2,34 +2,20 @@ import ButtonLink from "@/components/ButtonLink";
 import RerunButton from "@/components/RerunButton";
 import CheckpointTable from "@/components/CheckpointTable";
 import { db } from "@/lib/db";
-import { checkpoints, courses } from "@/lib/db/schema";
-import { auth } from "@/lib/auth";
+import { checkpoints } from "@/lib/db/schema";
 import { triggerAnalysis } from "@/lib/actions/checkpoints";
 import { eq } from "drizzle-orm";
-import { redirect } from "next/navigation";
 import Typography from "@mui/material/Typography";
-import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Add from "@mui/icons-material/Add";
 
-export default async function CheckpointsPage({
+export default async function CheckpointsTabPage({
   params,
 }: {
   params: Promise<{ courseId: string }>;
 }) {
-  const session = await auth();
-  if (!session?.user?.id) redirect("/login");
-
   const { courseId } = await params;
-
-  const [course] = await db
-    .select()
-    .from(courses)
-    .where(eq(courses.id, courseId))
-    .limit(1);
-
-  if (!course) redirect("/courses");
 
   const courseCheckpoints = await db
     .select()
@@ -38,18 +24,16 @@ export default async function CheckpointsPage({
     .orderBy(checkpoints.createdAt);
 
   return (
-    <Box sx={{ p: { xs: 2, md: 3 } }}>
-      <PageBreadcrumbs items={[{ label: "Checkpoints" }]} />
-
+    <Box>
       <Box
         sx={{
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          mb: 3,
+          mb: 2,
         }}
       >
-        <Typography variant="h5">Checkpoints</Typography>
+        <Typography variant="h6">Checkpoints</Typography>
         <ButtonLink
           href={`/courses/${courseId}/checkpoints/new`}
           startIcon={<Add />}
